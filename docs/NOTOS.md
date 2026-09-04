@@ -299,6 +299,54 @@ De NOTOS-regel "agents schrijven nooit direct" staat als beleid, niet als gewoon
   het niet nodig · elke nieuwe combinatie van argumenten is een nieuwe vraag, ook als alleen
   een `channelId` erbij kwam (bewust: geen blanco toestemming).
 
+## FRIDA per persoon (stap 6)
+
+Catalogusentry `frida`: MCP op `https://frida.zuid.ai/mcp`, `user-oauth` tegen FRIDA's
+Supabase-autorisatieserver (`https://grzydenpjgcydxiujyeg.supabase.co/auth/v1`, publieke metadata
+uit `/.well-known/oauth-protected-resource`), dynamische clientregistratie zoals Notion, scopes
+`openid email offline_access` (het refresh-token rouleert; de store bewaart het in-place onder de
+rij-lock), geen revocation-endpoint (loskoppelen verwijdert de credential), `resource` = de MCP.
+`plugins/mcp.ts` stuurt een browser-user-agent naar `*.zuid.ai` (Cloudflare 1010). De
+workspace-sync (`notos/workspaces/frida-grants.ts`) maakt de serverrij en verleent de FRIDA-tools
+aan elke bot in elke workspace; wie niet gekoppeld heeft, wordt door de store gevraagd te koppelen.
+Het secret `frida-notos-oauth` van de nachtelijke kopie blijft onaangeraakt.
+
+## Gmail, Shopify, Webflow per persoon (stap 7)
+
+- `gmail`: `plugins/gmail-rest.ts` (search_messages, get_message, get_thread; create_draft en
+  send_message als writes). Een send naar een adres buiten `INTERNAL_DOMAINS` wordt een concept
+  ("extern: als concept klaargezet"); dat staat in de code, niet in een prompt.
+- `shopify`: per shop (`hostPattern` myshopify.com), `plugins/shopify-rest.ts` alleen lezen, token
+  in `X-Shopify-Access-Token`. De OAuth-URL's dragen `{host}`; `authForInstance` vult de shop in
+  (store bij refresh, routes bij authorize en code-exchange). Vraagt een Shopify-app
+  (client-id/secret via `POST /servers/shopify/oauth-client`).
+- `webflow`: officiële remote MCP met OAuth en dynamische registratie (`mcp.webflow.com`), een
+  MCP-entry zoals Notion. Omdat de toollijst pas na koppelen bekend is, heeft de entry een
+  `writeToolPattern` (create/update/delete/publish/…), en `classifyTool` kent dat veld.
+- Standaardgrants per bot: FRIDA alles, Gmail-lees, Drive-lees; Shopify en Webflow niets tot een
+  admin het aanzet. Koppelingen-scherm in de volgorde FRIDA, Gmail, Drive, Shopify, Webflow.
+- Nog nodig: een Google-OAuth-client met redirect-URI
+  `https://notos.zuid.com/api/bots/api/plugins/oauth/callback` (Cloud Console) voor Gmail en Drive.
+
+## De Drive-klantenmap (stap 8)
+
+`deployment_packages.drive_root_ids` = `{ roots: [...] }`, gezet in Admin › Workspaces
+(`PUT /api/admin/workspaces/:id/drive`, links of ids). De plugin-store geeft de roots van de
+workspace van de bot mee aan `google-drive-rest`; die loopt de mappenboom (roots + submappen, 15
+minuten cache), zet op elke zoekopdracht een `parents`-clausule en leest een bestand alleen als
+een parent in de boom zit. Zonder map: geen zoekopdracht, wel de zin die naar Admin › Workspaces
+wijst. De ZUID-workspace heeft de map NOTOS als root.
+
+## Routines op Cloud Scheduler (stap 9)
+
+`worker/` is weg. `POST /internal/routines/sweep` doet één sweep (offer + dispatch, in-process door
+de routine-runner) en accepteert het worker-secret of een Google-ID-token van `notos-worker@` of
+`notos-bots@` met als audience `OPENBOT_PUBLIC_URL` of `SWEEP_AUDIENCE` (de Cloud Run-URL).
+`scripts/notos/sweep-scheduler.sh` maakt de Scheduler-job (elke minuut, `notos-worker@`).
+`POST /api/w/:workspace/bots/:bot/runs { prompt, channelId? }` start één beurt als de aanroeper;
+dat is de deur voor n8n en NOTOS-knoppen (voorbeeld in `docs/routines.md`). De Routines-pagina
+maakt een routine aan met presets; `POST /api/w/:workspace/routines`.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
