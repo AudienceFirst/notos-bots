@@ -56,9 +56,13 @@ function AgentsScreen() {
     <>
       <SidebarToggleBar />
       <div className="max-w-2xl px-4 w-full mx-auto">
+        {/*
+         * NOTOS: the workspace's Bots come first. Personal agents are the exception here, so an empty
+         * "Your agents" box above the real content only pushed it down; it appears once there is one.
+         */}
         <div className="mt-12 w-full max-w-2xl">
           <div className="flex flex-row w-full items-center justify-between">
-            <h2 className="font-bold text-lg">Your agents</h2>
+            <h2 className="font-bold text-lg">Bots in this workspace</h2>
             <Button
               variant="ghost"
               size="sm"
@@ -75,37 +79,6 @@ function AgentsScreen() {
               New agent
             </Button>
           </div>
-          <div className="flex flex-row mt-4">
-            {!!mine?.length && (
-              <div className="grid grid-cols-[repeat(auto-fill,144px)] gap-4">
-                {mine.map((agent, index) => {
-                  return (
-                    <StaggerItem index={index} key={agent.id}>
-                      <Link
-                        to="/w/$workspace/agents"
-                        params={keepWorkspace}
-                        search={{ agent: agent.id }}
-                      >
-                        <AgentCard agent={agent} />
-                      </Link>
-                    </StaggerItem>
-                  );
-                })}
-              </div>
-            )}
-            {!mine?.length && (
-              <Empty className="border border-dashed h-[180px]">
-                <EmptyHeader>
-                  <EmptyTitle className="text-muted-foreground">
-                    You don't have any agents created.
-                  </EmptyTitle>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </div>
-        </div>
-        <div className="mt-8 w-full max-w-2xl">
-          <h2 className="font-bold text-lg">Explore agents</h2>
           <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
             {!!explore?.length &&
               explore.map((agent, index) => {
@@ -122,7 +95,36 @@ function AgentsScreen() {
                 );
               })}
           </div>
+          {!explore?.length && (
+            <Empty className="border border-dashed h-[180px]">
+              <EmptyHeader>
+                <EmptyTitle className="text-muted-foreground">
+                  This workspace has no Bots yet. Create one with New agent.
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          )}
         </div>
+        {!!mine?.length && (
+          <div className="mt-8 w-full max-w-2xl">
+            <h2 className="font-bold text-lg">Your agents</h2>
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
+              {mine.map((agent, index) => {
+                return (
+                  <StaggerItem index={index} key={agent.id}>
+                    <Link
+                      to="/w/$workspace/agents"
+                      params={keepWorkspace}
+                      search={{ agent: agent.id }}
+                    >
+                      <AgentCard agent={agent} />
+                    </Link>
+                  </StaggerItem>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
       <CreateAgentDialog
         onClose={close}

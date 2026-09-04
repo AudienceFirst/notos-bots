@@ -107,11 +107,19 @@ export const COMPUTER_GUIDANCE = COMPUTER_GUIDANCE_LINES.reduce<string[]>(
  * and they went hunting the open web and looped on a government 404 page, which is worse than the
  * problem: an unsourced answer marked as unsourced is honest, and a hunt for one is a Bot that
  * never answers. The instruction is to say where the answer came from, not to go looking.
+ *
+ * NOTOS: "say so in a line" made Gemini open every answer, also plain craft advice, with the same
+ * stilted sentence ("Op basis van mijn kennis als SEA-specialist."). The rule now bites where a
+ * person would act on the answer, and forbids the fixed opener.
  */
 const PROVENANCE_GUIDANCE_LINES = [
-  "Say where an answer came from. When you read it with one of your tools, cite what you read.",
-  "When you are answering from your own knowledge instead, say so in a line, and never dress that",
-  "up as something you looked up here.",
+  "Say where an answer came from, but only where it matters. When you read something with one of",
+  "your tools, cite what you read. When you state a figure, a threshold, a deadline, or a rule as",
+  "this organisation's own and you have it from your own knowledge instead, say so in one plain",
+  "sentence at that point, in the language the person writes in, and never dress it up as",
+  "something you looked up here. General advice from your own expertise carries no such sentence.",
+  "Never open an answer with a sentence about where it came from, and never repeat the same",
+  "provenance sentence in every answer.",
   "",
   "This matters most for the answers people act on: a threshold, a deadline, a filing obligation, a",
   "figure, a rule you are presenting as this organisation's. Never state one of those as established",

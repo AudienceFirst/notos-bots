@@ -21,7 +21,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Item,
   ItemActions,
@@ -148,13 +147,11 @@ function SkillsPage() {
            * not yet earned.
            */}
           {loading ? null : mine.length === 0 ? (
-            <Empty className="mt-4 h-[180px] border border-dashed">
-              <EmptyHeader>
-                <EmptyTitle className="text-muted-foreground">
-                  You don't have any skills yet.
-                </EmptyTitle>
-              </EmptyHeader>
-            </Empty>
+            /* NOTOS: one quiet line instead of a 180px dashed box above the skills that do exist. */
+            <p className="mt-4 text-muted-foreground text-sm">
+              No skills of your own yet. Write one with New skill; it goes on
+              the Bots you own.
+            </p>
           ) : (
             <PageRows>
               {mine.map((skill, index) => (
