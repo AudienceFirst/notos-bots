@@ -52,6 +52,16 @@ const FILTERS = [
     label: "Did not happen",
     search: eventTypeFilter(DID_NOT_HAPPEN_EVENT_TYPES),
   },
+  // NOTOS (stap 5): every write a Bot wanted, and who said yes or no.
+  { label: "Needs approval", search: "?eventType=approval.requested" },
+  {
+    label: "Approvals",
+    search: eventTypeFilter([
+      "approval.requested",
+      "approval.granted",
+      "approval.denied",
+    ]),
+  },
 ] as const;
 
 function AuditPage() {
@@ -405,6 +415,10 @@ const DECISIONS: Record<string, string> = {
   "mcp.tools_discovered": "Tools offered for one run",
   "mcp.call_succeeded": "Called on this Bot's behalf",
   "mcp.call_rejected": "Blocked",
+  // NOTOS (stap 5): a write that waited for a person, and what the person said.
+  "approval.requested": "Waiting for a person",
+  "approval.granted": "Approved by a person",
+  "approval.denied": "Declined by a person",
   "mcp.call_failed": "The server did not answer",
   // Not "Blocked": nothing about the Bot was judged, because nothing proved which Bot it was.
   "mcp.callback_refused": "Could not prove which Bot it was",

@@ -182,7 +182,8 @@ export function readRunAssertion(
 }
 
 export type CallVerdict =
-  | { ok: true; botId: string; actorId: string }
+  // NOTOS (stap 5): the thread from the assertion, so a refusal can open its approval there.
+  | { ok: true; botId: string; actorId: string; threadId?: string }
   | { ok: false; status: 401 | 403; reason: string };
 
 /**
@@ -249,5 +250,10 @@ export async function authoriseAgentCall(options: {
     };
   }
 
-  return { ok: true, botId: assertion.botId, actorId: assertion.actorId };
+  return {
+    ok: true,
+    botId: assertion.botId,
+    actorId: assertion.actorId,
+    ...(assertion.threadId ? { threadId: assertion.threadId } : {}),
+  };
 }

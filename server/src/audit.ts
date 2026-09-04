@@ -388,6 +388,10 @@ export const auditEventTypes = [
    * withholds; the offered credential never does.
    */
   "routines.dispatch_refused",
+  // NOTOS (stap 5): a write that waited for a person, and what the person said.
+  "approval.requested",
+  "approval.granted",
+  "approval.denied",
 ] as const;
 
 export type AuditEventType = (typeof auditEventTypes)[number];

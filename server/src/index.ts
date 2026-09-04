@@ -32,6 +32,8 @@ import { createThreadIdentity } from "./channels/thread-identity";
 import { createSandboxedStore } from "./components/sandboxed";
 import { createComponentStore } from "./components/store";
 import { createComputerGateway } from "./computer/gateway";
+import { createApprovalStore } from "./notos/approvals";
+import { createWorkspacePolicyStore } from "./notos/policy";
 import { createPageFrameStore } from "./computer/page-frames";
 import { startPolicyListener } from "./computer/policy-listener";
 import {
@@ -394,12 +396,31 @@ const computerGateway = computerProvider
  */
 const sandboxedStore = createSandboxedStore(database, bootAuditStore);
 
+/*
+ * NOTOS (stap 5): tool calls are judged by the policy of the Bot's workspace, and a write waits for
+ * a person. The deployment-wide `policyStore` stays for the computer gateway and the Boundaries
+ * screen; a workspace without rules of its own runs on DEFAULT_WORKSPACE_POLICY.
+ */
+const workspacePolicy = createWorkspacePolicyStore(database);
+const approvalStore = createApprovalStore(database);
+const workspaceIdOf = async (botId: string): Promise<string | null> => {
+  const [row] = await database
+    .select({ workspaceId: agents.workspaceId })
+    .from(agents)
+    .where(eq(agents.id, botId))
+    .limit(1);
+  return row?.workspaceId ?? null;
+};
+
 const pluginStore = createPluginStore({
   database,
   auditStore: bootAuditStore,
   credentials: credentialStore,
   encryptionKey: config.keyEncryptionKey,
-  policy: () => policyStore.get(),
+  policy: async ({ botId }) =>
+    workspacePolicy.policyFor(await workspaceIdOf(botId)),
+  approvals: approvalStore,
+  workspaceOf: workspaceIdOf,
   /*
    * Where a vendor sends people back, for a vendor whose client this deployment registers itself.
    *
@@ -1156,6 +1177,8 @@ const app = createApp(
   threadStore,
   // NOTOS: workspaces, and who may enter them (stap 2).
   workspaceStore,
+  // NOTOS: where a person says yes or no to a Bot's write (stap 5).
+  approvalStore,
 );
 
 /**

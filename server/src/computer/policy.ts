@@ -140,6 +140,14 @@ export type PolicyContext = {
     effect: "read" | "write" | "";
   };
   /**
+   * NOTOS: whether a person said yes to this exact call a moment ago (stap 5).
+   *
+   * Set for tool calls only, from `notos/approvals`; every other context carries a neutral
+   * `{ granted: false }` so the default workspace rule `mcp.effect == 'write' && !approval.granted`
+   * evaluates instead of throwing on an unknown name, which would deny everything.
+   */
+  approval?: { granted: boolean };
+  /**
    * The command a Bot is about to run on its computer, verbatim.
    *
    * Verbatim because a rule about a shell can only be written against what was actually typed. This
@@ -323,6 +331,17 @@ function describeRefusal(context: PolicyContext, expression: string): string {
   // than its contents made this branch fire for every browser refusal, and a person whose click was
   // refused read ":  on  is blocked" — two empty strings where the element and page belonged. A real
   // tool call always names its server and its tool, so those are what the branch keys on.
+  if (
+    (context.mcp?.server || context.mcp?.tool) &&
+    expression.includes("approval.granted") &&
+    context.approval?.granted !== true
+  ) {
+    // NOTOS: not a wall, a question. The plugin store turns this into an approvals row.
+    return (
+      `${context.mcp?.tool} on ${context.mcp?.server} changes something and needs a ` +
+      "person's permission first."
+    );
+  }
   if (context.mcp?.server || context.mcp?.tool) {
     return (
       `This deployment's policy does not allow that: ${context.mcp.tool} on ` +

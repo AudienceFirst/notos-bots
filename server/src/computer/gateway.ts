@@ -518,6 +518,7 @@ export function createComputerGateway(
       // tool and an empty effect match no MCP rule, so a boundary drawn around MCP leaves the browser
       // alone. The MCP context carries the browser fields empty for the mirror of this reason.
       mcp: { server: "", tool: "", effect: "" },
+      approval: { granted: false },
     };
 
     const decision = evaluateActionPolicy(options.policy(), context);

@@ -1,3 +1,4 @@
+import { useSayFromCard } from "@/lib/copilot/turn-bus";
 import type { Message } from "@ag-ui/core";
 import {
   UseAgentUpdate,
@@ -427,6 +428,8 @@ export function ChannelChat({
       }
     }
   };
+  // NOTOS (stap 5): the approval card speaks for the person once they have clicked Yes.
+  useSayFromCard(say);
 
   useEffect(() => {
     const fail = (message: string) => {

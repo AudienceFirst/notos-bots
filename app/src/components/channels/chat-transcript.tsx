@@ -1,3 +1,4 @@
+import { ApprovalCard, approvalIdFrom } from "./approval-card";
 import type { ActivityMessage, Message } from "@ag-ui/core";
 import {
   useRenderActivityMessage,
@@ -602,6 +603,9 @@ function ServerToolLine({ name, result }: { name: string; result?: string }) {
    * server's copy is what the model is told and "Refused." in front of a reason is right for it.
    */
   const body = refused ? answer?.slice(REFUSAL_MARKER.length).trim() : answer;
+  // NOTOS (stap 5): a write waiting for a person is a question, drawn as a card, not a refusal.
+  const approvalId = refused ? approvalIdFrom(body) : null;
+  if (approvalId) return <ApprovalCard id={approvalId} toolName={name} />;
   return (
     <ToolLine
       {...(detail ? { detail } : {})}

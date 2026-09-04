@@ -139,6 +139,18 @@ function BoundariesPage() {
       }
       title="Boundaries"
     >
+      {/*
+       * NOTOS (stap 5): what every workspace runs on before anybody writes rules here. The rules
+       * below are the deployment's own, for the computer and for Bots from before the workspaces.
+       */}
+      <PageSection
+        description="Every workspace starts with one rule: a tool that changes something waits for a person. The Bot asks, the person answers on a card in the channel, and the same call goes through once. Reads never wait."
+        title="Workspaces"
+      >
+        <pre className="mt-3 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs">
+          deny: mcp.effect == &apos;write&apos; &amp;&amp; !approval.granted
+        </pre>
+      </PageSection>
       <PageSection
         description="Enforce stops the action. Record it and allow it writes the same row and lets the action through, which is how a rule is tried on real traffic before it starts refusing anybody."
         title="When a rule matches"

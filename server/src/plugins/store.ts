@@ -1,3 +1,5 @@
+import type { ApprovalStore } from "../notos/approvals";
+import { hashArgs } from "../notos/approvals";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { type AuditStore, recordAuditEvent } from "../audit";
 import {
@@ -520,7 +522,18 @@ export type PluginStoreOptions = {
   credentials: CredentialSecretReader & CredentialStore;
   encryptionKey: string;
   /** Read at call time, never captured, so a policy changed a moment ago applies to this call. */
-  policy: () => ActionPolicy;
+  /**
+   * NOTOS: the policy for the Bot that is calling (stap 5). Per workspace, so it takes the Bot and may
+   * read the database; upstream's deployment-wide getter still fits the signature.
+   */
+  policy: (input: { botId: string }) => ActionPolicy | Promise<ActionPolicy>;
+  /**
+   * NOTOS: where a write waits for a person (stap 5). Without it every write is refused outright by
+   * the default rule, which is the safe direction; tests that never write leave it out.
+   */
+  approvals?: ApprovalStore;
+  /** NOTOS: the workspace a Bot belongs to, for the approvals row. Null is a Bot from before them. */
+  workspaceOf?: (botId: string) => Promise<string | null>;
   /**
    * Speaking MCP to the vendor. Defaults to the real client.
    *
@@ -2787,6 +2800,8 @@ export function createPluginStore(options: PluginStoreOptions) {
       args: Record<string, unknown>;
       botId: string;
       actorId: string;
+      /** NOTOS: the thread the call came out of, so the approval card is drawn there (stap 5). */
+      threadId?: string;
     }): Promise<{ text: string; isError: boolean }> {
       const [serverId, ...rest] = input.ref.split("/");
       const toolName = rest.join("/");
@@ -2860,9 +2875,32 @@ export function createPluginStore(options: PluginStoreOptions) {
         command: "",
         intent: effect === "write" ? "write_tool" : "read_tool",
         mcp: { server: serverId, tool: toolName, effect },
+        approval: { granted: false },
       };
 
-      const verdict = evaluateActionPolicy(options.policy(), context);
+      /*
+       * NOTOS (stap 5): a write that a person approved a moment ago, for exactly these arguments,
+       * passes the default rule once. Looked up before the verdict and spent after it, so a refusal
+       * on some other rule does not burn the person's yes.
+       */
+      const argsHash = hashArgs(args);
+      const granted =
+        effect === "write" && options.approvals
+          ? await options.approvals.findGranted({
+              botId: input.botId,
+              toolRef: input.ref,
+              argsHash,
+            })
+          : null;
+      if (granted) context.approval = { granted: true };
+
+      const verdict = evaluateActionPolicy(
+        await options.policy({ botId: input.botId }),
+        context,
+      );
+      if (granted && verdict.allowed) {
+        await options.approvals?.markUsed(granted.id);
+      }
 
       /*
        * The parts of the row that are known before the attempt, held rather than written.
@@ -2923,6 +2961,49 @@ export function createPluginStore(options: PluginStoreOptions) {
         });
       }
       if (!verdict.forward) {
+        /*
+         * NOTOS (stap 5): refused for want of a person's yes. Open the question, tell the Bot how to
+         * put it to the person, and leave a trail. The text starts with `needs_approval:<id>` so the
+         * transcript can draw a card with Yes and No instead of a wall of refusal.
+         */
+        if (
+          effect === "write" &&
+          options.approvals &&
+          verdict.matched?.includes("approval.granted")
+        ) {
+          const { approval, created } = await options.approvals.open({
+            workspaceId: (await options.workspaceOf?.(input.botId)) ?? null,
+            threadId: input.threadId ?? null,
+            botId: input.botId,
+            toolRef: input.ref,
+            args,
+            requestedByActor: input.actorId,
+          });
+          if (created) {
+            await recordAuditEvent(auditStore, {
+              eventType: "approval.requested",
+              targetType: "approval",
+              targetId: approval.id,
+              actorUserId: input.actorId,
+              payload: {
+                bot: input.botId,
+                server: serverId,
+                tool: toolName,
+                approval: approval.id,
+                ...(approval.workspaceId
+                  ? { workspace: approval.workspaceId }
+                  : {}),
+              },
+            });
+          }
+          throw new PluginRefusedError(
+            `needs_approval:${approval.id} ${toolName} changes something, and a person has to say ` +
+              "yes first. The person in this conversation has been shown a card with the exact call; " +
+              "tell them in one sentence what you want to do and why, then stop. Once they approve, " +
+              `call ${toolName} again with exactly the same arguments.`,
+            verdict.matched,
+          );
+        }
         throw new PluginRefusedError(verdict.reason, verdict.matched);
       }
 

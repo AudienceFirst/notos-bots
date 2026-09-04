@@ -1,3 +1,5 @@
+import type { ApprovalStore } from "./notos/approvals";
+import { createApprovalRoutes } from "./notos/approvals/routes";
 // NOTOS: thread-historie/-status uit de eigen tabel (stap 0); sessieguard op de Supabase-JWT, /api/auth eruit (stap 1).
 import type { Context, Hono as HonoApp, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
@@ -222,6 +224,8 @@ export function createApp(
    * ZUID caller, which is the degraded shape a test without workspaces wants.
    */
   workspaceStore?: WorkspaceStore,
+  /** NOTOS (stap 5): where a person says yes or no to a Bot's write. */
+  approvalStore?: ApprovalStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
@@ -1069,6 +1073,13 @@ export function createApp(
     );
   }
 
+  if (approvalStore) {
+    // NOTOS (stap 5): the card in the transcript reads and answers here; the gateway trusts the row.
+    mountScoped("/approvals", (guard) =>
+      createApprovalRoutes(approvalStore, guard, auditStore),
+    );
+  }
+
   if (componentStore) {
     mountScoped("/components", (guard) =>
       createComponentRoutes(componentStore, guard, auditStore, canUseBot),
@@ -1194,6 +1205,8 @@ export function createApp(
           botId: verdict.botId,
           // From the assertion, never the body: this is the name the audit row will carry.
           actorId: verdict.actorId,
+          // NOTOS (stap 5): the thread, so an approval card lands where the person is.
+          ...(verdict.threadId ? { threadId: verdict.threadId } : {}),
         });
         return context.json({ text: result.text, isError: result.isError });
       } catch (error) {
