@@ -5,4 +5,6 @@ export * from "./computer";
 export * from "./core";
 export * from "./coworker";
 export * from "./plugins";
+// NOTOS: gesprekken in eigen Postgres (stap 0).
+export * from "./threads";
 export * from "./work";

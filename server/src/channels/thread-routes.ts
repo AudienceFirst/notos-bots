@@ -1,3 +1,4 @@
+// NOTOS: /mint maakt de rij in `threads` aan; de statuscheck leest dezelfde tabel (stap 0).
 import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import type { AppVariables } from "../auth/guards";
@@ -16,7 +17,7 @@ import type { ThreadIdentity } from "./thread-identity";
  */
 
 /**
- * Answers whether Intelligence still has a given thread for a given person.
+ * Answers whether this deployment still has a given thread for a given person.
  *
  * Two outcomes only, and deliberately not a third: `"known"` means the thread is there, `"unknown"`
  * means Intelligence has clearly said it is not. A check that failed to get either answer — a
@@ -50,12 +51,21 @@ export function createThreadRoutes(
    * `POST /mint` needs no reader and is unaffected either way.
    */
   readThread?: ThreadReader,
+  /**
+   * NOTOS: where the minted thread gets its row, with the person who asked as its owner (stap 0).
+   * Absent leaves `POST /mint` handing out an id and nothing else, as upstream did.
+   */
+  threads?: {
+    ensure(input: { id: string; ownerUserId?: string }): Promise<void>;
+  },
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
 
-  routes.post("/mint", requireUser, (context) =>
-    context.json({ threadId: identity.mint() }),
-  );
+  routes.post("/mint", requireUser, async (context) => {
+    const threadId = identity.mint();
+    await threads?.ensure({ id: threadId, ownerUserId: context.var.actor.id });
+    return context.json({ threadId });
+  });
 
   if (readThread) {
     /*

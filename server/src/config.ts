@@ -1,24 +1,18 @@
+// NOTOS: CopilotKit Intelligence eruit; de runtime draait in SSE-modus op een eigen Postgres-runner (stap 0).
 /**
- * What the runtime can do. There is exactly one answer because CopilotKit Intelligence is required
- * for durable threads and memory. Configuration the product cannot function without belongs at the
- * boot boundary.
+ * What the runtime can do. One answer: the SSE runtime of `@copilotkit/runtime`, with threads, their
+ * events and the run lock in this deployment's own database (see `notos/runner`). Configuration
+ * the product cannot function without belongs at the boot boundary.
  */
 import { singleUserEnabled } from "./auth/dev-actor";
 import type { ActionPolicy } from "./computer/policy";
 import { parseActionPolicy } from "./computer/policy-store";
 
 export type RuntimeCapabilities = {
-  mode: "intelligence";
+  /** The SSE runtime, which is what `CopilotRuntime` becomes when no `intelligence` is passed. */
+  mode: "sse";
+  /** Threads survive a restart and a second replica: they live in this deployment's Postgres. */
   durableHistory: true;
-  intelligence: IntelligenceSettings;
-};
-
-/** The Intelligence contract. Every field is required; see runtimeCapabilities. */
-export type IntelligenceSettings = {
-  apiUrl: string;
-  gatewayWsUrl: string;
-  apiKey: string;
-  licenseToken: string;
 };
 
 export type DockerComputerConfig = {
@@ -558,40 +552,11 @@ function oktaAuth(
 }
 
 /**
- * Resolve the Intelligence contract, or refuse to start.
- *
- * All four values are required together. A partial set is the more dangerous shape than none at all:
- * it means somebody intended to configure Intelligence and got it wrong, so failing on the partial
- * set alone (as this did) let a completely unconfigured deployment through as if that were a choice.
+ * What the runtime is. Always the SSE runtime on our own runner; nothing in the environment changes
+ * that, and nothing is required for it beyond `DATABASE_URL`, which the database needs anyway.
  */
-function runtimeCapabilities(environment: Environment): RuntimeCapabilities {
-  const settings = {
-    apiUrl: url(environment, "INTELLIGENCE_API_URL"),
-    gatewayWsUrl: url(environment, "INTELLIGENCE_GATEWAY_WS_URL"),
-    apiKey: optional(environment, "INTELLIGENCE_API_KEY"),
-    licenseToken: optional(environment, "COPILOTKIT_LICENSE_TOKEN"),
-  };
-
-  const missing = Object.entries({
-    INTELLIGENCE_API_URL: settings.apiUrl,
-    INTELLIGENCE_GATEWAY_WS_URL: settings.gatewayWsUrl,
-    INTELLIGENCE_API_KEY: settings.apiKey,
-    COPILOTKIT_LICENSE_TOKEN: settings.licenseToken,
-  })
-    .filter(([, value]) => !value)
-    .map(([name]) => name);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `CopilotKit Intelligence is required and is not configured. Missing: ${missing.join(", ")}`,
-    );
-  }
-
-  return {
-    mode: "intelligence",
-    durableHistory: true,
-    intelligence: settings as IntelligenceSettings,
-  };
+function runtimeCapabilities(): RuntimeCapabilities {
+  return { mode: "sse", durableHistory: true };
 }
 
 /**
@@ -934,7 +899,7 @@ export function loadConfig(
     )?.replace(/\/+$/, ""),
     tenantPackageDirectory:
       optional(environment, "TENANT_PACKAGE_DIR") ?? "../examples/fintech",
-    runtime: runtimeCapabilities(environment),
+    runtime: runtimeCapabilities(),
     agentStallTimeoutMs: agentStallTimeoutMs(environment),
     auditRetentionDays: auditRetentionDays(environment),
     oauth: { google },

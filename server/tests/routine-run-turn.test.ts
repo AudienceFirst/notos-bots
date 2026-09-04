@@ -9,18 +9,13 @@ import {
 } from "../src/routines/run-turn";
 
 /**
- * A headless turn, asserted without a gateway, without a database and without a model.
+ * A headless turn, asserted without a database and without a model.
  *
- * This file exists because `run-turn.ts` RESTATES BY HAND five `ɵ`-prefixed request shapes that
- * `@copilotkit/runtime` does not export. Nothing else in the repository can catch a lock that is
- * acquired and never released, a renew that keeps a different lock alive than the one the cleanup
- * releases, or a `persistedInputMessages` that quietly re-persists a whole transcript — and every one
- * of those is felt by a person rather than by a test: a leaked lock refuses their next browser message
- * with 409 for the whole TTL, so a routine that fails at three in the morning locks them out of their
- * own conversation.
- *
- * So the properties here are the lifecycle ones: cleanup exactly once on every exit path, one run id
- * everywhere, the subtraction, and the order the three platform calls happen in.
+ * NOTOS: the seams are our own thread store and run lock now (stap 0), but the properties are the
+ * same lifecycle ones: the lock released exactly once on every exit path, one run id everywhere,
+ * the subtraction, and the order the calls happen in. A leaked lock refuses the person's next
+ * browser message for the whole TTL, so a routine that fails at three in the morning locks them
+ * out of their own conversation.
  */
 
 const OWNER = "user_owner";
@@ -43,14 +38,6 @@ type HistoryRow = {
   toolCalls?: { id: string; name: string; args: string }[];
   toolCallId?: string;
 };
-
-/** A `PlatformRequestError` as `isMissingThread` matches it: the name and the status, nothing else. */
-function threadNotFound(): Error {
-  const error = new Error("THREAD_NOT_FOUND");
-  error.name = "PlatformRequestError";
-  (error as Error & { status?: number }).status = 404;
-  return error;
-}
 
 class FakeAgent extends AbstractAgent {
   aborts = 0;
@@ -91,9 +78,10 @@ const answers: Driver = ({ agent, observer }) => {
 
 function harness(options: {
   history?: HistoryRow[];
-  historyFails?: () => Error;
   /** What the acquire call does. A thunk that throws, for the same reason `renew` is one. */
   acquireFails?: () => Error;
+  /** The lock is somebody else's: acquire answers false. */
+  acquireBusy?: boolean;
   drive?: Driver;
   /**
    * What a renew does. A thunk that THROWS rather than one that returns a rejected promise: a
@@ -130,43 +118,64 @@ function harness(options: {
   const agent = new FakeAgent({ agentId: AGENT_ID });
   const drive = options.drive ?? answers;
 
-  const intelligence = {
-    getOrCreateThread: async (params: {
-      threadId: string;
-      userId: string;
-      agentId: string;
+  const threads = {
+    ensure: async (params: {
+      id: string;
+      ownerUserId?: string;
+      agentId?: string;
     }) => {
       order.push("getOrCreateThread");
-      calls.threads.push(params);
-      return { thread: { id: params.threadId }, created: false };
+      calls.threads.push({
+        threadId: params.id,
+        userId: params.ownerUserId ?? "",
+        agentId: params.agentId ?? "",
+      });
     },
-    getThreadMessages: async () => {
+    messages: async () => {
       order.push("getThreadMessages");
-      if (options.historyFails) throw options.historyFails();
-      return { messages: options.history ?? [] };
+      return options.history ?? [];
     },
-    ɵacquireThreadLock: async (params: {
+  };
+
+  const lock = {
+    acquire: async (params: {
       threadId: string;
       runId: string;
-      userId: string;
-      agentId: string;
+      userId?: string;
+      agentId?: string;
       ttlSeconds?: number;
     }) => {
       order.push("acquire");
       if (options.acquireFails) throw options.acquireFails();
-      calls.acquired.push(params);
-      return { threadId: params.threadId, runId: params.runId, joinToken: "t" };
+      if (options.acquireBusy) return false;
+      calls.acquired.push({
+        threadId: params.threadId,
+        runId: params.runId,
+        userId: params.userId ?? "",
+        agentId: params.agentId ?? "",
+        ...(params.ttlSeconds === undefined
+          ? {}
+          : { ttlSeconds: params.ttlSeconds }),
+      });
+      return true;
     },
-    ɵrenewThreadLock: async (params: {
+    renew: async (params: {
       threadId: string;
       runId: string;
-      ttlSeconds: number;
+      ttlSeconds?: number;
     }) => {
-      calls.renewed.push(params);
-      if (options.renew) return options.renew();
-      return { ttlSeconds: params.ttlSeconds };
+      calls.renewed.push({
+        threadId: params.threadId,
+        runId: params.runId,
+        ttlSeconds: params.ttlSeconds ?? 0,
+      });
+      if (options.renew) {
+        options.renew();
+        return true;
+      }
+      return true;
     },
-    ɵcleanupThreadLock: async (params: { threadId: string; runId: string }) => {
+    release: async (params: { threadId: string; runId: string }) => {
       order.push("cleanup");
       calls.cleaned.push(params);
     },
@@ -196,8 +205,8 @@ function harness(options: {
   };
 
   const runTurn = createTurnRunner({
-    // biome-ignore lint/suspicious/noExplicitAny: narrow structural fakes, on purpose.
-    intelligence: intelligence as any,
+    threads,
+    lock,
     // biome-ignore lint/suspicious/noExplicitAny: narrow structural fakes, on purpose.
     runner: runner as any,
     buildAgentFor: async () => agent,
@@ -312,12 +321,23 @@ describe("a routine's headless turn", () => {
     expect(agent.messages[5]?.content).toContain(FRAME_MARK);
   });
 
-  test("a thread the platform has never heard of reads as no history", async () => {
-    const { run, calls } = harness({ historyFails: threadNotFound });
+  test("a thread the store has never heard of reads as no history", async () => {
+    const { run, calls } = harness({});
 
     await run();
 
     expect(calls.runs[0]?.input.messages).toHaveLength(1);
+  });
+
+  test("a conversation somebody else is running in is not entered, and nothing is released", async () => {
+    // Our lock answers false rather than throwing when another run holds it. That is "not now":
+    // the routine's firing fails with a named reason and the queue tries it again later. No
+    // release, because nothing was held.
+    const { run, calls } = harness({ acquireBusy: true });
+
+    await expect(run()).rejects.toMatchObject({ name: "RoutineThreadBusy" });
+    expect(calls.runs).toEqual([]);
+    expect(calls.cleaned).toEqual([]);
   });
 });
 

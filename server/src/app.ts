@@ -1,3 +1,4 @@
+// NOTOS: thread-historie en -status uit de eigen threads-tabel; Intelligence-client eruit (stap 0).
 import type { Hono as HonoApp, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
@@ -35,7 +36,7 @@ import type { PolicyStore } from "./computer/policy-store";
 import { createComputerRoutes } from "./computer/routes";
 import { configuredAuthProviders, type DeploymentConfig } from "./config";
 import type { CredentialAdminService, CredentialInput } from "./credentials";
-import { createIntelligenceClient } from "./intelligence-client";
+import type { ThreadStore } from "./notos/runner";
 import type { OnboardingStore } from "./people/onboarding";
 import type { PeopleStore } from "./people/store";
 import { createPluginRoutes } from "./plugins/routes";
@@ -202,13 +203,18 @@ export function createApp(
    * nothing can finish.
    */
   onboardingStore?: OnboardingStore,
+  /**
+   * NOTOS: where threads live (stap 0). Appended last, positional like everything above it.
+   *
+   * Absent leaves `POST /api/threads/mint` handing out an id with no row behind it, the status
+   * check unregistered and the history route unmounted.
+   */
+  threads?: ThreadStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
   app.get("/health", (context) => context.json({ status: "ok" }));
-  // Projected, never the raw runtime. config.runtime carries the Intelligence contract, including
-  // INTELLIGENCE_API_KEY and the licence token, and this endpoint is reachable by anyone. Returning
-  // the object wholesale would serve deployment secrets to the browser. Add fields here explicitly.
+  // Projected, never the raw config: this endpoint is reachable by anyone. Add fields explicitly.
   app.get("/api/capabilities", async (context) =>
     context.json({
       mode: config.runtime.mode,
@@ -771,6 +777,33 @@ export function createApp(
       return context.json({ accepted: true }, 202);
     });
   }
+  /*
+   * NOTOS: a thread's history, from our own store (stap 0).
+   *
+   * The browser reads `/api/copilotkit/threads/:id/messages` to reopen a conversation. In SSE mode
+   * the runtime only answers that route for a runner implementing its synchronous local-thread
+   * interface, which a database cannot, so the route is ours and is declared before the runtime's
+   * mount so it wins. A thread with an owner is that owner's; a thread without one (a channel's
+   * thread, mapped per person elsewhere) is readable by anyone signed in until stap 2 adds the
+   * workspace guard.
+   */
+  if (threads) {
+    app.get(
+      "/api/copilotkit/threads/:threadId/messages",
+      requireUser,
+      async (context) => {
+        const threadId = context.req.param("threadId");
+        const thread = await threads.get(threadId);
+        if (
+          thread?.ownerUserId &&
+          thread.ownerUserId !== context.var.actor.id
+        ) {
+          return context.json({ error: "Not your thread." }, 403);
+        }
+        return context.json({ messages: await threads.messages(threadId) });
+      },
+    );
+  }
   // The CopilotKit runtime, behind the same session guard as every other API route. Mounted last so
   // its own routing under /api/copilotkit cannot shadow an OpenBot route declared above.
   if (copilotHandler) {
@@ -1052,14 +1085,9 @@ export function createApp(
       createThreadRoutes(
         threadIdentity,
         requireUser,
-        // config.ts refuses to boot without the full Intelligence contract (see copilot.ts's
-        // header comment), so `config.runtime.intelligence` is never missing here. Built from it
-        // rather than assumed, though: this is the one place besides the runtime mount itself that
-        // needs to reach Intelligence, and it should keep working unmodified if that guarantee ever
-        // loosens and a deployment can legitimately have no reader to build.
-        createThreadReader(
-          createIntelligenceClient(config.runtime.intelligence),
-        ),
+        // NOTOS: the thread store answers whether a remembered thread is still there, and for whom.
+        threads ? createThreadReader(threads) : undefined,
+        threads,
       ),
     );
   }

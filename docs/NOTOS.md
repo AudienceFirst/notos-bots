@@ -45,6 +45,54 @@ Staat er nog, is bewust niet verwijderd. Verwijderen gebeurt in de stap die het 
 | CopilotKit Intelligence | Gehoste threads, geheugen en licentie met seat-cap; wij houden gesprekken in eigen Postgres | Weg in stap 0 |
 | Better Auth | Tweede identiteitsbron naast de NOTOS-sessie | Weg in stap 1 |
 
+## Waarom geen Intelligence (stap 0)
+
+OpenBot `d00f65c` weigerde te starten zonder CopilotKit Intelligence (`config.ts` gooide
+"CopilotKit Intelligence is required and is not configured"; `copilot.ts` zei letterlijk "There is
+no SSE branch"). Drie feiten waarom dat hier weg is:
+
+1. Intelligence bezat de threads, het geheugen en de licentie. De licentie heeft een seat-cap
+   (gratis 1, team 5) en een thread-retentie van 72 uur. Voor een klantworkspace is dat geen optie.
+2. De runtime zelf kent een tweede modus: `CopilotRuntime` kiest `CopilotSseRuntime` zodra je geen
+   `intelligence` meegeeft en neemt een eigen `runner` aan (`options.runner ?? new InMemoryAgentRunner()`).
+   De licentiecontrole wordt alleen in de Intelligence-runtime aangemaakt.
+3. `AgentRunner` is een abstracte klasse met vier methoden (`run`, `connect`, `isRunning`, `stop`;
+   `dist/v2/runtime/runner/agent-runner.d.mts`). Die vier zijn te bouwen op Postgres.
+
+Wat er nu staat:
+
+- `server/src/db/schema/threads.ts`: tabellen `threads` (met `snapshot` = de berichten na de laatste
+  run) en `thread_events` (elke AG-UI-gebeurtenis, `seq` per thread). Migratie `0026_threads.sql`.
+- `server/src/notos/runner/`: `thread-store.ts` (opslag), `thread-lock.ts` (run-lock als geleasede
+  rij in `work_items`, kind `thread-run`), `bus.ts` (`LISTEN/NOTIFY` op `notos_thread`),
+  `postgres-runner.ts` (de `AgentRunner`). Eén runner per proces; runtime, routines en hops delen hem.
+- `/api/copilotkit/threads/:id/messages` wordt door `app.ts` zelf bediend uit de snapshot. De
+  runtime's eigen thread-endpoints eisen een synchrone runner-interface en die kan een database niet
+  bieden. `POST /api/threads/mint` maakt nu de rij aan, met de aanvrager als eigenaar.
+- Geen geheugen, geen learning. Dat bestond alleen in Intelligence; "geen geheugen" is eerlijk en
+  zichtbaar tot een workspace erom vraagt.
+- Bewuste afwijkingen van het stapbestand: `threads.id` is `text` (niet `uuid`), omdat
+  `intelligence_channel_mappings.thread_id` al tekst is; de momentopname van berichten staat als
+  `snapshot` op de thread-rij in plaats van uit events herleid te worden bij elk openen; de lock is
+  een lease-rij en geen advisory lock, omdat een advisory lock aan een verbinding hangt en de pool
+  die teruggeeft.
+- `stop` op een run die op een andere replica draait gaat via de bus; zonder bus meldt hij `false`.
+
+### Controle stap 0 (4 september 2026)
+
+| Controle | Uitkomst |
+|---|---|
+| `bun run format:check` · `lint` · `typecheck` | groen |
+| `bun run test:ci` met database | 2198 geslaagd, 23 overgeslagen, 1 gefaald: dezelfde kanaalvolgorde-test als in de nulmeting |
+| `grep INTELLIGENCE_\|COPILOTKIT_LICENSE_TOKEN\|CopilotKitIntelligence\|IntelligenceAgentRunner server/src` | 0 regels |
+| Boot met alleen `DATABASE_URL`, `KEY_ENCRYPTION_KEY`, `OPENBOT_SINGLE_USER`, `TENANT_PACKAGE_DIR`, `OPENAI_API_KEY` | start; `/api/capabilities` geeft `mode: "sse"`, `/api/copilotkit/info` toont twee bots |
+| `tests/notos/postgres-runner.test.ts` | 20 events, nieuwe runner-instantie, `connect` geeft dezelfde 20 terug; tweede runner op dezelfde thread krijgt "Thread already running"; meekijkende replica ziet de run eindigen |
+| `tests/notos/routine-turn-postgres.test.ts` | routine-beurt door de echte runner en lock: antwoord in `thread_events` en in de snapshot, lock vrij, tweede beurt leest de eerste als historie |
+
+Niet gedaan: een routine handmatig laten vuren via `POST /internal/routines/run` tegen een echt
+model. Er is geen OpenAI-sleutel in de secrets-index en stap 3 verhuist het model naar Vertex;
+de test hierboven dekt hetzelfde pad met een gescripte bot.
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

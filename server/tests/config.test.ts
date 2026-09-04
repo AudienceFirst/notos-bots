@@ -2,9 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { configuredAuthProviders, loadConfig } from "../src/config";
 
-// Intelligence is part of the MINIMUM contract, so it belongs in the base environment every other
-// case builds on. Leaving it out of the base would make most of this file assert the behaviour of a
-// deployment that is not allowed to exist.
+// NOTOS: no Intelligence in the base environment; the runtime is SSE on our own Postgres (stap 0).
 const baseEnvironment = {
   DATABASE_URL: "postgres://openbot:openbot@localhost:5432/openbot",
   KEY_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -13,10 +11,6 @@ const baseEnvironment = {
   BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
   BETTER_AUTH_URL: "http://localhost:3001",
   INITIAL_ADMIN_EMAILS: "admin@openbot.test",
-  INTELLIGENCE_API_URL: "http://localhost:7100",
-  INTELLIGENCE_GATEWAY_WS_URL: "ws://localhost:7103",
-  INTELLIGENCE_API_KEY: "tenant-api-key",
-  COPILOTKIT_LICENSE_TOKEN: "license-token",
   MANAGED_AGENT_AG_UI_URL: " http://localhost:4200/ag-ui ",
   MANAGED_AGENT_TOKEN: "managed-agent-token",
 };
@@ -51,18 +45,12 @@ const {
 } = baseEnvironment;
 
 describe("deployment configuration", () => {
-  test("resolves the Intelligence runtime, which is the only runtime", () => {
+  test("resolves the SSE runtime on durable history, which is the only runtime", () => {
     const config = loadConfig(baseEnvironment);
 
     expect(config.runtime).toEqual({
-      mode: "intelligence",
+      mode: "sse",
       durableHistory: true,
-      intelligence: {
-        apiUrl: "http://localhost:7100",
-        gatewayWsUrl: "ws://localhost:7103",
-        apiKey: "tenant-api-key",
-        licenseToken: "license-token",
-      },
     });
     expect(config.managedAgent).toEqual({
       endpoint: new URL("http://localhost:4200/ag-ui"),
@@ -75,10 +63,6 @@ describe("deployment configuration", () => {
     const config = loadConfig({
       DATABASE_URL: baseEnvironment.DATABASE_URL,
       KEY_ENCRYPTION_KEY: baseEnvironment.KEY_ENCRYPTION_KEY,
-      INTELLIGENCE_API_URL: baseEnvironment.INTELLIGENCE_API_URL,
-      INTELLIGENCE_GATEWAY_WS_URL: baseEnvironment.INTELLIGENCE_GATEWAY_WS_URL,
-      INTELLIGENCE_API_KEY: baseEnvironment.INTELLIGENCE_API_KEY,
-      COPILOTKIT_LICENSE_TOKEN: baseEnvironment.COPILOTKIT_LICENSE_TOKEN,
       MANAGED_AGENT_AG_UI_URL: baseEnvironment.MANAGED_AGENT_AG_UI_URL,
       MANAGED_AGENT_TOKEN: baseEnvironment.MANAGED_AGENT_TOKEN,
       // Explicit, because no provider means every visitor is the administrator and a deployment has
@@ -89,34 +73,20 @@ describe("deployment configuration", () => {
     expect(config.auth).toBeUndefined();
   });
 
-  // The product does not have a mode without Intelligence, so each of these is a refusal to boot
-  // rather than a degraded capability. Named individually because a deployment that sets three of
-  // four is the likeliest real mistake, and the message has to say which one is missing.
-  test.each([
-    "INTELLIGENCE_API_URL",
-    "INTELLIGENCE_GATEWAY_WS_URL",
-    "INTELLIGENCE_API_KEY",
-    "COPILOTKIT_LICENSE_TOKEN",
-  ])("refuses to start when %s is missing", (name) => {
-    const environment: Record<string, string | undefined> = {
+  // NOTOS: the four Intelligence variables are not read at all. A deployment that still carries
+  // them boots exactly like one that does not, and never contacts anything.
+  test("ignores leftover Intelligence configuration rather than refusing or using it", () => {
+    const config = loadConfig({
       ...baseEnvironment,
-    };
-    delete environment[name];
+      INTELLIGENCE_API_URL: "http://localhost:7100",
+      INTELLIGENCE_GATEWAY_WS_URL: "ws://localhost:7103",
+      INTELLIGENCE_API_KEY: "tenant-api-key",
+      COPILOTKIT_LICENSE_TOKEN: "license-token",
+    });
 
-    expect(() => loadConfig(environment)).toThrow(
-      `CopilotKit Intelligence is required and is not configured. Missing: ${name}`,
-    );
-  });
-
-  test("refuses to start when Intelligence is absent entirely, rather than degrading", () => {
-    expect(() =>
-      loadConfig({
-        DATABASE_URL: baseEnvironment.DATABASE_URL,
-        KEY_ENCRYPTION_KEY: baseEnvironment.KEY_ENCRYPTION_KEY,
-        MANAGED_AGENT_AG_UI_URL: baseEnvironment.MANAGED_AGENT_AG_UI_URL,
-        MANAGED_AGENT_TOKEN: baseEnvironment.MANAGED_AGENT_TOKEN,
-      }),
-    ).toThrow("CopilotKit Intelligence is required and is not configured");
+    expect(config.runtime).toEqual({ mode: "sse", durableHistory: true });
+    expect(JSON.stringify(config)).not.toContain("tenant-api-key");
+    expect(JSON.stringify(config)).not.toContain("license-token");
   });
 
   test("rejects incomplete OAuth client configuration", () => {

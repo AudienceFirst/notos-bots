@@ -9,17 +9,8 @@ cp .env.example .env
 bun install
 ```
 
-Provision CopilotKit Intelligence after `.env` exists:
-
-```sh
-npx --yes copilotkit@latest login
-npx --yes copilotkit@latest project select
-npx --yes copilotkit@latest license --write
-```
-
-Put the `cpk-...` runtime key from `project select` in `.env` as
-`INTELLIGENCE_API_KEY`. `license --write` writes `COPILOTKIT_LICENSE_TOKEN`.
-Then add `OPENAI_API_KEY`.
+NOTOS: there is no CopilotKit Intelligence to provision. Add `OPENAI_API_KEY` (until stap 3 moves
+the model to Vertex AI) and go.
 
 Start the stack:
 

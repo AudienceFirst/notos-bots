@@ -1,3 +1,4 @@
+// NOTOS: alleen de tekst aangepast; Intelligence heet hier nu de thread-opslag (stap 0).
 /**
  * The one filter that keeps a broken conversation from being replayed at a model provider for ever.
  *
@@ -24,7 +25,7 @@ function isSilent(message: Message): boolean {
  * FOUND IN PRODUCTION, TWICE, ON BOTH PATHS. First on routines: two firings of one routine, fifteen
  * minutes apart, both failed with `Tool result is missing for tool call
  * call_TTbiXzJVNifQt8ioU1JJmj4S.` — the SAME call id both times, so it did not come from the live
- * turn: the channel's Intelligence thread held an assistant message carrying a tool call whose
+ * turn: the channel's stored thread held an assistant message carrying a tool call whose
  * result message never landed, because an earlier CHAT turn was interrupted mid-call. Then on chat
  * itself: `AI_MissingToolResultsError: Tool result is missing for tool call
  * chatcmpl-tool-8dd56dc7497c5ea9`, thrown three times in a row on one person's next three attempts
@@ -44,7 +45,7 @@ function isSilent(message: Message): boolean {
  * that never completed. The second one loses a fragment of an interrupted exchange; the first one
  * takes the conversation away.
  *
- * WHAT THIS DOES NOT DO. It does not DELETE anything from the platform. The thread still holds every
+ * WHAT THIS DOES NOT DO. It does not DELETE anything from the thread store. The thread still holds every
  * row and the person still sees the interrupted exchange in their channel. This is a read-side
  * filter on one turn's input and nothing more.
  *

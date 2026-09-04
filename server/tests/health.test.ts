@@ -19,12 +19,12 @@ describe("health endpoint", () => {
 });
 
 describe("runtime capabilities", () => {
-  test("reports the Intelligence runtime without exposing configuration secrets", async () => {
+  test("reports the SSE runtime on durable history, and nothing from the configuration", async () => {
     const response = await app.request("http://openbot.local/api/capabilities");
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      mode: "intelligence",
+      mode: "sse",
       durableHistory: true,
       // Off until a deployment asks for it. The browser reads this to decide whether to offer the
       // tool that generates an interface, so it has to be here and not only in the runtime.
@@ -37,9 +37,9 @@ describe("runtime capabilities", () => {
     });
   });
 
-  // The runtime object holds the Intelligence API key and licence token. This endpoint has no
-  // authentication, so a projection bug here publishes deployment secrets to anyone who asks.
-  test("never serves the Intelligence credentials", async () => {
+  // This endpoint has no authentication, so a projection bug here publishes deployment secrets to
+  // anyone who asks. NOTOS: the Intelligence credentials are gone; the shape check stays.
+  test("never serves anything from the configuration beyond the projected fields", async () => {
     const response = await app.request("http://openbot.local/api/capabilities");
     const body = await response.text();
     const parsed = (await new Response(body).json()) as Record<string, unknown>;

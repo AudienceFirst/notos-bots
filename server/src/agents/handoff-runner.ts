@@ -1,3 +1,4 @@
+// NOTOS: alleen de toelichting bij forThePerson aangepast; de logica staat (stap 0).
 /**
  * Delivering a hop: running the Bot that was addressed, and putting its answer in the conversation.
  *
@@ -502,9 +503,9 @@ function clip(answer: string): string {
 /**
  * The same failure, in words that can be said out loud.
  *
- * The reason on a failed hop is whatever threw, and one of the things that throws is the platform
- * client, whose message is `Intelligence platform error 409: {"error":{...}}` — a response body,
- * verbatim. That reason is interpolated into the notice a Bot then paraphrases to a person, so an
+ * The reason on a failed hop is whatever threw. Under CopilotKit Intelligence one of the things that
+ * threw was the platform client, whose message was `Intelligence platform error 409: {"error":{...}}`,
+ * a response body verbatim. The thread store throws plain sentences, but the shape check stays. That reason is interpolated into the notice a Bot then paraphrases to a person, so an
  * internal error envelope ends up in somebody's chat. The trail keeps the whole thing; the sentence
  * gets the shape of the problem.
  */

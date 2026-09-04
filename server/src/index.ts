@@ -1,8 +1,6 @@
+// NOTOS: threads, events en run-lock in eigen Postgres via notos/runner; Intelligence eruit (stap 0).
 import { randomUUID } from "node:crypto";
-import {
-  CopilotKitIntelligence,
-  IntelligenceAgentRunner,
-} from "@copilotkit/runtime/v2";
+import type { AgentRunnerRunRequest } from "@copilotkit/runtime/v2";
 import { serve } from "bun";
 import { eq } from "drizzle-orm";
 import { COMPUTER_GUIDANCE } from "../../shared/bot-prompt";
@@ -49,7 +47,6 @@ import { createSnapshotStore } from "./computer/snapshot-store";
 import { loadConfig } from "./config";
 import {
   type IdentifyActor,
-  type IdentifyUser,
   mountCopilotRuntime,
   resolveRuntimeAgents,
   type ToolSelection,
@@ -61,6 +58,12 @@ import {
 } from "./credentials";
 import { createDatabase } from "./db/client";
 import { intelligenceChannelMappings } from "./db/schema";
+import {
+  createThreadLock,
+  createThreadStore,
+  PostgresAgentRunner,
+  startThreadBus,
+} from "./notos/runner";
 import { createOnboardingStore } from "./people/onboarding";
 import { createPeopleStore } from "./people/store";
 import { useRoutineTools } from "./plugins/builtin-routines";
@@ -115,12 +118,6 @@ async function resolveRequestActor(request: Request): Promise<{
   };
 }
 
-/** The Intelligence projection of {@link resolveRequestActor}: threads are scoped to this person. */
-const identifyUser: IdentifyUser = async (request) => {
-  const { id, name } = await resolveRequestActor(request);
-  return { id, name };
-};
-
 /**
  * The authorization projection of the same person: agent visibility is decided from this.
  *
@@ -147,6 +144,20 @@ const config = loadConfig();
 // `serverPort` in config.ts for what `process.env.PORT ?? …` did with `PORT=` instead.
 const port = config.port;
 const database = createDatabase(config.databaseUrl);
+/*
+ * NOTOS: threads, their events and the run lock live in this database (stap 0). One runner for the
+ * process: the runtime runs on it, a routine's headless turn drives it, and a hop between Bots runs
+ * through it, so "is somebody already running in this conversation" is one question with one answer.
+ * The bus is how a second replica hears about a run here; without it, it polls.
+ */
+const threadStore = createThreadStore(database);
+const threadLock = createThreadLock(database);
+const threadRunner = new PostgresAgentRunner({
+  threads: threadStore,
+  lock: threadLock,
+});
+const threadBus = await startThreadBus(config.databaseUrl, database);
+threadRunner.attachBus(threadBus);
 await initializeDevActorUser(database, config.singleUser);
 // The vault, built before the agent store because a customer's agent may sit behind a key and that
 // key belongs here rather than on the agent row. See agents/auth-header.ts.
@@ -680,37 +691,14 @@ const buildAgentFor = async ({
   return agent;
 };
 
-/*
- * The pair a headless turn is driven through, built ONCE.
- *
- * Not the runtime's own pair: `mountCopilotRuntime` keeps its client and its runner inside
- * `CopilotRuntime` and hands neither back, and reaching into that object would be a worse seam than
- * building our own from the same three settings. Built from `config.runtime.intelligence`, which is
- * required and not optional — `RuntimeCapabilities` has exactly one mode and every Intelligence field
- * with it (`config.ts:10-22`), and `loadConfig` refuses to boot without them — so there is no
- * not-in-Intelligence-mode branch to write here. If a second mode is ever added, THIS is the line that
- * has to grow a guard, and the routine runner must then be left off `createApp` entirely.
- *
- * One runner for the process, reused across firings: it opens a socket per run and holds no idle
- * connection, but its `threads` map is per instance, and a runner per turn would fragment the
- * already-running check that keeps two turns off one thread. See `routines/run-turn.ts`.
- */
-const routineIntelligence = new CopilotKitIntelligence({
-  apiUrl: config.runtime.intelligence.apiUrl,
-  wsUrl: config.runtime.intelligence.gatewayWsUrl,
-  apiKey: config.runtime.intelligence.apiKey,
-});
-const routineAgentRunner = new IntelligenceAgentRunner({
-  url: routineIntelligence.ɵgetRunnerWsUrl(),
-  authToken: routineIntelligence.ɵgetRunnerAuthToken(),
-});
-
 const routineRunner = createRoutineRunner({
   routineStore,
   channelStore,
+  // NOTOS: the same runner, store and lock the runtime uses; see notos/runner.
   runTurn: createTurnRunner({
-    intelligence: routineIntelligence,
-    runner: routineAgentRunner,
+    threads: threadStore,
+    lock: threadLock,
+    runner: threadRunner,
     buildAgentFor,
   }),
 });
@@ -729,9 +717,9 @@ const copilotRuntime = mountCopilotRuntime(
   tenantPackage.model,
   loadAgentsForActor,
   resolveRuntimeModelApiKey,
-  identifyUser,
   identifyActor,
   stallGuard,
+  threadRunner,
   loadToolsForActor,
   signRunForActor,
   undefined,
@@ -917,12 +905,13 @@ if (config.handoff.maxDepth > 0 && config.handoff.maxPerRun > 0) {
       // to its channel by the store; a scratch thread maps to none and signals nowhere.
       setBusy: (input) => channelStore.signalBusy(input.threadId, input.busy),
       newRunId: () => randomUUID(),
-      // The same address and the same token the runtime uses. Assembling either from configuration
-      // produced a runner every join was refused for, because the thread's active run is a lock the
-      // platform issues rather than something an API key can claim.
-      runner: new IntelligenceAgentRunner(
-        copilotRuntime.runnerConnection(),
-      ) as never,
+      // The same runner the runtime runs on, so a hop takes the lock a person's turn takes. The
+      // delivery types its request loosely (`input: unknown`) so it needs no runtime import; the
+      // runner's own request type is what actually arrives.
+      runner: {
+        run: (request) =>
+          copilotRuntime.runner.run(request as AgentRunnerRunRequest),
+      },
     }),
   });
 
@@ -1070,6 +1059,8 @@ const app = createApp(
   routineStore,
   // Where each person is in first-run onboarding, read by /api/me and written by the wizard.
   createOnboardingStore(database),
+  // NOTOS: where threads live: the mint route, the status check and the history route read it.
+  threadStore,
 );
 
 /**

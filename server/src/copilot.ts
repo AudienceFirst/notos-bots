@@ -1,11 +1,8 @@
+// NOTOS: SSE-runtime op een eigen Postgres-runner; Intelligence-client en thread-lock via de platform-API eruit (stap 0).
 import type { BaseEvent, RunAgentInput } from "@ag-ui/client";
 import { AbstractAgent, HttpAgent } from "@ag-ui/client";
 import type { BuiltInAgentConfiguration } from "@copilotkit/runtime/v2";
-import {
-  BuiltInAgent,
-  CopilotKitIntelligence,
-  CopilotRuntime,
-} from "@copilotkit/runtime/v2";
+import { BuiltInAgent, CopilotRuntime } from "@copilotkit/runtime/v2";
 import { createCopilotHonoHandler } from "@copilotkit/runtime/v2/hono";
 import type { Observable } from "rxjs";
 import { defer, from, switchMap } from "rxjs";
@@ -18,6 +15,7 @@ import { sanitizeSeededHistory } from "./agents/history-sanitize";
 import type { AgentActor } from "./agents/profile-types";
 import type { AgentFetch, StallGuard } from "./channels/stall-guard";
 import type { DeploymentConfig } from "./config";
+import type { PostgresAgentRunner } from "./notos/runner";
 import type { SelectableSkill, Selection } from "./plugins/selection";
 import {
   latestUserText,
@@ -28,23 +26,20 @@ import type { GrantedTool } from "./plugins/tools";
 import { grantedToolGuidance } from "./plugins/tools";
 
 /**
- * The CopilotKit runtime, always in Intelligence mode.
+ * The CopilotKit runtime, in SSE mode on our own runner.
  *
  * Package-declared built-in Bots run as CopilotKit `BuiltInAgent` instances. External Bots are
  * reached over AG-UI as `HttpAgent` instances, so anything that speaks the protocol remains a Bot
  * with no framework adapter here: LangGraph, Pydantic-AI, CrewAI, Mastra, ADK, or a hand-written
  * server.
  *
- * There is no SSE branch. Intelligence is a requirement of the product, not a tier: it owns
- * durable threads, memory and learning, and a deployment without it silently forgets every
- * conversation. config.ts refuses to boot without the full contract, so by the time this runs the
- * settings are present and this file has one mode.
+ * NOTOS: upstream had one mode, Intelligence, and no SSE branch. Here it is the other way round.
+ * `CopilotRuntime` becomes its SSE variant when no `intelligence` is passed, and the runner it is
+ * handed (`notos/runner/postgres-runner.ts`) keeps threads, events and the run lock in this
+ * deployment's Postgres, so a conversation survives a restart and a second replica without a hosted
+ * service, a licence or a seat cap. Memory and learning, which only Intelligence had, are gone
+ * rather than imitated.
  */
-
-/** Resolve the signed-in person for a request. Threads and memory are scoped to whoever this returns. */
-export type IdentifyUser = (
-  request: Request,
-) => Promise<{ id: string; name: string }>;
 
 type RegisteredBuiltInAgent = {
   id: string;
@@ -992,89 +987,11 @@ export function createRequestAgents(
  * reachable on the next request. Resolving once at boot would mean every new Bot needed a restart,
  * which is not a property you can explain to somebody who just created one.
  */
-/**
- * Whether this failure means "the platform has never heard of that thread".
- *
- * A thread id is minted before the thread exists — the platform creates it on the first run — so
- * reading history on a brand-new conversation is the normal opening move, and the platform answers
- * `THREAD_NOT_FOUND` with a 404. The runtime's own handler catches everything and returns a bare 500,
- * so every new chat produced one, with a stack trace behind it.
- *
- * Matched on the shape rather than with `instanceof`. The class is `PlatformRequestError` and it
- * carries `.status` for exactly this — its own documentation gives `error.status === 404` as the
- * example — but it is not re-exported from `@copilotkit/runtime/v2`, and the package's `exports` map
- * offers no subpath that reaches it, so there is no type to test against. The name is set by the
- * constructor and the status is a number on the instance; both are checked, so an unrelated error
- * carrying a `status` of 404 does not qualify.
- *
- * 404 ONLY, and nothing wider. A 500 from the platform means an outage or a bad key, and answering
- * that with an empty history would tell the browser the conversation is gone and invite somebody to
- * start it over. That is the failure this must not introduce while removing the noisy one.
- */
-export function isMissingThread(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    error.name === "PlatformRequestError" &&
-    (error as { status?: unknown }).status === 404
-  );
-}
-
-/**
- * Read a thread's history, treating a thread the platform does not know about as having none.
- *
- * Takes the read as a function rather than being folded into the class below, so the decision can be
- * exercised against a function that really throws. The previous attempt at this fix
- * (#71) was tested by re-implementing its middleware inside the test file, which passes with the real
- * code deleted; this is the actual code path in both places.
- */
-export async function historyOrEmpty<T>(
-  read: () => Promise<T>,
-  whenMissing: T,
-): Promise<T> {
-  try {
-    return await read();
-  } catch (error) {
-    if (isMissingThread(error)) return whenMissing;
-    throw error;
-  }
-}
-
-/**
- * The platform client, with one answer corrected.
- *
- * A subclass rather than a wrapper. The runtime is handed this object and calls many methods on it,
- * and the base class keeps its state in `#private` fields — which a `Proxy` cannot forward, because a
- * method invoked with the proxy as `this` cannot reach them. Extending keeps every other method
- * exactly as it was, on the instance that owns those fields.
- *
- * `getThreadMessages` is the only override. `handleGetThreadMessages` in the runtime calls it and
- * returns `Response.json` of whatever comes back, so an empty history here is the `{ messages: [] }`
- * the browser expects and a 200 instead of a 500.
- */
-class IntelligenceKnowingANewThread extends CopilotKitIntelligence {
-  override getThreadMessages(
-    params: Parameters<CopilotKitIntelligence["getThreadMessages"]>[0],
-  ) {
-    return historyOrEmpty(() => super.getThreadMessages(params), {
-      messages: [],
-    });
-  }
-}
-
-/**
- * How long a conversation's lock is held before it lapses on its own.
- *
- * Matches the platform's own default rather than picking a number: this is renewed while a Bot works,
- * so what it really sets is how long a conversation stays stuck after a process dies mid-run.
- */
-const THREAD_LOCK_TTL_SECONDS = 120;
-
 export function mountCopilotRuntime(
   config: DeploymentConfig,
   model: RuntimeModel,
   loadAgents: LoadAgentsForActor,
   resolveModelApiKey: () => Promise<string | null>,
-  identifyUser: IdentifyUser,
   identifyActor: IdentifyActor,
   /**
    * The watch on Bot streams. Not optional, unlike the parameter it forwards to: a guard built from
@@ -1082,6 +999,8 @@ export function mountCopilotRuntime(
    * there is no reason for a caller to have to say `undefined` here to reach `basePath`.
    */
   stallGuard: StallGuard,
+  /** NOTOS: threads, their events and the run lock, in Postgres. The runtime runs on this. */
+  runner: PostgresAgentRunner,
   loadToolsForActor?: (actorId: string) => LoadToolsForBot,
   signRunForActor?: (actorId: string) => SignRun,
   basePath = "/api/copilotkit",
@@ -1101,8 +1020,6 @@ export function mountCopilotRuntime(
    */
   onRunBusy?: (input: { threadId: string; busy: boolean }) => void,
 ) {
-  const { intelligence } = config.runtime;
-
   /**
    * The same Bot a person's run would get, built without a request.
    *
@@ -1146,27 +1063,10 @@ export function mountCopilotRuntime(
     return agents[input.botId] ?? null;
   };
 
-  /*
-   * One client, used by the runtime and by anything reading a thread beside it, so a hop reads the
-   * history a person's run would read rather than a second view of it that could disagree.
-   */
-  const intelligenceClient = new IntelligenceKnowingANewThread({
-    apiUrl: intelligence.apiUrl,
-    wsUrl: intelligence.gatewayWsUrl,
-    apiKey: intelligence.apiKey,
-  });
-
   const runtime = new CopilotRuntime({
-    // `mode` is inferred from the presence of `intelligence`; passing it is a type error.
-    //
-    // identifyUser is NOT optional in practice. Threads and memory are scoped to the user it
-    // returns, so omitting it puts every person in the deployment in the same thread space and one
-    // person's conversations become another's.
-    identifyUser,
-    // The subclass, not the base: a thread nobody has run yet reads as empty rather than as a 500.
-    // See IntelligenceKnowingANewThread.
-    intelligence: intelligenceClient,
-    licenseToken: intelligence.licenseToken,
+    // NOTOS: no `intelligence` and no `mode`. The runtime picks its SSE variant from the absence
+    // of `intelligence`, and the runner underneath is ours.
+    runner,
     // Carried on the events the runtime already sends, so OpenBot's traffic is separable from any
     // other deployment's. Adds no events of its own.
     ...(config.accessibility
@@ -1189,8 +1089,8 @@ export function mountCopilotRuntime(
      * has; see DeploymentConfig.generativeUi.
      */
     ...(config.generativeUi ? { openGenerativeUI: true } : {}),
-    // `identifyUser` is the Intelligence projection of the same person `identifyActor` returns:
-    // one resolver decides both whose threads these are and whose coworkers exist.
+    // `identifyActor` decides whose coworkers exist. Whose threads these are is decided by the
+    // thread routes in app.ts, against the same store the runner writes to.
     agents: createRequestAgents(
       identifyActor,
       loadAgents,
@@ -1215,29 +1115,15 @@ export function mountCopilotRuntime(
 
   return {
     handler: createCopilotHonoHandler({ runtime, basePath }),
+    /** The runner the runtime runs on, for a hop or a routine that drives a turn itself. */
+    runner,
     /**
-     * How to reach the platform's runner, exactly as the runtime reaches it.
+     * The conversation's run lock, as `notos/runner/thread-lock.ts` issues it.
      *
-     * TAKEN FROM THE CLIENT, NOT FROM CONFIGURATION, and this is the whole of a bug that only a real
-     * gateway could show. Built from `gatewayWsUrl` and the deployment's API key, every join was
-     * refused with `active_lock_mismatch`: a thread's active run is a lock the platform issues, and
-     * the token that holds it is not the API key. The runtime asks the client for both, so anything
-     * else driving a run has to ask the same client the same way.
-     */
-    runnerConnection: () => ({
-      url: intelligenceClient.ɵgetRunnerWsUrl(),
-      authToken: intelligenceClient.ɵgetRunnerAuthToken(),
-    }),
-    /**
-     * The conversation's run lock, as the platform issues it.
-     *
-     * ONE RUN AT A TIME PER CONVERSATION. Taken before anything is streamed, because the gateway
-     * checks every event against the run the lock names: a run that skips this is claiming to be one
-     * nobody was told about, and every event is refused. That refusal reads like a platform
-     * limitation and is a missing step.
-     *
-     * A conversation somebody else is already running in refuses rather than queues, which is right:
-     * the caller waits and tries again rather than two Bots writing over each other.
+     * ONE RUN AT A TIME PER CONVERSATION. Taken before anything is streamed. The runner takes it
+     * again under the same run id, which the lock treats as the same holder, so a hop or a routine
+     * that locked first is not refused by its own run. A conversation somebody else is already
+     * running in refuses rather than queues: the caller waits and tries again.
      */
     threadLock: {
       acquire: async (input: {
@@ -1246,82 +1132,33 @@ export function mountCopilotRuntime(
         userId: string;
         agentId: string;
       }) => {
+        const held = await runner.lock.acquire(input);
+        if (!held) return null;
+        // A run started on this thread. Side effect only, never awaited.
         try {
-          const held = await intelligenceClient.ɵacquireThreadLock(input);
-          // A run started on this thread. Side effect only, never awaited: a channel showing it is
-          // working is worth nothing next to the lock the run depends on.
-          try {
-            onRunBusy?.({ threadId: input.threadId, busy: true });
-          } catch {}
-          /*
-           * The run id only. The lock also hands back a join token, which is what a browser presents
-           * to watch the conversation; the runner's socket has its own credential and passing this
-           * one in place of it means a socket that is refused and a run that never starts. See the
-           * note on `runner.run` in handoff-delivery.ts.
-           */
-          return { runId: held.runId };
-        } catch (error) {
-          /*
-           * ONLY A CONFLICT MEANS "NOT NOW". Everything else is raised.
-           *
-           * A conversation somebody is already running in answers 409, and that is ordinary: the hop
-           * waits and is tried again. Anything else is not — a platform that cannot be reached, a
-           * token that stopped working, or one of the underscored APIs below being renamed by a
-           * routine version bump. Returned as `null` those all read as contention: every hop retries
-           * to exhaustion, every person is told their question was never answered, and the only
-           * evidence is a warning line that looks like a busy conversation.
-           *
-           * Raised, the runner writes the real reason onto `agent.handoff_failed`, and the sentence
-           * the person eventually gets names it.
-           */
-          const status =
-            error instanceof Error && "status" in error
-              ? (error as { status?: unknown }).status
-              : undefined;
-          if (status === 409) return null;
-          throw error;
-        }
+          onRunBusy?.({ threadId: input.threadId, busy: true });
+        } catch {}
+        return { runId: input.runId };
       },
       renew: async (input: { threadId: string; runId: string }) => {
-        await intelligenceClient.ɵrenewThreadLock({
-          ...input,
-          ttlSeconds: THREAD_LOCK_TTL_SECONDS,
-        });
+        const still = await runner.lock.renew(input);
+        if (!still) {
+          throw new Error("The thread lock is no longer held by this run.");
+        }
       },
       release: async (input: { threadId: string; runId: string }) => {
-        // The run on this thread is over. Cleared here rather than trusting a browser: the run may
-        // have outlived the tab that started it, and this is where the platform is told it ended.
         try {
           onRunBusy?.({ threadId: input.threadId, busy: false });
         } catch {}
-        await intelligenceClient.ɵcleanupThreadLock(input);
+        await runner.lock.release(input);
       },
     },
     agentFor,
     /**
-     * A thread's messages, as the platform holds them.
-     *
-     * The same client the runtime uses, so a hop reads the history a person's run would read rather
-     * than a second view of it that could disagree.
+     * A thread's messages as the last run left them, from the store the runner writes to, so a hop
+     * reads the history a person's run would read.
      */
-    history: async (input: { threadId: string; actorId: string }) => {
-      /*
-       * The platform's own message type rather than AG-UI's, inferred rather than named: the two are
-       * compatible where it matters and naming the wrong one here would mean converting a history
-       * that does not need converting.
-       */
-      type Read = Awaited<
-        ReturnType<CopilotKitIntelligence["getThreadMessages"]>
-      >;
-      const read = await historyOrEmpty<Read>(
-        () =>
-          intelligenceClient.getThreadMessages({
-            threadId: input.threadId,
-            userId: input.actorId,
-          }),
-        { messages: [] } as Read,
-      );
-      return read.messages;
-    },
+    history: async (input: { threadId: string; actorId: string }) =>
+      runner.threads.messages(input.threadId),
   };
 }

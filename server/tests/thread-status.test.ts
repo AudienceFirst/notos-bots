@@ -2,61 +2,59 @@ import { describe, expect, test } from "bun:test";
 import { createThreadReader } from "../src/channels/thread-status";
 
 /**
- * Turning Intelligence's answer about a thread into the two states a caller can act on.
+ * NOTOS: turning the thread store's answer into the two states a caller can act on (stap 0).
  *
- * Intelligence has exactly one way to say "I have never heard of this thread": a 404 from
- * `getThread`. Everything else it can throw — a 500, a timeout, a network failure — means the
- * question could not be answered at all, and that is not the same thing. Collapsing the two would
- * make an outage look identical to a thread that genuinely does not exist, and a caller that
- * believed it would discard a remembered thread it should have kept.
+ * "known" means the thread is there and this person may open it. "unknown" means there is no such
+ * thread, or it is somebody else's, which to the asker is the same thing. A store that could not
+ * answer throws, and that is rethrown: an outage must never read as a thread that is gone.
  */
 
-describe("reading whether Intelligence still has a thread", () => {
-  test("a thread it can produce is known", async () => {
+describe("reading whether this deployment still has a thread", () => {
+  test("a thread without an owner is known to anybody signed in", async () => {
     const reader = createThreadReader({
-      getThread: async () => ({ id: "irrelevant" }),
+      get: async () => ({ ownerUserId: null }),
     });
     await expect(reader("thread-1", "user-1")).resolves.toBe("known");
   });
 
-  test("a 404 means the thread is unknown, not a failure", async () => {
+  test("a thread is known to its owner", async () => {
     const reader = createThreadReader({
-      getThread: async () => {
-        throw { status: 404 };
-      },
+      get: async () => ({ ownerUserId: "user-1" }),
+    });
+    await expect(reader("thread-1", "user-1")).resolves.toBe("known");
+  });
+
+  test("somebody else's thread is unknown, not a failure", async () => {
+    const reader = createThreadReader({
+      get: async () => ({ ownerUserId: "user-2" }),
     });
     await expect(reader("thread-1", "user-1")).resolves.toBe("unknown");
   });
 
-  test("a 500 is not swallowed as unknown — the check itself failed", async () => {
-    const failure = { status: 500 };
+  test("a thread the store does not have is unknown", async () => {
+    const reader = createThreadReader({ get: async () => null });
+    await expect(reader("thread-1", "user-1")).resolves.toBe("unknown");
+  });
+
+  test("a store that cannot answer is not swallowed as unknown", async () => {
+    const failure = new Error("database unreachable");
     const reader = createThreadReader({
-      getThread: async () => {
+      get: async () => {
         throw failure;
       },
     });
     await expect(reader("thread-1", "user-1")).rejects.toBe(failure);
   });
 
-  test("a plain Error, with no status field to duck-type on, is not swallowed either", async () => {
-    const failure = new Error("network unreachable");
+  test("asks the store about the exact thread it was given", async () => {
+    const calls: string[] = [];
     const reader = createThreadReader({
-      getThread: async () => {
-        throw failure;
-      },
-    });
-    await expect(reader("thread-1", "user-1")).rejects.toBe(failure);
-  });
-
-  test("asks Intelligence about the exact thread and user it was given", async () => {
-    const calls: Array<{ threadId: string; userId: string }> = [];
-    const reader = createThreadReader({
-      getThread: async (params) => {
-        calls.push(params);
-        return { id: params.threadId };
+      get: async (threadId) => {
+        calls.push(threadId);
+        return { ownerUserId: null };
       },
     });
     await reader("thread-77", "user-99");
-    expect(calls).toEqual([{ threadId: "thread-77", userId: "user-99" }]);
+    expect(calls).toEqual(["thread-77"]);
   });
 });

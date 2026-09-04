@@ -20,12 +20,10 @@ bash scripts/start.sh
 | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                | PostgreSQL connection string.                                                                         |
 | `KEY_ENCRYPTION_KEY`          | Base64-encoded 32-byte key for encrypted stored credentials. Generate with `openssl rand -base64 32`. |
-| `INTELLIGENCE_API_URL`        | CopilotKit Intelligence API URL.                                                                      |
-| `INTELLIGENCE_GATEWAY_WS_URL` | CopilotKit Intelligence realtime gateway URL.                                                         |
-| `INTELLIGENCE_API_KEY`        | Runtime key for the Intelligence project.                                                             |
-| `COPILOTKIT_LICENSE_TOKEN`    | License token for the Intelligence project.                                                           |
 
-All four Intelligence values are required together. Missing any of them stops server startup.
+NOTOS: there is no CopilotKit Intelligence. Threads, their events and the run lock live in the
+deployment's own Postgres (`threads`, `thread_events`, `work_items`; code in `server/src/notos/runner`).
+The four `INTELLIGENCE_*` / `COPILOTKIT_LICENSE_TOKEN` values upstream required are not read.
 
 `MANAGED_AGENT_AG_UI_URL` names the Bot in the box: the default endpoint for coworkers created in
 the product. It needs `MANAGED_AGENT_TOKEN` beside it, or the server refuses to start. Unset, the

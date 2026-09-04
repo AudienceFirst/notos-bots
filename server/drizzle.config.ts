@@ -1,3 +1,4 @@
+// NOTOS: threads.ts toegevoegd aan de schemalijst (stap 0).
 import { defineConfig } from "drizzle-kit";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -24,6 +25,8 @@ export default defineConfig({
     "./src/db/schema/components.ts",
     "./src/db/schema/plugins.ts",
     "./src/db/schema/work.ts",
+    // NOTOS: gesprekken in eigen Postgres (stap 0).
+    "./src/db/schema/threads.ts",
   ],
   out: "./drizzle",
   dbCredentials: {

@@ -416,6 +416,11 @@ export const auditEvents = pgTable(
   ],
 );
 
+/*
+ * NOTOS: de naam "intelligence" blijft staan hoewel Intelligence weg is (stap 0). De tabel koppelt
+ * een kanaal per persoon aan een thread-id in onze eigen `threads`-tabel; hernoemen zou een migratie
+ * kosten om alleen een woord, en dat is het niet waard.
+ */
 export const intelligenceChannelMappings = pgTable(
   "intelligence_channel_mappings",
   {
