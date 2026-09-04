@@ -257,6 +257,48 @@ workspaces heeft; de tab "Bots" in NOTOS zichtbaar maken (module en registry sta
 repo's niet gedeployed); een echte NOTOS-sessie tegen staging (zonder worker geen zelfde origin);
 Cloud Run Job `notos-bots-migrate` (de migratie draait nu vanaf een laptop met het secret).
 
+## Gateway en goedkeuring: schrijven alleen na een mens (stap 5)
+
+De NOTOS-regel "agents schrijven nooit direct" staat als beleid, niet als gewoonte.
+
+- **Beleid per workspace** (`server/src/notos/policy/`): `DEFAULT_WORKSPACE_POLICY` is
+  `deny: ["mcp.effect == 'write' && !approval.granted"]`, `allow: ["true"]`, `enforce`. Een
+  workspace met eigen regels heeft een rij `action_policy` met id `ws:<workspace id>`. De
+  plugin-store vraagt het beleid per bot (`policy: ({ botId }) => …`); upstream's
+  deployment-brede `policyStore` blijft voor de computer-gateway en het scherm Boundaries.
+- **`approval` in `PolicyContext`**: `{ granted }`. Elke andere context (browser, bestand,
+  dry-run) draagt een neutrale `{ granted: false }`, anders gooit CEL op een onbekende naam en
+  telt een kapotte deny als match voor álles.
+- **Tabel `approvals`** (migratie 0028): één open vraag per (bot, tool, sha256 van de
+  argumenten met gesorteerde sleutels). Een ja geldt tien minuten en voor precies één aanroep
+  (`used_at`); andere argumenten zijn een nieuwe vraag. Geen blanco toestemming per tool.
+- **Pad**: write zonder ja → `PluginRefusedError` met tekst `needs_approval:<id> …` en instructie
+  aan de bot (zeg in één zin wat je wilt, stop, roep daarna hetzelfde opnieuw aan), auditrij
+  `approval.requested`. De transcript tekent uit die tekst een kaart met de argumenten en
+  Ja/Nee (`app/src/components/channels/approval-card.tsx`). Ja → `POST
+  /api/w/:workspace/approvals/:id/decide` → auditrij `approval.granted` → de kaart spreekt één
+  beurt namens de persoon ("Approved: go ahead …", `lib/copilot/turn-bus.ts`) → de bot roept
+  opnieuw aan → de gateway laat de call één keer door en zet `used_at`.
+- **Wie mag ja zeggen**: rol `zuid` of `lead` op de workspace (`notos/approvals/routes.ts`);
+  `specialist`/`viewer` krijgen 403 en de vraag blijft open. Afgedwongen in de route, niet in
+  de UI.
+- **Onvolledige write** (verplichte argumenten volgens het toolschema ontbreken) is geen vraag
+  voor een mens: weigering met wat ontbreekt, vóór er een kaart "zonder details" verschijnt.
+  Gemini riep `create_routine` twee keer leeg aan toen de tools in de dev-database nog geen
+  schema hadden (`POST /api/plugins/servers/routines/refresh` herstelt dat).
+- **Audit naar NOTOS**: `server/src/notos/audit-export.ts` exporteert één dag (UTC)
+  `audit_events` + `approvals` naar BigQuery `mge-zuid.marts.bots_audit` (partitie op
+  `occurred_at`, `client_id` = NOTOS-klant via bot → workspace), streaming insert met
+  `insertId`. Cloud Run Job + Scheduler 02:30 Europe/Amsterdam: `scripts/notos/audit-export-job.sh`.
+  `EXPORT_DRY_RUN=1` telt zonder te schrijven.
+- **Admin**: Audit heeft filters "Needs approval" en "Approvals" en toont de tool bij
+  goedkeuringsrijen; Boundaries legt de workspace-standaard uit. Zonder computer-provider
+  (lokaal) is Boundaries leeg, omdat `/api/computers/policy` dan niet gemount is (upstream).
+- Gezien, gelaten: de run-assertie voor ingebouwde bots draagt geen thread-id, dus
+  `approvals.thread_id` is null in de browserflow; de kaart hangt aan de transcript en heeft
+  het niet nodig · elke nieuwe combinatie van argumenten is een nieuwe vraag, ook als alleen
+  een `channelId` erbij kwam (bewust: geen blanco toestemming).
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
