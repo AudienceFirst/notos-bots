@@ -211,6 +211,11 @@ function Row({
               ? `${payload.offered} of ${payload.granted} tools`
               : "-"}
           </span>
+        ) : /* NOTOS (stap 5): an approval row is about the tool the person was asked about. */
+        event.targetType === "approval" ? (
+          <span className="font-mono text-xs">
+            {typeof payload.tool === "string" ? payload.tool : "-"}
+          </span>
         ) : /* Named targets and file paths are the audit subject before page elements. */
         NAMED_TARGETS.has(event.targetType) && event.targetId ? (
           <span className="font-mono text-xs">

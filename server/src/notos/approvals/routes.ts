@@ -71,16 +71,14 @@ export function createApprovalRoutes(
         400,
       );
     }
-    const decided = await approvals.decide(
-      row.id,
-      decision,
-      context.var.actor.id,
-    );
+    // The address, for the card ("Approved by mitch@zuid.com"); the audit row keeps the id.
+    const decidedBy = context.var.actor.email || context.var.actor.id;
+    const decided = await approvals.decide(row.id, decision, decidedBy);
     if (!decided) return context.json({ error: "No such approval." }, 404);
     if (
       auditStore &&
       decided.decision === decision &&
-      decided.decidedBy === context.var.actor.id
+      decided.decidedBy === decidedBy
     ) {
       await recordAuditEvent(auditStore, {
         eventType:

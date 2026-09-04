@@ -2883,6 +2883,26 @@ export function createPluginStore(options: PluginStoreOptions) {
        * passes the default rule once. Looked up before the verdict and spent after it, so a refusal
        * on some other rule does not burn the person's yes.
        */
+      /*
+       * NOTOS (stap 5): a write with its required arguments missing is not a question for a person,
+       * it is a call the Bot has not finished composing. Refuse it with what is missing, before an
+       * approvals row could put "May this Bot create a routine? Without any details." in front of
+       * somebody. Only when the tool advertised a schema; without one there is nothing to check.
+       */
+      if (effect === "write" && options.approvals) {
+        const missing = missingRequiredArguments(
+          advertised[0]?.inputSchema as Record<string, unknown> | undefined,
+          args,
+        );
+        if (missing.length > 0) {
+          throw new PluginRefusedError(
+            `${toolName} was called without ${missing.join(", ")}. Fill those in from what the ` +
+              "person told you, or ask them, and call it again.",
+            null,
+          );
+        }
+      }
+
       const argsHash = hashArgs(args);
       const granted =
         effect === "write" && options.approvals
@@ -3115,3 +3135,17 @@ function withoutEmptyOptionals(
 
 export type PluginStore = ReturnType<typeof createPluginStore>;
 export type { CatalogueEntry };
+
+/** NOTOS (stap 5): the `required` names of a JSON schema that the arguments do not carry. */
+export function missingRequiredArguments(
+  schema: Record<string, unknown> | undefined,
+  args: Record<string, unknown>,
+): string[] {
+  const required = schema?.required;
+  if (!Array.isArray(required)) return [];
+  return required.filter(
+    (name): name is string =>
+      typeof name === "string" &&
+      (args[name] === undefined || args[name] === null || args[name] === ""),
+  );
+}
