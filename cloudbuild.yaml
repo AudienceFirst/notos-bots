@@ -4,6 +4,9 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - build
+      # Cloud Build's docker has no BuildKit, so TARGETARCH is not filled in by itself; Cloud Run is amd64.
+      - --build-arg
+      - TARGETARCH=amd64
       - -t
       - europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest
       - .

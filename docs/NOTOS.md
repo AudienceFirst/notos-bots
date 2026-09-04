@@ -238,6 +238,25 @@ Drie commando's, in deze volgorde, altijd eerst staging.
 De app in de image is gebouwd met `VITE_BASE_PATH=/bots/`; rechtstreeks op de Cloud Run-URL werken
 de assets dus niet, alleen via de worker. `/api/*` werkt wel rechtstreeks (met een ID-token).
 
+### Controle stap 4 (4 september 2026)
+
+| Controle | Uitkomst |
+|---|---|
+| `server/src/notos/migrate.ts` lokaal in schema `bots_test` | 36 tabellen, 28 migraties, FK's naar het eigen schema; tweede keer geen wijziging; schema daarna weggegooid |
+| Supabase NOTOS-project | rol `notos_bots`, schema's `bots` en `bots_staging`, extensie `vector` in `extensions`; 28 migraties op `bots_staging` (36 tabellen) via de session-pooler (5432) |
+| Cloud Build `cloudbuild.yaml` (met `--build-arg TARGETARCH=amd64`) | image `europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest` |
+| Cloud Run `notos-bots-staging` (europe-west4, SA `notos-bots@`, `--no-allow-unauthenticated`, 4Gi/2 cpu, 0–3 instanties) | revisie 00001 Ready, 100 % verkeer |
+| Zonder ID-token · met ID-token van `notos-worker@` (run.invoker) | 403 · `/api/capabilities` 200 met `mode: sse`, `authProviders: ["notos"]` |
+| `/api/me` en `/api/w/zuid/agents` met alleen het ID-token | 401 "Authentication required." (het Supabase-token van de persoon ontbreekt, zoals het hoort) |
+| Boot-log staging | server luistert op 3001; workspace-sync meldt 404 op `/api/internal/clients` (mge-cockpit-api nog zonder dat endpoint), server draait door |
+
+Niet gedaan: de worker-route `/bots` op notos.zuid.com deployen (productie-worker; wacht op een ja van
+Mitch en op de JSON-sleutel van `notos-worker@` als worker-secret `BOTS_INVOKER_KEY`); mge-cockpit-api
+deployen met `/api/internal/clients` en env `NOTOS_BOTS_AUDIENCE`, waardoor staging nu nog geen
+workspaces heeft; de tab "Bots" in NOTOS zichtbaar maken (module en registry staan in de code, beide
+repo's niet gedeployed); een echte NOTOS-sessie tegen staging (zonder worker geen zelfde origin);
+Cloud Run Job `notos-bots-migrate` (de migratie draait nu vanaf een laptop met het secret).
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

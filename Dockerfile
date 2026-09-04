@@ -112,8 +112,6 @@ COPY --from=deps /src/agent-computer/node_modules agent-computer/node_modules
 COPY server server
 COPY shared shared
 COPY workspaces workspaces
-# NOTOS: the migration runner for the Cloud Run job (stap 4).
-COPY scripts/notos/migrate.ts scripts/notos/migrate.ts
 COPY agent-computer/src agent-computer/src
 COPY agent-computer/package.json agent-computer/package.json
 
