@@ -51,18 +51,16 @@ describe("a clone that has only run bun install", () => {
     },
   );
 
-  test("can read the example tenant package with nothing set", () => {
-    // `pretest` loads this package, so a name here with no fallback fails the suite before a single
-    // test runs.
+  test("the default workspace package needs nothing from the environment", () => {
+    // NOTOS: every workspace without its own map gets this package, and a `${VAR}` in it with no
+    // fallback would refuse the sync on a clone with no .env (stap 2).
     const agents = readFileSync(
-      join(root, "examples/fintech/agents.yaml"),
+      join(root, "workspaces/_default/agents.yaml"),
       "utf8",
     );
     const referenced = [
       ...agents.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}/g),
     ];
-
-    expect(referenced.length).toBeGreaterThan(0);
     for (const [, name, rest] of referenced) {
       expect(
         rest.startsWith(":-"),

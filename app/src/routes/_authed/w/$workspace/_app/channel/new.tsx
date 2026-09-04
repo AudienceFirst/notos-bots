@@ -22,13 +22,13 @@ import {
 } from "@/lib/agents/queries";
 import { useStartChannel } from "@/lib/channels/start";
 import { useSkillCommands } from "@/lib/plugins/skill-commands";
-import { newId } from "../../../../lib/new-id";
+import { newId } from "@/lib/new-id";
 
 /**
  * Creates the channel on first send. The selected coworker stays in the URL so profile links and
  * reloads preserve the pending recipient without creating an empty channel.
  */
-export const Route = createFileRoute("/_authed/_app/channel/new")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/channel/new")({
   validateSearch: (search: Record<string, unknown>): { agent?: string } => ({
     ...(typeof search.agent === "string" ? { agent: search.agent } : {}),
   }),

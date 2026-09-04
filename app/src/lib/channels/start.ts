@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { stashFirstMessage } from "@/components/channels/transcript-messages";
@@ -45,9 +46,12 @@ export function useStartChannel() {
     queryClient.setQueryData(channelKeys.detail(channel.id), channel);
     stashFirstMessage(channel.id, text);
     await navigate({
-      params: { channelId: channel.id },
+      params: (previous) => ({
+        ...keepWorkspace(previous),
+        channelId: channel.id,
+      }),
       replace: true,
-      to: "/channel/$channelId",
+      to: "/w/$workspace/channel/$channelId",
     });
   };
 

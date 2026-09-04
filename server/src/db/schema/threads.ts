@@ -7,7 +7,9 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
+import { deploymentPackages } from "./core";
 import { jsonb } from "./json";
 
 const createdAt = () =>
@@ -32,7 +34,10 @@ const updatedAt = () =>
  */
 export const threads = pgTable("threads", {
   id: text("id").primaryKey(),
-  workspaceId: text("workspace_id"),
+  /** The workspace (deployment package) this conversation belongs to. Null only for rows older than stap 2. */
+  workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
+    onDelete: "set null",
+  }),
   agentId: text("agent_id"),
   ownerUserId: text("owner_user_id"),
   snapshot: jsonb("snapshot").notNull().default({}),

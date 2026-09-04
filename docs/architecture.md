@@ -261,7 +261,7 @@ This narrows the offer. It is not a boundary, and it never substitutes for one. 
 
 ## Tenant package and knowledge
 
-`TENANT_PACKAGE_DIR` points at the tenant package. The default is `../examples/fintech`.
+NOTOS: there is no tenant package. Workspaces are NOTOS' clients, synced hourly; each gets the Bots in `workspaces/<client_id>/` or `workspaces/_default/`.
 
 Required package files:
 

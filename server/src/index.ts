@@ -12,7 +12,7 @@ import { createHandoffDelivery } from "./agents/handoff-delivery";
 import { createHandoffRunner } from "./agents/handoff-runner";
 import { handoffTool } from "./agents/handoff-tool";
 import { createAgentProfileStore } from "./agents/profile-store";
-import type { AgentActor } from "./agents/profile-types";
+import type { ActorWorkspace, AgentActor } from "./agents/profile-types";
 import { createRuntimeAgentLoader } from "./agents/runtime-agents";
 import { createApp } from "./app";
 import { createAuditReader, createAuditStore, recordAuditEvent } from "./audit";
@@ -56,7 +56,7 @@ import {
   resolveModelApiKey,
 } from "./credentials";
 import { createDatabase } from "./db/client";
-import { intelligenceChannelMappings } from "./db/schema";
+import { agents, intelligenceChannelMappings } from "./db/schema";
 import {
   createActorResolver,
   createNotosIdentity,
@@ -70,6 +70,12 @@ import {
   PostgresAgentRunner,
   startThreadBus,
 } from "./notos/runner";
+import {
+  clientsFromFile,
+  clientsFromNotos,
+  createWorkspaceStore,
+  createWorkspaceSync,
+} from "./notos/workspaces";
 import { createOnboardingStore } from "./people/onboarding";
 import { createPeopleStore } from "./people/store";
 import { useRoutineTools } from "./plugins/builtin-routines";
@@ -81,11 +87,7 @@ import { createRoutineRunner } from "./routines/runner";
 import { createRoutineStore } from "./routines/store";
 import { createIntentRouter } from "./routing/classify";
 import { createModelCompleter } from "./routing/model";
-import {
-  createPackageStatusReader,
-  loadTenantPackage,
-  synchronizeTenantPackage,
-} from "./tenant-package";
+import { createPackageStatusReader } from "./tenant-package";
 import { repeatAfterEach } from "./work/loop";
 import {
   createWorkQueue,
@@ -104,22 +106,40 @@ async function resolveRequestActor(request: Request): Promise<{
   id: string;
   name: string;
   role: OpenBotRole;
+  workspace?: ActorWorkspace;
 }> {
-  if (config.singleUser) {
-    return { id: DEV_ACTOR.id, name: DEV_ACTOR.email, role: DEV_ACTOR.role };
-  }
-  // NOTOS: the same guard every route uses, so a run is attributed to the person the token names.
-  const actor = await identity?.actorFor(request).catch((error: unknown) => {
-    if (error instanceof RevokedError) return null;
-    throw error;
-  });
+  const actor = config.singleUser
+    ? DEV_ACTOR
+    : await identity?.actorFor(request).catch((error: unknown) => {
+        if (error instanceof RevokedError) return null;
+        throw error;
+      });
   if (!actor) {
     throw new Error("A CopilotKit run requires a signed-in user.");
+  }
+  /*
+   * NOTOS: the runtime has no `/api/w/:workspace` prefix, so the app names the workspace in a
+   * header and the same membership check applies (stap 2). No header means no workspace, which a
+   * ZUID caller may do and a client guest may not: the Bots they are offered are filtered on it.
+   */
+  const slug = request.headers.get("x-notos-workspace")?.trim();
+  let workspace: ActorWorkspace | undefined;
+  if (slug) {
+    const found = await workspaceStore.membership(actor, slug);
+    if (!found) throw new Error("geen toegang tot deze workspace");
+    workspace = {
+      id: found.workspace.id,
+      slug: found.workspace.slug,
+      role: found.role,
+    };
+  } else if (actor.isInternal !== true) {
+    throw new Error("geen toegang tot deze workspace");
   }
   return {
     id: actor.id,
     name: actor.name ?? actor.email,
     role: actor.role,
+    ...(workspace ? { workspace } : {}),
   };
 }
 
@@ -137,8 +157,8 @@ const ANONYMOUS_ACTOR = { id: "", role: "user" } as const;
 
 const identifyActor: IdentifyActor = async (request) => {
   try {
-    const { id, role } = await resolveRequestActor(request);
-    return { id, role };
+    const { id, role, workspace } = await resolveRequestActor(request);
+    return { id, role, ...(workspace ? { workspace } : {}) };
   } catch {
     return ANONYMOUS_ACTOR;
   }
@@ -177,12 +197,34 @@ const agentProfileStore = createAgentProfileStore(
   config.managedAgent?.endpoint,
   agentVault,
 );
-// Read here rather than beside the synchronise below, because the package names the deployment and
-// the channel store needs that name before it can mint a thread id.
-const tenantPackage = await loadTenantPackage(config.tenantPackageDirectory);
+/*
+ * NOTOS: no tenant package (stap 2). Workspaces come from NOTOS, their Bots from `workspaces/`,
+ * and the deployment names its threads after itself. The model is deployment-wide until stap 3.
+ */
 const threadIdentity = createThreadIdentity(
-  config.deploymentId ?? tenantPackage.tenantId,
+  config.deploymentId ?? "notos-bots",
 );
+const deploymentModel = {
+  provider: "openai" as const,
+  credentialSecretRef: config.model.credentialSecretRef,
+  defaultModel: config.model.defaultModel,
+};
+const workspaceStore = createWorkspaceStore(database);
+const syncWorkspaces = createWorkspaceSync({
+  database,
+  store: workspaceStore,
+  clients: config.workspaces.clientsFile
+    ? clientsFromFile(config.workspaces.clientsFile)
+    : config.workspaces.notosApiUrl
+      ? clientsFromNotos(config.workspaces.notosApiUrl)
+      : async () => {
+          throw new Error(
+            "Set NOTOS_API_URL (the NOTOS API, read as the service account) or NOTOS_CLIENTS_FILE (a JSON export of its client list)",
+          );
+        },
+  packagesRoot: config.workspaces.dir,
+  model: deploymentModel,
+});
 const channelStore = createChannelStore(
   database,
   agentProfileStore,
@@ -210,7 +252,20 @@ const loadAgentsForActor = createRuntimeAgentLoader(
   agentVault,
   config.managedAgent,
 );
-await synchronizeTenantPackage(database, tenantPackage);
+/*
+ * At boot, and every hour after. A boot without NOTOS keeps what it had: the workspaces of the last
+ * successful sync are still there, and a bots server that refuses to start is worse than one with
+ * a list an hour old. The failure is said in the log, not swallowed.
+ */
+try {
+  const report = await syncWorkspaces();
+  console.info(JSON.stringify({ type: "workspaces-synced", ...report }));
+} catch (error) {
+  console.error(
+    "[workspaces] could not sync with NOTOS at boot; keeping what is there:",
+    error instanceof Error ? error.message : error,
+  );
+}
 /*
  * Built before `auth`, because the deny list is consulted during sign-in and the store is what
  * holds it. It needs the administrator list too, so it can tell the screen which people the
@@ -481,13 +536,13 @@ const stallGuard = createStallGuard({
 
 const intentRouter = createIntentRouter({
   complete: createModelCompleter({
-    model: tenantPackage.model,
+    model: deploymentModel,
     resolveApiKey: () =>
       resolveModelApiKey({
         encryptionKey: config.keyEncryptionKey,
         reader: credentialStore,
-        provider: tenantPackage.model.provider,
-        keyId: tenantPackage.model.credentialSecretRef,
+        provider: deploymentModel.provider,
+        keyId: deploymentModel.credentialSecretRef,
         environment: process.env,
       }),
   }),
@@ -500,13 +555,13 @@ const intentRouter = createIntentRouter({
  * on every call, so a credential rotated a moment ago is used by the next run.
  */
 const chooseSkills = createModelCompleter({
-  model: tenantPackage.model,
+  model: deploymentModel,
   resolveApiKey: () =>
     resolveModelApiKey({
       encryptionKey: config.keyEncryptionKey,
       reader: credentialStore,
-      provider: tenantPackage.model.provider,
-      keyId: tenantPackage.model.credentialSecretRef,
+      provider: deploymentModel.provider,
+      keyId: deploymentModel.credentialSecretRef,
       environment: process.env,
     }),
 });
@@ -527,8 +582,8 @@ const resolveRuntimeModelApiKey = () =>
   resolveModelApiKey({
     encryptionKey: config.keyEncryptionKey,
     reader: credentialStore,
-    provider: tenantPackage.model.provider,
-    keyId: tenantPackage.model.credentialSecretRef,
+    provider: deploymentModel.provider,
+    keyId: deploymentModel.credentialSecretRef,
     environment: process.env,
   });
 
@@ -674,10 +729,32 @@ const buildAgentFor = async ({
   ownerUserId: string;
   agentId: string;
 }) => {
-  const actor = await actorFor(ownerUserId);
-  const agents = await resolveRuntimeAgents(
+  const owner = await actorFor(ownerUserId);
+  /*
+   * NOTOS: a routine's turn runs inside the workspace of its Bot (stap 2). Looked up from the Bot
+   * rather than trusted from anywhere else, so the roster the owner is offered is that workspace's.
+   */
+  const [botRow] = await database
+    .select({ workspaceId: agents.workspaceId })
+    .from(agents)
+    .where(eq(agents.id, agentId))
+    .limit(1);
+  const botWorkspace = botRow?.workspaceId
+    ? await workspaceStore.byId(botRow.workspaceId)
+    : null;
+  const actor: AgentActor = botWorkspace
+    ? {
+        ...owner,
+        workspace: {
+          id: botWorkspace.id,
+          slug: botWorkspace.slug,
+          role: "zuid",
+        },
+      }
+    : owner;
+  const runtimeAgents = await resolveRuntimeAgents(
     () => loadAgentsForActor(actor),
-    tenantPackage.model,
+    deploymentModel,
     resolveRuntimeModelApiKey,
     stallGuard,
     loadToolsForActor(actor.id),
@@ -692,7 +769,7 @@ const buildAgentFor = async ({
     // asked what they hold.
     agentId,
   );
-  const agent = agents[agentId];
+  const agent = runtimeAgents[agentId];
   if (!agent) {
     /*
      * Named, and raised rather than swallowed. The routine's Bot was deleted, or made private by
@@ -733,7 +810,7 @@ const routineRunner = createRoutineRunner({
  */
 const copilotRuntime = mountCopilotRuntime(
   config,
-  tenantPackage.model,
+  deploymentModel,
   loadAgentsForActor,
   resolveRuntimeModelApiKey,
   identifyActor,
@@ -1002,6 +1079,24 @@ if (config.handoff.maxDepth > 0 && config.handoff.maxPerRun > 0) {
  * Every replica reaps; the statement is a delete by age, so two doing it is the same as one doing it.
  * Its own loop rather than a phase of the sweep, so an hour of failing to reap never delays an answer.
  */
+// NOTOS: workspaces follow NOTOS every hour (stap 2). A failed sync keeps what is there.
+repeatAfterEach(
+  async () => {
+    try {
+      const report = await syncWorkspaces();
+      if (report.failed.length > 0 || report.disabled > 0) {
+        console.info(JSON.stringify({ type: "workspaces-synced", ...report }));
+      }
+    } catch (error) {
+      console.warn(
+        "[workspaces] hourly sync with NOTOS failed; keeping what is there:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  },
+  60 * 60 * 1_000,
+);
+
 const reaper = createHandoffRunner({
   queue: createWorkQueue(database),
   owner: `reaper/${process.env.HOSTNAME ?? randomUUID().slice(0, 8)}`,
@@ -1080,6 +1175,8 @@ const app = createApp(
   createOnboardingStore(database),
   // NOTOS: where threads live: the mint route, the status check and the history route read it.
   threadStore,
+  // NOTOS: workspaces, and who may enter them (stap 2).
+  workspaceStore,
 );
 
 /**

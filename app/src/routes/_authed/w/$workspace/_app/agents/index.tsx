@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { IconPlus } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -20,7 +21,7 @@ const agentsSearchSchema = z.object({
   agent: z.string().optional(),
 });
 
-export const Route = createFileRoute("/_authed/_app/agents/")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/agents/")({
   validateSearch: agentsSearchSchema,
   component: AgentsScreen,
 });
@@ -62,7 +63,12 @@ function AgentsScreen() {
               variant="ghost"
               size="sm"
               render={(props) => (
-                <Link to="/agents" search={{ new: true }} {...props} />
+                <Link
+                  to="/w/$workspace/agents"
+                  params={keepWorkspace}
+                  search={{ new: true }}
+                  {...props}
+                />
               )}
             >
               <IconPlus />
@@ -75,7 +81,11 @@ function AgentsScreen() {
                 {mine.map((agent, index) => {
                   return (
                     <StaggerItem index={index} key={agent.id}>
-                      <Link to="/agents" search={{ agent: agent.id }}>
+                      <Link
+                        to="/w/$workspace/agents"
+                        params={keepWorkspace}
+                        search={{ agent: agent.id }}
+                      >
                         <AgentCard agent={agent} />
                       </Link>
                     </StaggerItem>
@@ -101,7 +111,11 @@ function AgentsScreen() {
               explore.map((agent, index) => {
                 return (
                   <StaggerItem index={index} key={agent.id}>
-                    <Link to="/agents" search={{ agent: agent.id }}>
+                    <Link
+                      to="/w/$workspace/agents"
+                      params={keepWorkspace}
+                      search={{ agent: agent.id }}
+                    >
                       <AgentCard agent={agent} />
                     </Link>
                   </StaggerItem>

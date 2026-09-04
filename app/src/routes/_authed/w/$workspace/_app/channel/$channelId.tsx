@@ -41,7 +41,9 @@ const HEADING_ENTRANCE_OFFSET = "translateY(4px)";
 /** Shared detail pane width for the live screen view. */
 const SCREEN_PANEL_WIDTH = 400;
 
-export const Route = createFileRoute("/_authed/_app/channel/$channelId")({
+export const Route = createFileRoute(
+  "/_authed/w/$workspace/_app/channel/$channelId",
+)({
   validateSearch: chatSearchSchema,
   component: RouteComponent,
 });

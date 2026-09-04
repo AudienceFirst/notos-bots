@@ -584,6 +584,8 @@ describe("agent route composition", () => {
         email: actor.email,
         name: "OpenBot Member",
         image: "https://example.test/member.png",
+        // NOTOS: the session fake is a ZUID person (stap 2).
+        isInternal: true,
       },
     };
     const authenticated = await app.request("http://openbot.test/api/agents");
@@ -596,6 +598,8 @@ describe("agent route composition", () => {
           ...actor,
           name: "OpenBot Member",
           image: "https://example.test/member.png",
+          // NOTOS: the session fake is a ZUID person (stap 2).
+          isInternal: true,
         },
         false,
       ],

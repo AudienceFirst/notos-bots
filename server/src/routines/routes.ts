@@ -1,3 +1,4 @@
+// NOTOS: routines per workspace (stap 2).
 import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import type { AppVariables } from "../auth/guards";
@@ -36,7 +37,11 @@ export function createRoutineRoutes(
   const routes = new Hono<{ Variables: AppVariables }>();
 
   routes.get("/", requireUser, async (context) => {
-    const routines = await routineStore.listFor(context.var.actor.id);
+    // NOTOS: only this workspace's routines when the request is under /api/w/:workspace (stap 2).
+    const routines = await routineStore.listFor(
+      context.var.actor.id,
+      context.var.actor.workspace?.id,
+    );
     return context.json({ routines: routines.map(routineDto) });
   });
 

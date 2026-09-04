@@ -1,3 +1,4 @@
+// NOTOS: agents en channels uit een pakket krijgen workspace_id = package-id (stap 2).
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -634,6 +635,8 @@ export async function synchronizeTenantPackage(
           type: agent.type,
           configuration: agent.configuration,
           packageId: deploymentPackage.id,
+          // NOTOS: the package is the workspace (stap 2).
+          workspaceId: deploymentPackage.id,
         })
         .onConflictDoUpdate({
           target: agentTable.id,
@@ -643,6 +646,7 @@ export async function synchronizeTenantPackage(
             type: agent.type,
             configuration: agent.configuration,
             packageId: deploymentPackage.id,
+            workspaceId: deploymentPackage.id,
             updatedAt,
           },
         })
@@ -697,6 +701,8 @@ export async function synchronizeTenantPackage(
           description: channel.description,
           allowedGroups: channel.allowedGroups,
           packageId: deploymentPackage.id,
+          // NOTOS: the package is the workspace (stap 2).
+          workspaceId: deploymentPackage.id,
         })
         .onConflictDoUpdate({
           target: channelTable.id,
@@ -705,6 +711,7 @@ export async function synchronizeTenantPackage(
             description: channel.description,
             allowedGroups: channel.allowedGroups,
             packageId: deploymentPackage.id,
+            workspaceId: deploymentPackage.id,
             updatedAt: new Date(),
           },
         });

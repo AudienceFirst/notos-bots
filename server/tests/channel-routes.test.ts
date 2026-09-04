@@ -619,6 +619,8 @@ describe("channel route composition", () => {
         email: actor.email,
         name: "OpenBot Member",
         image: "https://example.test/member.png",
+        // NOTOS: the session fake is a ZUID person (stap 2).
+        isInternal: true,
       },
     };
     const authenticated = await app.request(
@@ -633,6 +635,8 @@ describe("channel route composition", () => {
           ...actor,
           name: "OpenBot Member",
           image: "https://example.test/member.png",
+          // NOTOS: the session fake is a ZUID person (stap 2).
+          isInternal: true,
         },
         "channel-1",
       ],

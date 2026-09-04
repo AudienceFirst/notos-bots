@@ -15,7 +15,6 @@ import {
   createApplicationConfiguration,
   expandEnvironment,
   type LoadedTenantPackage,
-  loadTenantPackage,
   synchronizeTenantPackage,
   validateTenantPackage,
   validateThemeCss,
@@ -283,48 +282,6 @@ describe("tenant YAML validation", () => {
         tenantId: "fintech",
         productName: "Ledgerline",
       },
-    });
-  });
-
-  test("loads the mounted fintech package without a theme file", async () => {
-    const tenantPackage = await loadTenantPackage(
-      new URL("../../examples/fintech", import.meta.url).pathname,
-    );
-
-    expect(tenantPackage.tenantId).toBe("openbot");
-    expect(tenantPackage.stylesheet).toBeNull();
-    expect(tenantPackage.themeCss).toBe("");
-    expect(tenantPackage.checksum).toMatch(/^[a-f0-9]{64}$/);
-    expect(tenantPackage.agents).toContainEqual({
-      id: "general-assistant",
-      name: "General Assistant",
-      title: "Everyday Work",
-      roleDescription:
-        "Help with everyday work using clear, concise, and accurate answers.",
-      avatarSeed: "general-assistant",
-      type: "built_in",
-      configuration: {
-        systemPrompt:
-          "You are a helpful general assistant. Give clear, concise, and accurate answers.",
-      },
-      skills: [],
-    });
-    // The pairing the shipped package makes, which is the whole reason Knowledge narrows to document
-    // tools rather than being offered everything its grants hold.
-    expect(
-      tenantPackage.agents.find((agent) => agent.id === "knowledge")?.skills,
-    ).toEqual([
-      "find-a-document",
-      "check-a-claim",
-      "whats-changed",
-      "who-owns-this",
-    ]);
-    expect(tenantPackage.channels).toContainEqual({
-      id: "general-assistant",
-      name: "General Assistant",
-      description: "Ask for help with everyday work.",
-      permittedAgents: ["general-assistant"],
-      allowedGroups: ["all"],
     });
   });
 

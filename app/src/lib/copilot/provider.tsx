@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 import { currentAccessToken } from "@/notos/supabase";
+import { workspaceHeaders } from "@/notos/workspace";
 import { ActiveBotProvider } from "./active-bot";
 import { ComputerTools } from "./computer-tools";
 import { EscalationTool } from "./escalation-tool";
@@ -36,7 +37,8 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
       // NOTOS: the runtime sits behind the same Supabase-JWT guard as every other route (stap 1).
       // A function, so a refreshed token is picked up without re-mounting the provider.
       headers={() => {
-        const headers: Record<string, string> = {};
+        // NOTOS: the runtime has no /api/w prefix; the workspace travels as a header (stap 2).
+        const headers: Record<string, string> = { ...workspaceHeaders() };
         const token = currentAccessToken();
         if (token) headers.authorization = `Bearer ${token}`;
         return headers;

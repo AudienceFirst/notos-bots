@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import {
   IconPin,
   IconPinFilled,
@@ -87,7 +88,7 @@ export const Channel = memo(function Channel({
      * puts them on the roster with the channel still in it, and says why in the dialog.
      */
     if (isOpen) {
-      await navigate({ to: "/" });
+      await navigate({ to: "/w/$workspace", params: keepWorkspace });
     }
     try {
       await deleteChannel.mutateAsync(channelId);
@@ -103,8 +104,8 @@ export const Channel = memo(function Channel({
       <ContextMenu>
         <ContextMenuTrigger>
           <Link
-            to="/channel/$channelId"
-            params={{ channelId }}
+            to="/w/$workspace/channel/$channelId"
+            params={(previous) => ({ ...keepWorkspace(previous), channelId })}
             type="button"
             className="flex flex-row py-2 px-2 gap-2 items-center w-full hover:bg-foreground/5 rounded-lg [contain-intrinsic-size:auto_3.25rem] [content-visibility:auto]"
             activeProps={{

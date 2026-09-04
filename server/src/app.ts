@@ -1,5 +1,5 @@
 // NOTOS: thread-historie/-status uit de eigen tabel (stap 0); sessieguard op de Supabase-JWT, /api/auth eruit (stap 1).
-import type { Hono as HonoApp, MiddlewareHandler } from "hono";
+import type { Context, Hono as HonoApp, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { authoriseAgentCall, sameToken } from "./agents/callback-token";
@@ -36,6 +36,10 @@ import { configuredAuthProviders, type DeploymentConfig } from "./config";
 import type { CredentialAdminService, CredentialInput } from "./credentials";
 import type { NotosIdentity } from "./notos/auth";
 import type { ThreadStore } from "./notos/runner";
+import {
+  createRequireWorkspace,
+  type WorkspaceStore,
+} from "./notos/workspaces";
 import type { OnboardingStore } from "./people/onboarding";
 import type { PeopleStore } from "./people/store";
 import { createPluginRoutes } from "./plugins/routes";
@@ -211,6 +215,13 @@ export function createApp(
    * check unregistered and the history route unmounted.
    */
   threads?: ThreadStore,
+  /**
+   * NOTOS: the workspaces and who may enter them (stap 2). Appended last, positional like the rest.
+   *
+   * Absent leaves the `/api/w/:workspace` routes unmounted and every scoped route answering only a
+   * ZUID caller, which is the degraded shape a test without workspaces wants.
+   */
+  workspaceStore?: WorkspaceStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
@@ -289,8 +300,73 @@ export function createApp(
           ? await onboardingStore.status(context.var.actor.id)
           : null,
       },
+      // NOTOS: the workspaces this person may enter, with their role there (stap 2).
+      workspaces: workspaceStore
+        ? (await workspaceStore.listForActor(context.var.actor)).map(
+            ({ workspace, role }) => ({
+              id: workspace.id,
+              notosClientId: workspace.slug,
+              displayName: workspace.displayName,
+              kind: workspace.kind,
+              currency: workspace.currency,
+              rol: role,
+            }),
+          )
+        : [],
     }),
   );
+
+  /*
+   * NOTOS: every route that belongs to a workspace is mounted under `/api/w/:workspace/...` behind
+   * `requireWorkspace`, which puts the workspace on the actor so the stores filter on it (stap 2).
+   * The same routers stay mounted at their upstream paths for a ZUID caller only: a client guest
+   * off the workspace routes gets 403, because outside a workspace there is nothing for them.
+   */
+  const requireWorkspace = workspaceStore
+    ? createRequireWorkspace(workspaceStore)
+    : undefined;
+  const noAccess = (context: Context<{ Variables: AppVariables }>) =>
+    context.json({ error: "geen toegang tot deze workspace" }, 403);
+  const inWorkspace: MiddlewareHandler<{ Variables: AppVariables }> = async (
+    context,
+    next,
+  ) => {
+    let inner: Response | undefined;
+    const outer = await requireUser(context, async () => {
+      if (!requireWorkspace) {
+        inner = noAccess(context);
+        return;
+      }
+      const result = await requireWorkspace(context, next);
+      if (result instanceof Response) inner = result;
+    });
+    return outer instanceof Response ? outer : inner;
+  };
+  const zuidOnly: MiddlewareHandler<{ Variables: AppVariables }> = async (
+    context,
+    next,
+  ) => {
+    let inner: Response | undefined;
+    const outer = await requireUser(context, async () => {
+      if (context.var.actor.isInternal !== true) {
+        inner = noAccess(context);
+        return;
+      }
+      await next();
+    });
+    return outer instanceof Response ? outer : inner;
+  };
+  /** Mount a workspace-owned router twice: scoped for everybody, unscoped for ZUID. */
+  const mountScoped = (
+    path: string,
+    build: (guard: MiddlewareHandler<{ Variables: AppVariables }>) => Hono<{
+      Variables: AppVariables;
+    }>,
+  ) => {
+    if (requireWorkspace)
+      app.route(`/api/w/:workspace${path}`, build(inWorkspace));
+    app.route(`/api${path}`, build(zuidOnly));
+  };
   app.post("/api/me/onboarding", requireUser, async (context) => {
     if (!onboardingStore) {
       return context.json({ error: "Onboarding is not available." }, 503);
@@ -772,6 +848,17 @@ export function createApp(
         ) {
           return context.json({ error: "Not your thread." }, 403);
         }
+        // NOTOS: and the thread's workspace must be one this person may enter (stap 2).
+        if (
+          thread &&
+          workspaceStore &&
+          !(await workspaceStore.mayRead(context.var.actor, thread.workspaceId))
+        ) {
+          return context.json(
+            { error: "geen toegang tot deze workspace" },
+            403,
+          );
+        }
         return context.json({ messages: await threads.messages(threadId) });
       },
     );
@@ -820,11 +907,10 @@ export function createApp(
   }
 
   if (agentProfileStore) {
-    app.route(
-      "/api/agents",
+    mountScoped("/agents", (guard) =>
       createAgentRoutes(
         agentProfileStore,
-        requireUser,
+        guard,
         // The same stance the computer uses: a laptop legitimately talks to its own services, a hosted
         // deployment must not. Passed from configuration rather than defaulted here, so "hosted and
         // permissive" cannot happen by forgetting something.
@@ -863,12 +949,11 @@ export function createApp(
     // agents routes read, so it is mounted here where that store is in scope. Only when a router was
     // configured; without one the composer keeps sending untagged messages to the default.
     if (intentRouter) {
-      app.route(
-        "/api/route",
+      mountScoped("/route", (guard) =>
         createRoutingRoutes(
           agentProfileStore,
           intentRouter,
-          requireUser,
+          guard,
           auditStore,
           /*
            * Which vendors each coworker holds tools for, so the router weighs what a coworker can
@@ -895,20 +980,20 @@ export function createApp(
   }
 
   if (channelStore) {
-    app.route(
-      "/api/channels",
-      createChannelRoutes(channelStore, requireUser, channelEvents, auditStore),
+    mountScoped("/channels", (guard) =>
+      createChannelRoutes(channelStore, guard, channelEvents, auditStore),
     );
   }
 
   if (routineStore) {
-    app.route("/api/routines", createRoutineRoutes(routineStore, requireUser));
+    mountScoped("/routines", (guard) =>
+      createRoutineRoutes(routineStore, guard),
+    );
   }
 
   if (componentStore) {
-    app.route(
-      "/api/components",
-      createComponentRoutes(componentStore, requireUser, auditStore, canUseBot),
+    mountScoped("/components", (guard) =>
+      createComponentRoutes(componentStore, guard, auditStore, canUseBot),
     );
   }
 
@@ -1052,11 +1137,10 @@ export function createApp(
   }
 
   if (threadIdentity) {
-    app.route(
-      "/api/threads",
+    mountScoped("/threads", (guard) =>
       createThreadRoutes(
         threadIdentity,
-        requireUser,
+        guard,
         // NOTOS: the thread store answers whether a remembered thread is still there, and for whom.
         threads ? createThreadReader(threads) : undefined,
         threads,

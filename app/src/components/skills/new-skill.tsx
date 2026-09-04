@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { SkillFields } from "@/components/skills/skill-fields";
@@ -33,7 +34,11 @@ export function NewSkill() {
           await createSkill.mutateAsync(values);
           // Panel closed rather than swapped for a detail view: there is nothing more to say about a
           // skill than the form just said, and the new row is already behind it in the list.
-          await navigate({ search: {}, to: "/skills" });
+          await navigate({
+            search: {},
+            to: "/w/$workspace/skills",
+            params: keepWorkspace,
+          });
         }}
         submitLabel="Save skill"
       />

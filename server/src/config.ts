@@ -174,7 +174,18 @@ export type DeploymentConfig = {
    * deployment serving both from one origin.
    */
   appUrl: string | undefined;
-  tenantPackageDirectory: string;
+  /**
+   * NOTOS: where workspaces come from (stap 2). The list of clients is NOTOS' (`notosApiUrl`, read
+   * as the service account) or, for a laptop without the API, a JSON export (`clientsFile`); what
+   * each client gets is the repo's `workspaces/` (`dir`).
+   */
+  workspaces: {
+    dir: string;
+    notosApiUrl: string | undefined;
+    clientsFile: string | undefined;
+  };
+  /** NOTOS: the model every built-in Bot runs on until stap 3 moves it to the workspace row. */
+  model: { credentialSecretRef: string; defaultModel: string };
   runtime: RuntimeCapabilities;
   /**
    * How long a Bot's stream may say nothing before this deployment ends the turn, in milliseconds.
@@ -805,8 +816,16 @@ export function loadConfig(
       commaSeparated(environment, "TRUSTED_ORIGINS")[0] ??
       optional(environment, "OPENBOT_PUBLIC_URL")
     )?.replace(/\/+$/, ""),
-    tenantPackageDirectory:
-      optional(environment, "TENANT_PACKAGE_DIR") ?? "../examples/fintech",
+    workspaces: {
+      dir: optional(environment, "WORKSPACES_DIR") ?? "../workspaces",
+      notosApiUrl: url(environment, "NOTOS_API_URL")?.replace(/\/+$/, ""),
+      clientsFile: optional(environment, "NOTOS_CLIENTS_FILE"),
+    },
+    model: {
+      credentialSecretRef:
+        optional(environment, "MODEL_CREDENTIAL_REF") ?? "openai-api-key",
+      defaultModel: optional(environment, "MODEL_DEFAULT") ?? "gpt-5.6-terra",
+    },
     runtime: runtimeCapabilities(),
     agentStallTimeoutMs: agentStallTimeoutMs(environment),
     auditRetentionDays: auditRetentionDays(environment),

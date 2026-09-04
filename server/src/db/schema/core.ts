@@ -1,3 +1,4 @@
+// NOTOS: deployment_packages = workspace; workspace_id op agents en channels (stap 2).
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -214,6 +215,10 @@ export const revokedAccess = pgTable("revoked_access", {
   revokedBy: text("revoked_by").notNull(),
 });
 
+/*
+ * NOTOS: a deployment package is a workspace (stap 2). One row per NOTOS client; `tenantId` stays
+ * as the package's own name and equals `notosClientId` for every row this deployment writes.
+ */
 export const deploymentPackages = pgTable("deployment_packages", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: text("tenant_id").notNull().unique(),
@@ -222,6 +227,19 @@ export const deploymentPackages = pgTable("deployment_packages", {
   loadedAt: timestamp("loaded_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  /** The NOTOS `client_id` (e.g. `zoover`). The slug in every `/w/:workspace` URL. */
+  notosClientId: text("notos_client_id").unique(),
+  displayName: text("display_name"),
+  /** `real`, `demo` or `onboarding`, as NOTOS reports it. A demo workspace never touches a real source. */
+  kind: text("kind").notNull().default("real"),
+  currency: text("currency").notNull().default("EUR"),
+  /** Vertex AI location for this workspace's model. `global` leaves the EU and is a deliberate choice. */
+  vertexLocation: text("vertex_location").notNull().default("europe-west4"),
+  defaultModel: text("default_model").notNull().default("gemini-2.5-pro"),
+  /** Drive folder ids this workspace may read (stap 8). */
+  driveRootIds: jsonb("drive_root_ids").notNull().default({}),
+  /** False once NOTOS reports the client inactive. Nothing is deleted. */
+  enabled: boolean("enabled").notNull().default(true),
 });
 
 export const agents = pgTable("agents", {
@@ -230,6 +248,10 @@ export const agents = pgTable("agents", {
   type: agentType("type").notNull(),
   configuration: jsonb("configuration").notNull(),
   packageId: uuid("package_id").references(() => deploymentPackages.id, {
+    onDelete: "set null",
+  }),
+  /** NOTOS: which workspace this Bot belongs to, also for a Bot a person made (packageId null). */
+  workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
     onDelete: "set null",
   }),
   override: jsonb("override"),
@@ -256,6 +278,10 @@ export const channels = pgTable(
      */
     allowedGroups: text("allowed_groups").array().notNull().default([]),
     packageId: uuid("package_id").references(() => deploymentPackages.id, {
+      onDelete: "set null",
+    }),
+    /** NOTOS: the workspace this channel lives in (stap 2). */
+    workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
       onDelete: "set null",
     }),
     override: jsonb("override"),

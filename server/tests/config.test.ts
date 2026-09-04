@@ -46,7 +46,16 @@ describe("deployment configuration", () => {
       endpoint: new URL("http://localhost:4200/ag-ui"),
       token: "managed-agent-token",
     });
-    expect(config.tenantPackageDirectory).toBe("../examples/fintech");
+    // NOTOS: no tenant package directory; workspaces come from NOTOS and the repo (stap 2).
+    expect(config.workspaces).toEqual({
+      dir: "../workspaces",
+      notosApiUrl: undefined,
+      clientsFile: undefined,
+    });
+    expect(config.model).toEqual({
+      credentialSecretRef: "openai-api-key",
+      defaultModel: "gpt-5.6-terra",
+    });
   });
 
   test("allows deployment without an authentication provider, when asked to", () => {

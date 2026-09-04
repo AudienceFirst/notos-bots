@@ -81,6 +81,8 @@ describe("server authorization", () => {
         // No store was passed, so this deployment tracks no onboarding and the app gates nobody.
         onboarding: null,
       },
+      // NOTOS: no workspace store was passed either, so there is nothing to enter (stap 2).
+      workspaces: [],
     });
   });
 

@@ -130,6 +130,54 @@ Iedereen logt in zoals in NOTOS; deze server vertrouwt alleen de Supabase-JWT. B
 Niet gedaan: een tweede ZUID-adres zonder beheerdersrol (geen tweede token beschikbaar); de app
 tegen de echte sessie draaien (alleen typecheck, stap 4 brengt de inbedding).
 
+## Workspaces: NOTOS-klanten, seats uit client_members (stap 2)
+
+- `deployment_packages` is de workspace-tabel: één rij per NOTOS `client_id`, met naam, soort
+  (real/demo/onboarding), valuta, `vertex_location`, `default_model`, `drive_root_ids` en `enabled`.
+  `agents`, `channels`, `routines`, `threads` en `action_policy` dragen `workspace_id` (migratie
+  `0027_workspaces.sql`, met backfill naar het ene pakket dat er was).
+- Sync (`server/src/notos/workspaces/sync.ts`): bij boot en elk uur. De klantenlijst komt van
+  `GET /api/internal/clients` op mge-cockpit-api, gelezen als `notos-bots@mge-zuid` met een Google
+  ID-token (route 1 uit de LEESMIJ; endpoint in `mge-platform/src/api/endpoints/internal_clients.py`,
+  nog niet gedeployed). Lokaal: `NOTOS_CLIENTS_FILE` met een JSON-export van dezelfde lijst
+  (`.local/clients.json`, gitignored). Een klant die NOTOS niet meer noemt gaat op `enabled=false`.
+- Bots per workspace uit `workspaces/<client_id>/` of `workspaces/_default/`, id's met de workspace als
+  voorvoegsel (`zoover--media-manager`). `_default/agents.yaml` is gegenereerd uit `AGENT_PERSONAS`
+  in mge-platform door `scripts/notos/agents-from-mge.ts`. `examples/fintech` en `TENANT_PACKAGE_DIR`
+  zijn weg; het model is deployment-breed (`MODEL_CREDENTIAL_REF`, `MODEL_DEFAULT`) tot stap 3.
+- Rechten: `requireWorkspace` (`notos/workspaces/guard.ts`) achter `/api/w/:workspace/...` voor
+  channels, routines, agents, route, threads en components; het zet de workspace op de actor en de
+  stores filteren erop. Dezelfde routers staan ook op hun oude pad, alleen voor ZUID-adressen; een
+  klantgast krijgt daar 403. De CopilotKit-runtime leest de workspace uit de header
+  `X-Notos-Workspace` en biedt alleen de bots van die workspace aan. Een gast krijgt zijn workspaces
+  uit `client_members` (onder zijn eigen RLS, gefilterd op `notos_tenants.status = 'active'`), een
+  ZUID-adres ziet alles. `/api/me` geeft `workspaces: [{ id, notosClientId, displayName, kind, currency, rol }]`.
+- App: `/w/:workspace/...` voor alles wat bij een workspace hoort; `client.ts` zet de zes
+  workspace-paden automatisch onder `/api/w/<slug>/`; de zijbalk toont de workspace-switcher.
+- Niet in deze stap: `action_policy` per workspace in de gateway (kolom bestaat, gateway leest nog
+  de deployment-rij; stap 5) en `/admin/people` per persoon de workspaces uit NOTOS (stap 10 raakt
+  dat scherm toch).
+
+### Controle stap 2 (4 september 2026)
+
+| Controle | Uitkomst |
+|---|---|
+| `bun run format:check` · `lint` · `typecheck` · `app build` | groen |
+| `bun run test:ci` met database | 2171 geslaagd, 23 overgeslagen, 1 gefaald (bekende kanaalvolgorde-test); app-tests apart 202 geslaagd |
+| `tests/notos/workspaces.test.ts` | sync uit een klantenlijst maakt workspaces met geprefixte bots; ZUID ziet alles, gast alleen zijn klant met rol, vreemde niets; guard 403 |
+| Boot met `NOTOS_CLIENTS_FILE` (export van de echte lijst) | 12 workspaces gesynchroniseerd, 0 gefaald |
+| `/api/w/zoover/agents` · `/api/w/zuid/agents` | zes bots met `zoover--` resp. `zuid--` |
+| `/api/w/nope/agents` | 403 "geen toegang tot deze workspace" |
+| `POST /api/w/zoover/threads/mint` | rij in `threads` met `workspace_id` van zoover |
+| `/api/copilotkit/info` met `X-Notos-Workspace: zoover` · `south` | alleen de bots van die workspace |
+| `mge-platform`: `tests/test_internal_clients.py` | 5 geslaagd; ruff schoon |
+| `scripts/notos/agents-from-mge.ts` | twee keer draaien identiek |
+
+Niet gedaan: een klantgast lokaal (geen gasttoken; de gastroute is in de test gedekt via
+`memberships`); de app in de browser tegen de workspace-routes (typecheck en build wel);
+`/api/internal/clients` is niet gedeployed, dus de live sync via ID-token is nog niet
+end-to-end getest (het ID-token minten via impersonatie werkt wel).
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

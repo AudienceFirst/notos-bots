@@ -1,8 +1,17 @@
+// NOTOS: AgentActor draagt de workspace van het verzoek (stap 2).
 export type AgentVisibility = "public" | "private";
+
+/** NOTOS: which workspace a request is scoped to, once `requireWorkspace` decided that (stap 2). */
+export type ActorWorkspace = {
+  id: string;
+  slug: string;
+  role: "zuid" | "lead" | "specialist" | "viewer";
+};
 
 export type AgentActor = {
   id: string;
   role: "admin" | "user";
+  workspace?: ActorWorkspace;
 };
 
 export type AgentProfile = {

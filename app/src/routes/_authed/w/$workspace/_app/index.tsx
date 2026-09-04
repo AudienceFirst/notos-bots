@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -9,7 +10,7 @@ import { routeMessage } from "@/lib/channels/route";
 import { useStartChannel } from "@/lib/channels/start";
 import { appConfig } from "@/lib/generated/application-config";
 
-export const Route = createFileRoute("/_authed/_app/")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/")({
   component: RouteComponent,
 });
 
@@ -95,7 +96,8 @@ function RouteComponent() {
               explore.map((agent) => (
                 <Link
                   key={agent.id}
-                  to="/channel/new"
+                  to="/w/$workspace/channel/new"
+                  params={keepWorkspace}
                   search={{
                     agent: agent.id,
                   }}

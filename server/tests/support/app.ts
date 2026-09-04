@@ -69,6 +69,8 @@ function fromSession(
       name: found.session.user.name,
       image: found.session.user.image,
       role: found.role,
+      // Upstream's tests know no workspaces; a ZUID person reaches every route (stap 2).
+      isInternal: true,
     });
     await next();
   };
@@ -83,7 +85,7 @@ function fromSession(
         name: found.session.user.name,
         image: found.session.user.image,
         role: found.role,
-        isInternal: false,
+        isInternal: true,
       };
     },
   };

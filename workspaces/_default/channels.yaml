@@ -1,0 +1,4 @@
+# Kanalen uit een pakket krijgen geen leden (zie server/src/db/schema/core.ts, allowedGroups) en
+# zijn daardoor onbereikbaar. Een workspace start dus zonder pakketkanalen; iedereen opent zelf een
+# gesprek met een bot, en dat kanaal is dan van die persoon.
+channels: []

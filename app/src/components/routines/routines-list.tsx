@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { IconTrash } from "@tabler/icons-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -203,8 +204,11 @@ export function RoutinesList({
                       ) : (
                         // Where it posts is a place, so the chip goes there.
                         <Link
-                          params={{ channelId: routine.channel.id }}
-                          to="/channel/$channelId"
+                          params={(previous) => ({
+                            ...keepWorkspace(previous),
+                            channelId: routine.channel.id,
+                          })}
+                          to="/w/$workspace/channel/$channelId"
                         >
                           <Chip className="text-muted-foreground transition-colors hover:text-foreground">
                             {routine.channel.name ?? "Unnamed channel"}

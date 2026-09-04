@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { IconDots, IconPlus } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -49,7 +50,7 @@ const skillsSearchSchema = z.object({
   edit: z.string().optional(),
 });
 
-export const Route = createFileRoute("/_authed/_app/skills")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/skills")({
   validateSearch: skillsSearchSchema,
   component: SkillsPage,
 });
@@ -125,7 +126,12 @@ function SkillsPage() {
           action={
             <Button
               render={(props) => (
-                <Link search={{ new: true }} to="/skills" {...props} />
+                <Link
+                  search={{ new: true }}
+                  to="/w/$workspace/skills"
+                  params={keepWorkspace}
+                  {...props}
+                />
               )}
               size="sm"
               variant="ghost"

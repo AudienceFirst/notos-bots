@@ -21,6 +21,9 @@ import type { SupabaseIdentity, VerifySupabaseToken } from "./supabase-jwt";
 
 export type NotosActor = AuthenticatedActor & { isInternal: boolean };
 
+type ClientRole = "lead" | "specialist" | "viewer";
+const CLIENT_ROLES = new Set<string>(["lead", "specialist", "viewer"]);
+
 export class RevokedError extends Error {
   constructor(email: string) {
     super(`Access for ${email} has been removed.`);
@@ -105,6 +108,63 @@ export function createActorResolver(
     );
   }
 
+  /**
+   * Which NOTOS clients a guest may enter, and as what: `client_members` under the caller's own
+   * RLS, kept to clients whose `notos_tenants.status` is `active`, exactly as
+   * `mge-platform/src/api/auth.py` does it. A ZUID address never comes here: it sees everything.
+   */
+  async function membershipsOf(
+    identity: SupabaseIdentity,
+    token: string,
+  ): Promise<Record<string, ClientRole>> {
+    const headers = {
+      apikey: publishableKey,
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+    const base = supabaseUrl.replace(/\/+$/, "");
+    const read = async (path: string): Promise<unknown[]> => {
+      try {
+        const response = await doFetch(`${base}/rest/v1/${path}`, { headers });
+        if (!response.ok) return [];
+        const rows = await response.json();
+        return Array.isArray(rows) ? rows : [];
+      } catch {
+        return [];
+      }
+    };
+    const members = await read(
+      `client_members?select=client_id,email,klant_rol&email=eq.${encodeURIComponent(identity.email)}`,
+    );
+    const candidates: Record<string, ClientRole> = {};
+    for (const row of members) {
+      const member = row as { client_id?: unknown; klant_rol?: unknown };
+      if (typeof member.client_id !== "string" || !member.client_id) continue;
+      const role =
+        typeof member.klant_rol === "string" &&
+        CLIENT_ROLES.has(member.klant_rol)
+          ? (member.klant_rol as ClientRole)
+          : "viewer";
+      candidates[member.client_id] = role;
+    }
+    const ids = Object.keys(candidates).filter((id) => /^[a-z0-9-]+$/.test(id));
+    if (ids.length === 0) return {};
+    const active = await read(
+      `notos_tenants?select=id,status&status=eq.active&id=in.(${ids.join(",")})`,
+    );
+    const activeIds = new Set(
+      active.flatMap((row) => {
+        const tenant = row as { id?: unknown; status?: unknown };
+        return typeof tenant.id === "string" && tenant.status === "active"
+          ? [tenant.id]
+          : [];
+      }),
+    );
+    return Object.fromEntries(
+      Object.entries(candidates).filter(([id]) => activeIds.has(id)),
+    );
+  }
+
   async function remember(identity: SupabaseIdentity, role: "admin" | "user") {
     await database
       .insert(users)
@@ -144,13 +204,17 @@ export function createActorResolver(
       const role = (await isAdministrator(identity, token)) ? "admin" : "user";
       await remember(identity, role);
 
+      const isInternal = isInternalAddress(identity.email, internalDomains);
       const actor: NotosActor = {
         id: identity.id,
         email: identity.email,
         name: identity.name,
         image: identity.image,
         role,
-        isInternal: isInternalAddress(identity.email, internalDomains),
+        isInternal,
+        ...(isInternal
+          ? {}
+          : { memberships: await membershipsOf(identity, token) }),
       };
       cache.set(cacheKey, { actor, until: Date.now() + cacheMs });
       if (cache.size > 5_000) {

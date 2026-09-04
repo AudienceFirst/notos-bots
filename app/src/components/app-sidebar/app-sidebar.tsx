@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import {
   IconBolt,
   IconBox,
@@ -51,14 +52,13 @@ import {
   channelListQueryOptions,
 } from "@/lib/channels/queries";
 import { useChannelEvents } from "@/lib/channels/use-channel-events";
-import { appConfig } from "@/lib/generated/application-config";
+import { WorkspaceSwitcher } from "@/notos/workspace-switcher";
 import { EASE_OUT, ENTRANCE_SECONDS } from "@/lib/motion";
 import { relativeTime } from "@/lib/relative-time";
 import { Button } from "../ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../ui/empty";
 import { Channel } from "./channel";
 
-const appLinkOptions = { to: "/" } satisfies LinkOptions;
 const adminLinkOptions = { to: "/admin" } satisfies LinkOptions;
 const settingsLinkOptions = { to: "/settings" } satisfies LinkOptions;
 
@@ -234,12 +234,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="h-12 p-2">
         <SidebarMenu>
           <SidebarMenuItem className="flex flex-row gap-1.5">
+            {/* NOTOS: the workspace, and a way to another one, where the product name was (stap 2). */}
             <SidebarMenuButton
               className="font-semibold text-[14px] tracking-tighter h-full leading-tight"
               render={(props) => (
-                <Link {...appLinkOptions} {...props}>
-                  {appConfig.brand.productName}
-                </Link>
+                <div {...props}>
+                  <WorkspaceSwitcher />
+                </div>
               )}
             />
             <Button
@@ -248,7 +249,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={(props) => (
                 <Link
                   {...props}
-                  to="/channel/new"
+                  to="/w/$workspace/channel/new"
+                  params={keepWorkspace}
                   activeProps={{
                     className: "bg-foreground/5",
                   }}
@@ -330,7 +332,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={(props) => (
                 <Link
                   {...props}
-                  to="/skills"
+                  to="/w/$workspace/skills"
+                  params={keepWorkspace}
                   activeProps={{
                     className: "bg-foreground/5",
                   }}
@@ -349,7 +352,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={(props) => (
                 <Link
                   {...props}
-                  to="/agents"
+                  to="/w/$workspace/agents"
+                  params={keepWorkspace}
                   activeProps={{
                     className: "bg-foreground/5",
                   }}

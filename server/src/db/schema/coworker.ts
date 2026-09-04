@@ -1,3 +1,4 @@
+// NOTOS: workspace_id op routines (stap 2).
 /**
  * Coworker tables: bots, skills, routines, bot-to-bot handoff.
  *
@@ -12,8 +13,9 @@ import {
   primaryKey,
   text,
   timestamp,
+  uuid,
 } from "drizzle-orm/pg-core";
-import { agents, users } from "./core";
+import { agents, deploymentPackages, users } from "./core";
 
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -105,6 +107,10 @@ export const routines = pgTable(
      * deleted channel must survive to be shown as broken rather than vanish in a cascade.
      */
     channelId: text("channel_id").notNull(),
+    /** NOTOS: the workspace of the channel this routine posts in (stap 2). */
+    workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
+      onDelete: "set null",
+    }),
     instruction: text("instruction").notNull(),
     /** Five-field cron. Validated at the tool boundary; never parsed by the client. */
     cron: text("cron").notNull(),

@@ -14,6 +14,7 @@
  */
 
 import { accessToken } from "@/notos/supabase";
+import { apiPath, workspaceHeaders } from "@/notos/workspace";
 
 export type ClientOptions = {
   /** Absent means GET. */
@@ -35,7 +36,8 @@ export type ClientOptions = {
 async function send(path: string, options: ClientOptions): Promise<Response> {
   // NOTOS: the NOTOS session's token goes on every call; the server trusts nothing else (stap 1).
   const token = await accessToken();
-  return fetch(path, {
+  // NOTOS: workspace-owned routes go under /api/w/<slug>/ once a workspace is open (stap 2).
+  return fetch(apiPath(path), {
     method: options.method,
     credentials: "include",
     headers: {
@@ -43,6 +45,7 @@ async function send(path: string, options: ClientOptions): Promise<Response> {
         ? {}
         : { "content-type": "application/json" }),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...workspaceHeaders(),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     ...(options.signal ? { signal: options.signal } : {}),

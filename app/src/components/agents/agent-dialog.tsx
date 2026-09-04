@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import {
   IconAdjustments,
   IconArrowsExchange,
@@ -323,7 +324,8 @@ function GeneralSection({
             onClick={() =>
               void navigate({
                 search: { agent: agentId },
-                to: "/channel/new",
+                to: "/w/$workspace/channel/new",
+                params: keepWorkspace,
               })
             }
             size="sm"
@@ -715,7 +717,11 @@ function ManageSection({
                   hidden: !profile.hidden,
                 });
                 if (!profile.hidden)
-                  await navigate({ search: {}, to: "/agents" });
+                  await navigate({
+                    search: {},
+                    to: "/w/$workspace/agents",
+                    params: keepWorkspace,
+                  });
               }}
               size="sm"
               variant="outline"
@@ -743,7 +749,11 @@ function ManageSection({
               disabled={duplicateAgent.isPending}
               onClick={async () => {
                 const copy = await duplicateAgent.mutateAsync(agentId);
-                await navigate({ search: { agent: copy.id }, to: "/agents" });
+                await navigate({
+                  search: { agent: copy.id },
+                  to: "/w/$workspace/agents",
+                  params: keepWorkspace,
+                });
               }}
               size="sm"
               variant="outline"
@@ -809,7 +819,11 @@ function ManageSection({
               disabled={deleteAgent.isPending}
               onClick={async () => {
                 await deleteAgent.mutateAsync(agentId);
-                await navigate({ search: {}, to: "/agents" });
+                await navigate({
+                  search: {},
+                  to: "/w/$workspace/agents",
+                  params: keepWorkspace,
+                });
               }}
               size="sm"
               variant="destructive"

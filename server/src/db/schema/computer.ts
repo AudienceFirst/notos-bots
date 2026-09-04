@@ -1,3 +1,4 @@
+// NOTOS: action_policy per workspace naast de deployment-standaard (stap 2).
 /**
  * Computer tables: agent computers, sessions, computer-use audit.
  *
@@ -11,7 +12,9 @@ import {
   primaryKey,
   text,
   timestamp,
+  uuid,
 } from "drizzle-orm/pg-core";
+import { deploymentPackages } from "./core";
 import { jsonb } from "./json";
 
 /**
@@ -29,8 +32,12 @@ import { jsonb } from "./json";
  * memory; this is the record that survives a restart, not something on the path of a click.
  */
 export const actionPolicy = pgTable("action_policy", {
-  /** Always `current`. See the note above on there being exactly one. */
+  /** `current` for the deployment default; `ws:<workspace id>` for a workspace's own (NOTOS, stap 2). */
   id: text("id").primaryKey(),
+  /** NOTOS: null on the deployment default row. */
+  workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
+    onDelete: "cascade",
+  }),
   /** `enforce` or `dry-run`. Not an enum: the policy module owns that vocabulary. */
   mode: text("mode").notNull(),
   deny: text("deny").array().notNull(),

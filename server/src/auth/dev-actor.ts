@@ -1,3 +1,4 @@
+// NOTOS: de single-user-actor geldt als intern (stap 2).
 import type { MiddlewareHandler } from "hono";
 import type { Database } from "../db/client";
 import { users } from "../db/schema";
@@ -25,6 +26,8 @@ export const DEV_ACTOR: AuthenticatedActor = {
   id: "dev-local-user",
   email: "dev@openbot.local",
   role: "admin",
+  // NOTOS: the one administrator sees every workspace, like a ZUID address does.
+  isInternal: true,
 };
 
 type UserWriter = Pick<Database, "insert">;

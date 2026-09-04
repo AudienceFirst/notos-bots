@@ -1,3 +1,4 @@
+// NOTOS: kanalen dragen en filteren op workspace_id (stap 2).
 import {
   and,
   asc,
@@ -234,6 +235,17 @@ function channelName(names: string[]) {
   return `${codePoints.slice(0, MAX_CHANNEL_NAME_CODE_POINTS - 1).join("")}…`;
 }
 
+/**
+ * NOTOS: only the channels of the request's workspace (stap 2). Without a workspace on the actor,
+ * which only a ZUID caller off the `/api/w/:workspace` routes has, nothing is filtered: membership
+ * already scopes every query to the caller's own channels.
+ */
+function inWorkspace(actor: AgentActor) {
+  return actor.workspace
+    ? eq(channels.workspaceId, actor.workspace.id)
+    : undefined;
+}
+
 export function createChannelStore(
   database: Database,
   profileStore: AgentProfileStore,
@@ -283,6 +295,8 @@ export function createChannelStore(
       id,
       name,
       description: PRIVATE_AGENT_CHANNEL_DESCRIPTION,
+      // NOTOS: the workspace of the request; absent only for a ZUID caller off the workspace routes.
+      workspaceId: actor.workspace?.id ?? null,
     });
     await transaction.insert(channelMemberships).values({
       channelId: id,
@@ -353,6 +367,7 @@ export function createChannelStore(
             .where(
               and(
                 isNull(channels.deletedAt),
+                inWorkspace(actor),
                 sql`(select count(*) from ${channelAgents} where ${channelAgents.channelId} = ${channels.id}) = 1`,
               ),
             )
@@ -402,7 +417,13 @@ export function createChannelStore(
           agentProfiles,
           eq(agentProfiles.agentId, channelAgents.agentId),
         )
-        .where(and(eq(channels.id, channelId), isNull(channels.deletedAt)))
+        .where(
+          and(
+            eq(channels.id, channelId),
+            isNull(channels.deletedAt),
+            inWorkspace(actor),
+          ),
+        )
         .orderBy(asc(channelAgents.agentId));
 
       const first = rows[0];
@@ -448,6 +469,7 @@ export function createChannelStore(
         .where(
           and(
             isNull(channels.deletedAt),
+            inWorkspace(actor),
             // One row comparison over the whole sort key, which only reads as "everything after the
             // cursor" because every part of that key descends. See ROSTER_ORDER.
             cursor

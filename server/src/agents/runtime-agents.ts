@@ -1,3 +1,4 @@
+// NOTOS: alleen de bots van de workspace van het verzoek (stap 2).
 import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 import { type RegisteredAgent, registeredAgentFromRow } from "../copilot";
 import type { CredentialSecretReader } from "../credentials";
@@ -88,6 +89,10 @@ function selectActiveAgents(database: Database, actor: AgentActor) {
     .where(
       and(
         isNull(agentProfiles.deletedAt),
+        // NOTOS: a run in a workspace is offered that workspace's Bots and no others (stap 2).
+        actor.workspace
+          ? eq(agents.workspaceId, actor.workspace.id)
+          : undefined,
         actor.role === "admin"
           ? undefined
           : or(

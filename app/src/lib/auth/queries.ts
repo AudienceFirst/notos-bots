@@ -1,6 +1,7 @@
 // NOTOS: één provider, de NOTOS-sessie; de gebruiker krijgt isInternal mee (stap 1).
 import { queryOptions } from "@tanstack/react-query";
 import { client, tryClient } from "@/lib/client";
+import type { WorkspaceSummary } from "@/notos/workspace";
 
 /**
  * Where this person is in first-run onboarding.
@@ -23,6 +24,8 @@ export type AuthenticatedUser = {
   isInternal?: boolean;
   /** Null means this deployment does not track onboarding, which reads as nothing to finish. */
   onboarding: OnboardingStatus | null;
+  /** NOTOS: the workspaces this person may enter (stap 2). */
+  workspaces: WorkspaceSummary[];
 };
 
 /** Whether the gate holds: there is an onboarding to do and this person has not finished it. */
@@ -93,8 +96,11 @@ async function currentUser(): Promise<AuthenticatedUser | null> {
     throw new Error(`Could not load the current user (${response.status})`);
   }
 
-  const body = (await response.json()) as { user: AuthenticatedUser };
-  return body.user;
+  const body = (await response.json()) as {
+    user: Omit<AuthenticatedUser, "workspaces">;
+    workspaces?: WorkspaceSummary[];
+  };
+  return { ...body.user, workspaces: body.workspaces ?? [] };
 }
 
 export function currentUserQueryOptions() {

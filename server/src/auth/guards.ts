@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type { Database } from "../db/client";
 import { userRoles } from "../db/schema";
+import type { ActorWorkspace } from "../agents/profile-types";
 import type { OpenBotRole } from "./roles";
 
 export type AuthenticatedActor = {
@@ -13,6 +14,10 @@ export type AuthenticatedActor = {
   role: OpenBotRole;
   /** NOTOS: whether the address is a ZUID one (INTERNAL_DOMAINS). Absent on the single-user actor. */
   isInternal?: boolean;
+  /** NOTOS: for a client guest, the NOTOS clients they may enter and their role there (stap 2). */
+  memberships?: Record<string, "lead" | "specialist" | "viewer">;
+  /** NOTOS: set by `requireWorkspace` for a request under /api/w/:workspace (stap 2). */
+  workspace?: ActorWorkspace;
 };
 
 export type RoleRepository = {

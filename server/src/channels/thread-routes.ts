@@ -56,14 +56,23 @@ export function createThreadRoutes(
    * Absent leaves `POST /mint` handing out an id and nothing else, as upstream did.
    */
   threads?: {
-    ensure(input: { id: string; ownerUserId?: string }): Promise<void>;
+    ensure(input: {
+      id: string;
+      ownerUserId?: string;
+      workspaceId?: string;
+    }): Promise<void>;
   },
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
 
   routes.post("/mint", requireUser, async (context) => {
     const threadId = identity.mint();
-    await threads?.ensure({ id: threadId, ownerUserId: context.var.actor.id });
+    await threads?.ensure({
+      id: threadId,
+      ownerUserId: context.var.actor.id,
+      // NOTOS: under /api/w/:workspace the guard put the workspace on the actor (stap 2).
+      workspaceId: context.var.actor.workspace?.id,
+    });
     return context.json({ threadId });
   });
 

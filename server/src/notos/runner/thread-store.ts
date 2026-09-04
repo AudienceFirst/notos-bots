@@ -9,7 +9,7 @@
 import type { BaseEvent, Message } from "@ag-ui/client";
 import { and, asc, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import type { Database } from "../../db/client";
-import { threadEvents, threads } from "../../db/schema";
+import { agents, threadEvents, threads } from "../../db/schema";
 
 export type ThreadRecord = {
   id: string;
@@ -32,6 +32,8 @@ export type ThreadStore = {
     id: string;
     agentId?: string;
     ownerUserId?: string;
+    /** Absent: taken from the agent's workspace when an agent is named. */
+    workspaceId?: string;
   }): Promise<void>;
   /** Bestaat de thread, en is hij niet verwijderd. */
   exists(threadId: string): Promise<boolean>;
@@ -72,13 +74,24 @@ const record = (row: typeof threads.$inferSelect): ThreadRecord => ({
 
 export function createThreadStore(database: Database): ThreadStore {
   return {
-    async ensure({ id, agentId, ownerUserId }) {
+    async ensure({ id, agentId, ownerUserId, workspaceId }) {
+      let workspace = workspaceId ?? null;
+      if (!workspace && agentId) {
+        // Een thread hoort bij de workspace van zijn bot; kanalen en routines noemen de bot.
+        const [agent] = await database
+          .select({ workspaceId: agents.workspaceId })
+          .from(agents)
+          .where(eq(agents.id, agentId))
+          .limit(1);
+        workspace = agent?.workspaceId ?? null;
+      }
       await database
         .insert(threads)
         .values({
           id,
           ...(agentId ? { agentId } : {}),
           ...(ownerUserId ? { ownerUserId } : {}),
+          ...(workspace ? { workspaceId: workspace } : {}),
         })
         .onConflictDoUpdate({
           target: threads.id,
@@ -86,6 +99,7 @@ export function createThreadStore(database: Database): ThreadStore {
             // Alleen aanvullen wat leeg was: `coalesce(excluded, bestaand)`.
             agentId: sql`coalesce(excluded.agent_id, ${threads.agentId})`,
             ownerUserId: sql`coalesce(excluded.owner_user_id, ${threads.ownerUserId})`,
+            workspaceId: sql`coalesce(excluded.workspace_id, ${threads.workspaceId})`,
             updatedAt: sql`now()`,
           },
         });

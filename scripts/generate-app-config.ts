@@ -1,19 +1,14 @@
+// NOTOS: no tenant package any more; the brand is the deployment's own (stap 2).
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
-import {
-  createApplicationConfiguration,
-  loadTenantPackage,
-} from "../server/src/tenant-package";
+import { dirname, resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dir, "..");
-const configuredTenantPackageDirectory = process.env.TENANT_PACKAGE_DIR;
-const tenantPackageDirectory = configuredTenantPackageDirectory
-  ? isAbsolute(configuredTenantPackageDirectory)
-    ? configuredTenantPackageDirectory
-    : resolve(projectRoot, "server", configuredTenantPackageDirectory)
-  : resolve(projectRoot, "examples/fintech");
-const tenantPackage = await loadTenantPackage(tenantPackageDirectory);
-const applicationConfiguration = createApplicationConfiguration(tenantPackage);
+const applicationConfiguration = {
+  brand: {
+    tenantId: process.env.DEPLOYMENT_ID ?? "notos-bots",
+    productName: process.env.PRODUCT_NAME ?? "NOTOS Bots",
+  },
+};
 const outputPath = resolve(
   projectRoot,
   "app/src/lib/generated/application-config.ts",

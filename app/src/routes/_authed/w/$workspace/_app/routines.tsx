@@ -14,7 +14,7 @@ import { RoutinesList } from "@/components/routines/routines-list";
  * a narrower question: what is standing right now, and does it stay standing. It shows and it stops;
  * it does not compose. Absent on purpose, not an omission.
  */
-export const Route = createFileRoute("/_authed/_app/routines")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/routines")({
   component: RoutinesPage,
 });
 

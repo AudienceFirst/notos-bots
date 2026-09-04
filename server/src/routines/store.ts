@@ -1,3 +1,4 @@
+// NOTOS: routines dragen de workspace van hun kanaal en filteren erop (stap 2).
 /**
  * A person's standing instructions: keeping them, and guarding them.
  *
@@ -162,7 +163,8 @@ export type RoutinePatch = Partial<{
 
 export type RoutineStore = {
   create(input: RoutineInput): Promise<Routine>;
-  listFor(ownerUserId: string): Promise<RoutineSummary[]>;
+  /** NOTOS: `workspaceId` narrows to one workspace; absent lists every routine of the owner. */
+  listFor(ownerUserId: string, workspaceId?: string): Promise<RoutineSummary[]>;
   update(
     ownerUserId: string,
     id: string,
@@ -537,6 +539,8 @@ export function createRoutineStore(database: Database): RoutineStore {
               ownerUserId: input.ownerUserId,
               agentId: input.agentId,
               channelId,
+              // NOTOS: the workspace of the channel it posts in (stap 2).
+              workspaceId: sql`(select ${channels.workspaceId} from ${channels} where ${channels.id} = ${channelId})`,
               instruction,
               cron: input.cron,
               timezone,
@@ -551,7 +555,7 @@ export function createRoutineStore(database: Database): RoutineStore {
       return toRoutine(row);
     },
 
-    async listFor(ownerUserId) {
+    async listFor(ownerUserId, workspaceId) {
       /*
        * The last-run join reads `routine_runs`, which only the sweep's half of this file writes to:
        * the page stays empty here until a routine has actually fired.
@@ -572,7 +576,12 @@ export function createRoutineStore(database: Database): RoutineStore {
         })
         .from(routines)
         .leftJoin(channels, eq(channels.id, routines.channelId))
-        .where(eq(routines.ownerUserId, ownerUserId))
+        .where(
+          and(
+            eq(routines.ownerUserId, ownerUserId),
+            workspaceId ? eq(routines.workspaceId, workspaceId) : undefined,
+          ),
+        )
         .orderBy(desc(routines.createdAt), desc(routines.id));
 
       const routineIds = rows.map((row) => row.routine.id);

@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { SkillAgents } from "@/components/skills/skill-agents";
@@ -75,7 +76,11 @@ export function EditSkill({ slug }: { slug: string }) {
         footer={<SkillAgents grantedTo={skill.grantedTo} slug={skill.slug} />}
         onSubmit={async (values) => {
           await saveSkill.mutateAsync(values);
-          await navigate({ search: {}, to: "/skills" });
+          await navigate({
+            search: {},
+            to: "/w/$workspace/skills",
+            params: keepWorkspace,
+          });
         }}
         slugLocked
         submitLabel="Save changes"

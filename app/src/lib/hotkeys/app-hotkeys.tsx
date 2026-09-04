@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useNavigate } from "@tanstack/react-router";
 import { useHotkey } from "./use-hotkey";
 
@@ -14,7 +15,10 @@ export function AppHotkeys() {
 
   // Same destination as the sidebar's + button: the new-channel composer.
   useHotkey("new-chat", () => {
-    navigate({ to: "/channel/new" });
+    navigate({
+      to: "/w/$workspace/channel/new",
+      params: keepWorkspace,
+    });
   });
 
   return null;

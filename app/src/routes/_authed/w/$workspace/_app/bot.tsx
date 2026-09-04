@@ -9,7 +9,7 @@ import { useActiveBot } from "@/lib/copilot/active-bot";
 import { useBotThread } from "@/lib/copilot/bot-thread";
 import { useStoppedTurn } from "@/lib/copilot/stopped-turn";
 
-export const Route = createFileRoute("/_authed/_app/bot")({
+export const Route = createFileRoute("/_authed/w/$workspace/_app/bot")({
   component: RouteComponent,
   validateSearch: (search: Record<string, unknown>): { agent?: string } => ({
     ...(typeof search.agent === "string" ? { agent: search.agent } : {}),

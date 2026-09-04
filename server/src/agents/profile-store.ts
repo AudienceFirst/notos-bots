@@ -1,3 +1,4 @@
+// NOTOS: bots gefilterd en aangemaakt per workspace (stap 2).
 import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 import type { CredentialStore } from "../credentials";
 import type { Database } from "../db/client";
@@ -137,11 +138,18 @@ function joinedProfiles(executor: DatabaseExecutor, actor: AgentActor) {
 }
 
 function accessFilter(actor: AgentActor) {
-  if (actor.role === "admin") return undefined;
+  // NOTOS: inside a workspace only that workspace's Bots exist, for an administrator too (stap 2).
+  const scope = actor.workspace
+    ? eq(agents.workspaceId, actor.workspace.id)
+    : undefined;
+  if (actor.role === "admin") return scope;
 
-  return or(
-    eq(agentProfiles.visibility, "public"),
-    eq(agentProfiles.ownerUserId, actor.id),
+  return and(
+    scope,
+    or(
+      eq(agentProfiles.visibility, "public"),
+      eq(agentProfiles.ownerUserId, actor.id),
+    ),
   );
 }
 
@@ -314,6 +322,8 @@ export function createAgentProfileStore(
           id,
           name: input.name,
           type: "remote_ag_ui",
+          // NOTOS: a Bot a person makes belongs to the workspace they made it in (stap 2).
+          workspaceId: actor.workspace?.id ?? null,
           // Their endpoint if they gave one, ours if they did not. Validated before it reaches here;
           // see endpoint.ts for why a stored URL is a security decision and not a text field.
           //

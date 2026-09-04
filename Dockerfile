@@ -72,7 +72,7 @@ COPY shared shared
 # The server's source as well: the app's prebuild step reads the tenant package through
 # `server/src/tenant-package`, so the app cannot be built without it.
 COPY server server
-COPY examples examples
+COPY workspaces workspaces
 RUN bun run --cwd app build
 
 
@@ -108,7 +108,7 @@ COPY --from=deps /src/agent-computer/node_modules agent-computer/node_modules
 
 COPY server server
 COPY shared shared
-COPY examples examples
+COPY workspaces workspaces
 COPY agent-computer/src agent-computer/src
 COPY agent-computer/package.json agent-computer/package.json
 

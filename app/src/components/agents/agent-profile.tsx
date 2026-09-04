@@ -1,3 +1,4 @@
+import { keepWorkspace } from "@/notos/workspace";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
@@ -102,7 +103,11 @@ export function AgentProfile({ agentId }: { agentId: string }) {
         <Button
           className="w-full text-sm!"
           onClick={() =>
-            void navigate({ search: { agent: agentId }, to: "/channel/new" })
+            void navigate({
+              search: { agent: agentId },
+              to: "/w/$workspace/channel/new",
+              params: keepWorkspace,
+            })
           }
         >
           Start new channel
