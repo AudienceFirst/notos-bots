@@ -178,6 +178,36 @@ Niet gedaan: een klantgast lokaal (geen gasttoken; de gastroute is in de test ge
 `/api/internal/clients` is niet gedeployed, dus de live sync via ID-token is nog niet
 end-to-end getest (het ID-token minten via impersonatie werkt wel).
 
+## Model: Gemini op Vertex AI met ADC (stap 3)
+
+- `server/src/notos/model/vertex.ts`: één `ModelFactory` per proces (`createVertex({ project, location })`
+  uit `@ai-sdk/google-vertex`, cache per locatie en model) en een tekst-completer via `generateText`.
+- `builtInAgentConfiguration` krijgt de fabriek in plaats van een sleutel en geeft het model als
+  `LanguageModel` door (`ModelSpecifier = string | LanguageModel` in `@copilotkit/runtime/agent`);
+  de agent-loader joint `deployment_packages` zodat elke bot op de locatie en het model van zijn
+  workspace draait. Faalt de fabriek (geen ADC), dan faalt de bot bij de eerste beurt met die reden.
+- `routing/model.ts` gebruikt dezelfde fabriek; `/chat/completions` en `OPENAI_BASE_URL` zijn weg.
+  In tests krijgt de fabriek een OpenAI-model dat naar de aimock wijst.
+- `agent-langgraph`: provider `vertex` (`ChatVertexAI`, `@langchain/google-vertexai`) is de standaard.
+- `agent-bot/` (proof-of-concept op OpenAI) is verwijderd, ook uit compose, start.sh en CI.
+- Admin › Workspaces (`/api/admin/workspaces`, `PUT …/:id/model`): twee keuzes, EU of global, alleen
+  voor een ZUID-beheerder; de wijziging staat in het audit-spoor als `workspace.model_changed`.
+
+### Controle stap 3 (4 september 2026)
+
+| Controle | Uitkomst |
+|---|---|
+| `bun run format:check` · `lint` · `typecheck` (server, app, worker, agent-langgraph) · app build | groen |
+| `grep OPENAI_API_KEY\|GOOGLE_API_KEY server/src agent-langgraph/src` | 0 regels buiten commentaar |
+| Boot met ADC van Mitch (`gcloud auth application-default login`), zonder enige modelsleutel | start; `POST /api/w/zuid/route` kiest de SEA Specialist met een reden, geen terugval |
+| Chatbeurt via de runtime in workspace zuid (`gemini-2.5-pro`, `europe-west4`) | antwoord "Orchestrator van Managed Growth."; 5 events in `thread_events` |
+| `PUT /api/admin/workspaces/<south>/model` naar `global` + `gemini-3.1-pro-preview`, daarna een chatbeurt in south | antwoord op Gemini 3.1 ("…dat ik Gemini ben…"); terug naar EU 200; `us-central1` 400 |
+| `agent-langgraph` met `BOT_PROVIDER=vertex` | `/health` meldt provider vertex, een AG-UI-beurt geeft RUN_STARTED…RUN_FINISHED met tekst |
+| `tests/copilot.test.ts` · `tool-selection.integration.test.ts` · `compose.test.ts` · agent-langgraph-tests | groen (de aimock spreekt OpenAI; de fabriek geeft de tests een OpenAI-model naar de mock) |
+
+Niet gedaan: een klant-lead die de modelkeuze ziet maar niet kan wijzigen in de app (alleen de
+admin-pagina bestaat; de API weigert niet-ZUID met 403). Anthropic op Vertex bewust niet.
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

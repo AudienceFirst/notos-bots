@@ -56,7 +56,7 @@ A Bot is any endpoint speaking [AG-UI](https://github.com/ag-ui-protocol/ag-ui),
 
 - Docker, for PostgreSQL and the shipped Bots.
 - [Bun](https://bun.sh) 1.3+, for the app and API server.
-- A model key. The proof-of-concept Bot uses OpenAI; the LangGraph Bot can use OpenAI, Anthropic, or Google.
+- Google Cloud credentials for project `mge-zuid` (NOTOS: Gemini runs on Vertex AI through ADC; `gcloud auth application-default login`).
 
 ## Quick start
 
@@ -73,7 +73,7 @@ A Bot is any endpoint speaking [AG-UI](https://github.com/ag-ui-protocol/ag-ui),
 
 2. Fill the remaining required values:
 
-   - `OPENAI_API_KEY`
+   - nothing for the model: NOTOS runs Gemini on Vertex AI with your Google Cloud credentials (`gcloud auth application-default login`)
 
    NOTOS: there is no CopilotKit Intelligence to sign up for; conversations live in the Postgres
    from `docker-compose.yml`. The example `KEY_ENCRYPTION_KEY` is public and fine locally; generate your own with:

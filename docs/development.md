@@ -9,8 +9,8 @@ cp .env.example .env
 bun install
 ```
 
-NOTOS: there is no CopilotKit Intelligence to provision. Add `OPENAI_API_KEY` (until stap 3 moves
-the model to Vertex AI) and go.
+NOTOS: there is no CopilotKit Intelligence to provision and no model key. Run
+`gcloud auth application-default login` once; the Bots run Gemini on Vertex AI in `mge-zuid`.
 
 Start the stack:
 

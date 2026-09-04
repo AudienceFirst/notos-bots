@@ -739,6 +739,78 @@ export function createApp(
       });
     },
   );
+  /*
+   * NOTOS: the workspaces, and per workspace which model runs where (stap 3). Two choices only:
+   * `europe-west4` with Gemini 2.5 stays in the EU; `global` with Gemini 3.x leaves it. A client
+   * lead sees the choice on their workspace and cannot change it; only a ZUID administrator can.
+   */
+  app.get("/api/admin/workspaces", requireUser, async (context) => {
+    const denied = requireAdmin(context);
+    if (denied) return denied;
+    if (!workspaceStore) {
+      return context.json({ error: "Workspaces are not configured." }, 503);
+    }
+    return context.json({
+      workspaces: (await workspaceStore.list()).map((workspace) => ({
+        id: workspace.id,
+        notosClientId: workspace.slug,
+        displayName: workspace.displayName,
+        kind: workspace.kind,
+        vertexLocation: workspace.vertexLocation,
+        defaultModel: workspace.defaultModel,
+      })),
+    });
+  });
+  app.put("/api/admin/workspaces/:id/model", requireUser, async (context) => {
+    const denied = requireAdmin(context);
+    if (denied) return denied;
+    if (!workspaceStore) {
+      return context.json({ error: "Workspaces are not configured." }, 503);
+    }
+    if (context.var.actor.isInternal !== true) {
+      return context.json({ error: "geen toegang tot deze workspace" }, 403);
+    }
+    const body = (await context.req.json().catch(() => null)) as {
+      vertexLocation?: unknown;
+      defaultModel?: unknown;
+    } | null;
+    const location =
+      typeof body?.vertexLocation === "string"
+        ? body.vertexLocation.trim()
+        : "";
+    const model =
+      typeof body?.defaultModel === "string" ? body.defaultModel.trim() : "";
+    if (!["europe-west4", "global"].includes(location) || !model) {
+      return context.json(
+        {
+          error:
+            "vertexLocation must be europe-west4 or global, and defaultModel must be named.",
+        },
+        400,
+      );
+    }
+    const workspace = await workspaceStore.byId(context.req.param("id"));
+    if (!workspace) return context.json({ error: "No such workspace." }, 404);
+    await workspaceStore.updateSettings(workspace.id, {
+      vertexLocation: location,
+      defaultModel: model,
+    });
+    if (auditStore) {
+      await recordAuditEvent(auditStore, {
+        actorUserId: context.var.actor.id,
+        eventType: "configuration.changed",
+        targetType: "workspace",
+        targetId: workspace.id,
+        payload: {
+          setting: "workspace.model",
+          vertexLocation: location,
+          defaultModel: model,
+        },
+      }).catch(() => undefined);
+    }
+    return context.json({ ok: true });
+  });
+
   app.get("/api/admin/package", requireUser, async (context) => {
     const denied = requireAdmin(context);
     if (denied) return denied;

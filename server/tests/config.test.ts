@@ -53,8 +53,9 @@ describe("deployment configuration", () => {
       clientsFile: undefined,
     });
     expect(config.model).toEqual({
-      credentialSecretRef: "openai-api-key",
-      defaultModel: "gpt-5.6-terra",
+      project: "mge-zuid",
+      defaultLocation: "europe-west4",
+      defaultModel: "gemini-2.5-pro",
     });
   });
 

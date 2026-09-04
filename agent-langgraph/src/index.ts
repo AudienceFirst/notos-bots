@@ -1,19 +1,16 @@
 import type { BaseEvent, RunAgentInput } from "@ag-ui/core";
 import { EventEncoder } from "@ag-ui/encoder";
-import { ChatAnthropic } from "@langchain/anthropic";
 import { type AIMessage, ToolMessage } from "@langchain/core/messages";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatVertexAI } from "@langchain/google-vertexai";
 import {
   END,
   MessagesAnnotation,
   START,
   StateGraph,
 } from "@langchain/langgraph";
-import { ChatOpenAI } from "@langchain/openai";
 import { serve } from "bun";
 import { hasManagedAgentToken } from "../../shared/agent-authorisation";
 import { toLangChainMessages } from "./history";
-import { readReasoningEffort } from "./model-options";
 import { streamRun } from "./stream";
 
 /**
@@ -59,110 +56,20 @@ if (!MANAGED_AGENT_TOKEN) {
  *
  * The default is unchanged so the two shipped Bots stay comparable out of the box.
  */
-const PROVIDER = (process.env.BOT_PROVIDER ?? "openai").toLowerCase();
-/*
- * An unset model and an empty one are the same thing.
- *
- * `??` only catches undefined, and a compose file passing `BOT_MODEL: ${BOT_MODEL:-}` hands this an
- * empty string, which is a value. The agent then asked its provider for a model named "" and the
- * run died with "you must provide a model parameter", which reads as a broken Bot rather than as
- * missing configuration.
- */
-const MODEL = process.env.BOT_MODEL?.trim() || defaultModelFor(PROVIDER);
-/**
- * OpenAI only. Its newer models require the Responses API, which the integration handles.
- *
- * Inferred from the model rather than left to a separate switch. `gpt-5.6-*` rejects function tools
- * on `/v1/chat/completions`, so a deployment that set `BOT_MODEL` to one and did not also know about
- * this flag got a Bot that started, looked healthy, and failed on its first tool call. The switch is
- * still honoured, so a model this list has not heard of can be told to use it.
- */
-const NEEDS_RESPONSES_API = /^gpt-5\.[6-9]|^gpt-[6-9]/.test(MODEL);
-const USE_RESPONSES_API =
-  process.env.BOT_RESPONSES_API === "true" || NEEDS_RESPONSES_API;
-/**
- * OpenAI only, and the same variable the API server reads for its built-in agents.
- *
- * Unset, `openai` means OpenAI. Set, it means any endpoint speaking that API: a gateway in front of
- * several providers, a proxy, or a model on hardware you control. The integration owns the HTTP, so
- * this is a base URL rather than another provider branch, and `BOT_MODEL` is sent verbatim because
- * an endpoint names its own catalogue.
- */
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL?.trim() || undefined;
-/**
- * The same idea for the other two providers, under the names the API server already reads.
- *
- * Sharing the variable names is the point: one line moves the built-in agents and this Bot
- * together, and a deployment cannot end up with half of itself pointed somewhere else.
- */
-const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL?.trim() || undefined;
-const GOOGLE_BASE_URL =
-  process.env.GOOGLE_GENERATIVE_AI_BASE_URL?.trim() || undefined;
-
-/**
- * OpenAI only, and Responses API only: how hard this Bot is allowed to think.
- *
- * Checked here rather than sent onward and forgotten. An effort the API does not have is dropped
- * somewhere down the stack, and a Bot that starts, looks healthy and then thinks for as long as it
- * likes is a worse outcome than one that refuses to start and says why.
- */
-const { effort: REASONING_EFFORT, problem: REASONING_PROBLEM } =
-  readReasoningEffort(process.env.BOT_REASONING_EFFORT);
-if (REASONING_PROBLEM) {
-  console.error(REASONING_PROBLEM);
-  process.exit(1);
-}
-/*
- * The two ways this setting would reach an API with nowhere to put it.
- *
- * Anthropic and Google express thinking budgets differently, and on `/v1/chat/completions` the
- * field does not exist at all. Refusing is the same call the issue makes about invalid values:
- * configuration that goes nowhere is worse than configuration that is absent, because the Bot looks
- * configured either way. Both messages name the variable that would make it work.
- */
-if (REASONING_EFFORT && PROVIDER !== "openai") {
+// NOTOS: Gemini on Vertex AI through ADC, and nothing else (stap 3). Upstream offered OpenAI,
+// Anthropic and Google AI Studio behind their own keys; this deployment holds no model key at all.
+const PROVIDER = "vertex";
+const VERTEX_PROJECT = process.env.GOOGLE_VERTEX_PROJECT?.trim() || "mge-zuid";
+const VERTEX_LOCATION =
+  process.env.GOOGLE_VERTEX_LOCATION?.trim() || "europe-west4";
+const MODEL = process.env.BOT_MODEL?.trim() || "gemini-2.5-pro";
+const USE_RESPONSES_API = false;
+if (
+  process.env.BOT_PROVIDER &&
+  process.env.BOT_PROVIDER.toLowerCase() !== "vertex"
+) {
   console.error(
-    `BOT_REASONING_EFFORT is OpenAI's setting, and BOT_PROVIDER=${PROVIDER}. Unset it, or set BOT_PROVIDER=openai.`,
-  );
-  process.exit(1);
-}
-if (REASONING_EFFORT && !USE_RESPONSES_API) {
-  console.error(
-    `BOT_REASONING_EFFORT needs the Responses API, and BOT_MODEL=${MODEL} is not being run on it. Use a model that requires it, or set BOT_RESPONSES_API=true.`,
-  );
-  process.exit(1);
-}
-
-function defaultModelFor(provider: string): string {
-  if (provider === "anthropic") return "claude-sonnet-4-5";
-  if (provider === "google") return "gemini-2.5-flash";
-  return "gpt-5.5";
-}
-
-/**
- * The key this provider needs, checked at startup rather than on the first run.
- *
- * Refusing to start matches the computer-token posture:
- * a missing key should fail in front of whoever is deploying, not as a conversation that errors in
- * front of somebody trying to use it.
- */
-const KEY_VARIABLE: Record<string, string> = {
-  openai: "OPENAI_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-  google: "GOOGLE_API_KEY",
-};
-
-const keyVariable = KEY_VARIABLE[PROVIDER];
-if (!keyVariable) {
-  console.error(
-    `BOT_PROVIDER=${PROVIDER} is not one this Bot knows. Use openai, anthropic or google.`,
-  );
-  process.exit(1);
-}
-const API_KEY = process.env[keyVariable]?.trim();
-if (!API_KEY) {
-  console.error(
-    `${keyVariable} is not set, and BOT_PROVIDER=${PROVIDER} needs it. This Bot cannot answer without a model.`,
+    `BOT_PROVIDER=${process.env.BOT_PROVIDER} is not offered here: this Bot runs Gemini on Vertex AI. Unset it.`,
   );
   process.exit(1);
 }
@@ -191,33 +98,12 @@ function toBoundTools(input: RunAgentInput) {
  * rest of this file does not know which one it got.
  */
 function buildModel() {
-  if (PROVIDER === "anthropic") {
-    return new ChatAnthropic({
-      model: MODEL,
-      apiKey: API_KEY,
-      streaming: true,
-      ...(ANTHROPIC_BASE_URL ? { anthropicApiUrl: ANTHROPIC_BASE_URL } : {}),
-    });
-  }
-  if (PROVIDER === "google") {
-    return new ChatGoogleGenerativeAI({
-      model: MODEL,
-      apiKey: API_KEY,
-      streaming: true,
-      ...(GOOGLE_BASE_URL ? { baseUrl: GOOGLE_BASE_URL } : {}),
-    });
-  }
-  return new ChatOpenAI({
+  // Authenticated by google-auth-library: the service account on Cloud Run, ADC on a laptop.
+  return new ChatVertexAI({
     model: MODEL,
-    apiKey: API_KEY,
     streaming: true,
-    ...(OPENAI_BASE_URL ? { configuration: { baseURL: OPENAI_BASE_URL } } : {}),
-    ...(USE_RESPONSES_API ? { useResponsesApi: true } : {}),
-    /*
-     * `reasoning.effort`, not the `reasoningEffort` convenience field: the integration deprecated
-     * the latter in favour of merging it into this object, and one of them is the one that survives.
-     */
-    ...(REASONING_EFFORT ? { reasoning: { effort: REASONING_EFFORT } } : {}),
+    authOptions: { projectId: VERTEX_PROJECT },
+    location: VERTEX_LOCATION,
   });
 }
 

@@ -214,33 +214,6 @@ services:
       retries: 5
 
   # The built-in Bot is an AG-UI endpoint registered the same way as a customer-provided Bot.
-  agent-bot:
-    build:
-      context: .
-      dockerfile: agent-bot/Dockerfile
-    ports:
-      # Loopback, not every interface. The token is the boundary; this means an attacker needs to be
-      # on the machine before they can even try it. Nothing legitimate reaches a Bot from another
-      # host: the server calls it over localhost, and other containers use the compose network.
-      - "127.0.0.1:${BOT_PORT:-4200}:4200"
-    environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      # Server sends this on every call to the managed Bot. It refuses to start without it.
-      MANAGED_AGENT_TOKEN: ${MANAGED_AGENT_TOKEN:-}
-      # Unset means OpenAI. Set, it is any endpoint speaking the same API, and BOT_MODEL is sent
-      # to it verbatim.
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      # gpt-5.5, not the deployment default: this Bot writes /v1/chat/completions by hand, and
-      # gpt-5.6-* rejects function tools there unless reasoning is turned off. Its own variable, so
-      # a BOT_MODEL set for the framework Bot cannot silently take its tools away.
-      BOT_MODEL: ${AGENT_BOT_MODEL:-gpt-5.5}
-    healthcheck:
-      test: ["CMD-SHELL", "bun -e \"await fetch('http://localhost:4200/health')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # The same Bot behavior on a framework, exposed as another AG-UI endpoint and registry row.
   agent-langgraph:
     build:
       context: .
@@ -251,21 +224,17 @@ services:
     environment:
       # The selected provider reads its own key. Models requiring the Responses API use
       # BOT_RESPONSES_API instead of changing the streaming loop here.
-      BOT_PROVIDER: ${BOT_PROVIDER:-openai}
+      # NOTOS: Gemini op Vertex via ADC (stap 3); een sleutel is er niet meer.
+      BOT_PROVIDER: ${BOT_PROVIDER:-vertex}
+      GOOGLE_VERTEX_PROJECT: ${GOOGLE_VERTEX_PROJECT:-mge-zuid}
+      GOOGLE_VERTEX_LOCATION: ${GOOGLE_VERTEX_LOCATION:-europe-west4}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
       # Same server-to-Bot request boundary as agent-bot above.
       MANAGED_AGENT_TOKEN: ${MANAGED_AGENT_TOKEN:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      GOOGLE_GENERATIVE_AI_BASE_URL: ${GOOGLE_GENERATIVE_AI_BASE_URL:-}
       # gpt-5.5, to stay comparable with agent-bot above rather than because 5.6 does not work:
       # set BOT_MODEL to one and the Responses API is switched on for it automatically.
-      BOT_MODEL: ${BOT_MODEL:-gpt-5.5}
-      BOT_RESPONSES_API: ${BOT_RESPONSES_API:-false}
+      BOT_MODEL: ${BOT_MODEL:-gemini-2.5-pro}
       # How hard it thinks, on a model that reasons. Empty leaves the provider's own default.
-      BOT_REASONING_EFFORT: ${BOT_REASONING_EFFORT:-}
       # Where this Bot runs a tool: back through the deployment that granted it, never at the vendor.
       # `host.docker.internal` because the API server runs on the host, not in this network.
       OPENBOT_TOOL_URL: ${OPENBOT_TOOL_URL:-http://host.docker.internal:3001/api/agent-tools/call}

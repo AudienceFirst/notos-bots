@@ -184,8 +184,11 @@ export type DeploymentConfig = {
     notosApiUrl: string | undefined;
     clientsFile: string | undefined;
   };
-  /** NOTOS: the model every built-in Bot runs on until stap 3 moves it to the workspace row. */
-  model: { credentialSecretRef: string; defaultModel: string };
+  /**
+   * NOTOS: Gemini on Vertex AI with ADC, no API key (stap 3). The project is fixed; location and
+   * model are the deployment's defaults, and a workspace row may choose its own.
+   */
+  model: { project: string; defaultLocation: string; defaultModel: string };
   runtime: RuntimeCapabilities;
   /**
    * How long a Bot's stream may say nothing before this deployment ends the turn, in milliseconds.
@@ -822,9 +825,10 @@ export function loadConfig(
       clientsFile: optional(environment, "NOTOS_CLIENTS_FILE"),
     },
     model: {
-      credentialSecretRef:
-        optional(environment, "MODEL_CREDENTIAL_REF") ?? "openai-api-key",
-      defaultModel: optional(environment, "MODEL_DEFAULT") ?? "gpt-5.6-terra",
+      project: optional(environment, "GOOGLE_VERTEX_PROJECT") ?? "mge-zuid",
+      defaultLocation:
+        optional(environment, "VERTEX_LOCATION") ?? "europe-west4",
+      defaultModel: optional(environment, "MODEL_DEFAULT") ?? "gemini-2.5-pro",
     },
     runtime: runtimeCapabilities(),
     agentStallTimeoutMs: agentStallTimeoutMs(environment),

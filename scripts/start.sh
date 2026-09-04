@@ -215,7 +215,7 @@ fi
 # `docker compose up -d` is declarative and does nothing for a service whose configuration has not
 # changed, so naming them all costs a comparison and buys the guarantee that what is running is what
 # this run configured.
-for svc in agent-computer agent-bot agent-langgraph; do
+for svc in agent-computer agent-langgraph; do
   SERVICES+=("$svc")
 done
 
@@ -228,7 +228,6 @@ if ! docker compose run --rm --build migrate >"$LOGS/migrate.log" 2>&1; then
   exit 1
 fi
 wait_for "http://localhost:$COMPUTER_PORT/health" "agent-computer"
-wait_for "http://localhost:$BOT_PORT/health" "agent-bot"
 wait_for "http://localhost:$LANGGRAPH_PORT/health" "agent-langgraph"
 
 for table in agent_profiles agent_preferences; do

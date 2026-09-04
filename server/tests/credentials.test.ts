@@ -257,7 +257,8 @@ describe("model credential resolution", () => {
     ).resolves.toBe("stored-openai-key");
   });
 
-  test("uses OPENAI_API_KEY when no stored credential exists", async () => {
+  test("ignores OPENAI_API_KEY in the environment: the model needs no key any more", async () => {
+    // NOTOS: Vertex through ADC (stap 3). A leftover key must not quietly become a credential.
     await expect(
       resolveModelApiKey({
         encryptionKey: key,
@@ -266,7 +267,7 @@ describe("model credential resolution", () => {
         keyId: "openai-api-key",
         environment: { OPENAI_API_KEY: " environment-openai-key " },
       }),
-    ).resolves.toBe("environment-openai-key");
+    ).resolves.toBeNull();
   });
 
   test("returns null when neither credential source is configured", async () => {

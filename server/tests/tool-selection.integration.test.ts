@@ -8,6 +8,7 @@ import {
 } from "bun:test";
 import { buildAGUITextResponse, LLMock } from "@copilotkit/aimock";
 import { AGUIMock } from "@copilotkit/aimock/agui";
+import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
 import {
   buildAgents,
@@ -16,6 +17,7 @@ import {
 } from "../src/copilot";
 import type { Selection } from "../src/plugins/selection";
 import type { GrantedTool } from "../src/plugins/tools";
+import type { ModelFactory } from "../src/notos/model";
 import { createModelCompleter } from "../src/routing/model";
 
 /**
@@ -33,7 +35,16 @@ import { createModelCompleter } from "../src/routing/model";
  * built-in Bot carries them in its configuration, a remote one is sent them in the AG-UI run body.
  */
 
-const model: RuntimeModel = { provider: "openai", defaultModel: "gpt-5.5" };
+// NOTOS: the mock speaks OpenAI's API, so the factory hands the runtime an OpenAI model pointed at
+// it; production hands out Vertex models the same way (stap 3).
+const model: RuntimeModel = {
+  provider: "vertex",
+  defaultModel: "gpt-5.5",
+  defaultLocation: "europe-west4",
+};
+let modelFor: ModelFactory = () => {
+  throw new Error("the mock has not started yet");
+};
 
 /** Sixteen tools across two servers: over the floor, so selection has something to do. */
 const granted: GrantedTool[] = [
@@ -82,6 +93,8 @@ beforeAll(async () => {
   const url = await llm.start();
   process.env.OPENAI_BASE_URL = url;
   process.env.OPENAI_API_KEY = "test-key";
+  const openai = createOpenAI({ apiKey: "test-key", baseURL: url });
+  modelFor = () => openai("gpt-5.5");
 
   remote.onPredicate(
     (input) => {
@@ -133,10 +146,7 @@ const recorded: Selection<GrantedTool>[] = [];
 function selection(overrides: { floor?: number } = {}) {
   return {
     loadSkills: async () => skills,
-    choose: createModelCompleter({
-      model,
-      resolveApiKey: async () => "test-key",
-    }),
+    choose: createModelCompleter({ modelFor }),
     record: async (_botId: string, entry: Selection<GrantedTool>) => {
       recorded.push(entry);
     },
@@ -200,7 +210,7 @@ describe("a built-in Bot", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -231,7 +241,7 @@ describe("a built-in Bot", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -260,7 +270,7 @@ describe("a built-in Bot", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -286,7 +296,7 @@ describe("a built-in Bot", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -309,7 +319,7 @@ describe("a built-in Bot", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -351,7 +361,7 @@ describe("a remote Bot", () => {
     const agents = await buildAgents(
       [remoteAgent()],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -385,7 +395,7 @@ describe("a remote Bot", () => {
     const agents = await buildAgents(
       [remoteAgent()],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       () => "signed-assertion",
@@ -423,7 +433,7 @@ describe("when selection cannot help", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => few,
       undefined,
@@ -453,7 +463,7 @@ describe("when selection cannot help", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -482,7 +492,7 @@ describe("when selection cannot help", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -507,7 +517,7 @@ describe("the discovery record", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -530,7 +540,7 @@ describe("the discovery record", () => {
     const agents = await buildAgents(
       [builtIn],
       model,
-      "test-key",
+      modelFor,
       undefined,
       async () => granted,
       undefined,
@@ -538,10 +548,7 @@ describe("the discovery record", () => {
       undefined,
       {
         loadSkills: async () => skills,
-        choose: createModelCompleter({
-          model,
-          resolveApiKey: async () => "test-key",
-        }),
+        choose: createModelCompleter({ modelFor }),
         record: async () => {
           throw new Error("audit table is gone");
         },

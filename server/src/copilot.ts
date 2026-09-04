@@ -15,6 +15,8 @@ import { sanitizeSeededHistory } from "./agents/history-sanitize";
 import type { AgentActor } from "./agents/profile-types";
 import type { AgentFetch, StallGuard } from "./channels/stall-guard";
 import type { DeploymentConfig } from "./config";
+import type { LanguageModel } from "ai";
+import type { ModelFactory } from "./notos/model";
 import type { PostgresAgentRunner } from "./notos/runner";
 import type { SelectableSkill, Selection } from "./plugins/selection";
 import {
@@ -46,6 +48,8 @@ type RegisteredBuiltInAgent = {
   name: string;
   type: "built_in";
   systemPrompt: string;
+  /** NOTOS: the workspace's model choice (stap 3). Absent means the deployment default. */
+  model?: { location: string; name: string };
 };
 
 type RegisteredRemoteAgent = {
@@ -117,9 +121,11 @@ export function standingRoleMessage(
   };
 }
 
+/** NOTOS: every built-in Bot runs on Gemini via Vertex AI; a workspace may pick model and location (stap 3). */
 export type RuntimeModel = {
-  provider: "openai";
+  provider: "vertex";
   defaultModel: string;
+  defaultLocation: string;
 };
 
 type RuntimeAgentRow = {
@@ -129,6 +135,8 @@ type RuntimeAgentRow = {
   configuration: unknown;
   title: string;
   roleDescription: string;
+  /** NOTOS: from the workspace row, when the loader joined it (stap 3). */
+  model?: { location: string; name: string } | null;
 };
 
 export function registeredAgentFromRow(
@@ -148,6 +156,7 @@ export function registeredAgentFromRow(
           name: row.name,
           type: "built_in",
           systemPrompt: trimmedSystemPrompt,
+          ...(row.model ? { model: row.model } : {}),
         }
       : null;
   }
@@ -183,47 +192,33 @@ function isHttpUrl(value: string) {
 export function builtInAgentConfiguration(
   agent: RegisteredBuiltInAgent,
   model: RuntimeModel,
-  apiKey: string | null,
-  /**
-   * What this Bot may call, resolved for the person asking.
-   *
-   * Handed to the agent rather than registered by the surface, so a run needs no browser. These are
-   * not raw MCP servers on purpose: each one executes through the plugin store, which checks the
-   * grant, evaluates the policy and writes the audit row. Passing `mcpServers` here instead would
-   * let the agent reach a vendor directly and walk around all three.
-   */
+  /** NOTOS: the model comes from a factory (Vertex via ADC), not from a key (stap 3). */
+  modelFor: ModelFactory,
   tools: GrantedTool[] = [],
-  /**
-   * What this Bot should know about the computer, when this deployment has one.
-   *
-   * Appended to the role rather than replacing it: the package says what the Bot is for, this says
-   * what its hands are. Absent leaves the role alone, which is right for a deployment with no
-   * computer configured, where the browser routes are not mounted and a Bot promised a browser would
-   * be promising something that does not exist.
-   */
   computerGuidance?: string,
-  /**
-   * Vendors this deployment connects to, whether or not this Bot holds any of their tools.
-   *
-   * A Bot holding nothing was told nothing, so it treated a connected vendor as an ordinary website
-   * and browsed to it. See `grantedToolGuidance`.
-   */
   connectedVendors: readonly string[] = [],
 ): BuiltInAgentConfiguration {
-  if (!apiKey) {
+  let languageModel: LanguageModel;
+  try {
+    languageModel = modelFor({
+      location: agent.model?.location ?? model.defaultLocation,
+      name: agent.model?.name ?? model.defaultModel,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
     return {
       type: "custom",
       // biome-ignore lint/correctness/useYield: this agent must fail when iteration starts.
       factory: async function* () {
         throw new Error(
-          `Model credential is not configured for ${agent.name}. Add the package credential or set OPENAI_API_KEY.`,
+          `The model is not available for ${agent.name}: ${reason}. Check GOOGLE_VERTEX_PROJECT and the credentials this server runs with.`,
         );
       },
     };
   }
 
   return {
-    model: `${model.provider}/${model.defaultModel}`,
+    model: languageModel,
     /*
      * The package's role, then what this Bot actually holds, then the computer.
      *
@@ -246,7 +241,6 @@ export function builtInAgentConfiguration(
         : []),
       ...(computerGuidance ? [computerGuidance] : []),
     ].join("\n\n"),
-    apiKey,
     /*
      * A run stops after one step unless told otherwise, which for a Bot with tools means it calls
      * one and never speaks: the tool executes, the result arrives, and the run ends before the model
@@ -277,7 +271,7 @@ const TOOL_STEPS = 8;
 export async function buildAgents(
   agents: RegisteredAgent[],
   model: RuntimeModel,
-  apiKey: string | null,
+  modelFor: ModelFactory,
   /** Absent leaves every stream unwatched, which is what an unconfigured timeout means. */
   stallGuard?: StallGuard,
   /** Absent leaves every Bot with no tools, which is the correct answer when nothing is granted. */
@@ -311,7 +305,7 @@ export async function buildAgents(
         await buildAgent(
           agent,
           model,
-          apiKey,
+          modelFor,
           stallGuard,
           loadTools,
           signRun,
@@ -329,7 +323,7 @@ export async function buildAgents(
 async function buildAgent(
   agent: RegisteredAgent,
   model: RuntimeModel,
-  apiKey: string | null,
+  modelFor: ModelFactory,
   stallGuard: StallGuard | undefined,
   loadTools: LoadToolsForBot,
   signRun?: SignRun,
@@ -419,7 +413,7 @@ async function buildAgent(
       builtInAgentConfiguration(
         agent,
         model,
-        apiKey,
+        modelFor,
         tools,
         computerGuidance,
         connectedVendors,
@@ -841,7 +835,7 @@ class UnavailableAgent extends AbstractAgent {
 export async function resolveRuntimeAgents(
   loadAgents: () => Promise<RegisteredAgent[]>,
   model: RuntimeModel,
-  resolveModelApiKey: () => Promise<string | null>,
+  modelFor: ModelFactory,
   stallGuard?: StallGuard,
   loadTools?: LoadToolsForBot,
   signRun?: SignRun,
@@ -876,13 +870,10 @@ export async function resolveRuntimeAgents(
   // what that means, exactly as it would have from a roster that did not contain it.
   if (registered.length === 0) return {};
 
-  const apiKey = registered.some((agent) => agent.type === "built_in")
-    ? await resolveModelApiKey()
-    : null;
   return buildAgents(
     registered,
     model,
-    apiKey,
+    modelFor,
     stallGuard,
     loadTools,
     signRun,
@@ -930,7 +921,7 @@ export function createRequestAgents(
   identifyActor: IdentifyActor,
   loadAgents: LoadAgentsForActor,
   model: RuntimeModel,
-  resolveModelApiKey: () => Promise<string | null>,
+  modelFor: ModelFactory,
   /**
    * Shared across every request rather than built per run, because it is the thing that has to
    * outlive one: the sweep that notices a silent stream has to still be running after the request
@@ -967,7 +958,7 @@ export function createRequestAgents(
     return resolveRuntimeAgents(
       () => loadAgents(actor),
       model,
-      resolveModelApiKey,
+      modelFor,
       stallGuard,
       loadToolsForActor?.(actor.id),
       signRunForActor?.(actor.id),
@@ -991,7 +982,7 @@ export function mountCopilotRuntime(
   config: DeploymentConfig,
   model: RuntimeModel,
   loadAgents: LoadAgentsForActor,
-  resolveModelApiKey: () => Promise<string | null>,
+  modelFor: ModelFactory,
   identifyActor: IdentifyActor,
   /**
    * The watch on Bot streams. Not optional, unlike the parameter it forwards to: a guard built from
@@ -1046,7 +1037,7 @@ export function mountCopilotRuntime(
     const agents = await resolveRuntimeAgents(
       () => loadAgents(actor),
       model,
-      resolveModelApiKey,
+      modelFor,
       stallGuard,
       loadToolsForActor?.(actor.id),
       signRunForActor?.(actor.id),
@@ -1095,7 +1086,7 @@ export function mountCopilotRuntime(
       identifyActor,
       loadAgents,
       model,
-      resolveModelApiKey,
+      modelFor,
       stallGuard,
       loadToolsForActor,
       signRunForActor,

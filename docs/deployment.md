@@ -83,7 +83,7 @@ and the fix would not be available.
 | an identity provider | `GOOGLE_OAUTH_*`, `MICROSOFT_OAUTH_*` or `OKTA_OAUTH_*`, with `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET` and `INITIAL_ADMIN_EMAILS`. See the README |
 | `EMBEDDED_POSTGRES` | `on` to run the database inside the container. Off by default |
 | `KEY_ENCRYPTION_KEY` | base64 32 bytes. `openssl rand -base64 32`. The example key is refused in production |
-| a model key | `OPENAI_API_KEY`, or the provider you configured |
+| `GOOGLE_VERTEX_PROJECT`, `VERTEX_LOCATION`, `MODEL_DEFAULT` | NOTOS: Gemini on Vertex AI through the service account; no model key (stap 3) |
 
 NOTOS: no CopilotKit Intelligence and no licence. Conversations live in the database named by
 `DATABASE_URL` (see `docs/NOTOS.md`).

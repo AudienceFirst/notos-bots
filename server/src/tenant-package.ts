@@ -173,7 +173,7 @@ export type TenantPackage = {
   agents: TenantAgent[];
   channels: TenantChannel[];
   model: {
-    provider: "openai";
+    provider: "openai" | "vertex";
     credentialSecretRef: string;
     defaultModel: string;
   };
@@ -438,8 +438,9 @@ export function validateTenantPackage(files: PackageFiles): TenantPackage {
     },
   );
   const model = asRecord(modelYaml.model, "model");
-  if (model.provider !== "openai") {
-    throw new Error("model.provider must be openai");
+  // NOTOS: `vertex` is what every workspace runs on; `openai` stays accepted for an old package (stap 3).
+  if (model.provider !== "openai" && model.provider !== "vertex") {
+    throw new Error("model.provider must be vertex or openai");
   }
   const sources = asList(knowledgeYaml.sources, "knowledge.yaml sources").map(
     (value) => {
@@ -466,7 +467,7 @@ export function validateTenantPackage(files: PackageFiles): TenantPackage {
     agents,
     channels,
     model: {
-      provider: "openai",
+      provider: model.provider,
       credentialSecretRef: requiredString(
         model.credential_secret_ref,
         "model.credential_secret_ref",

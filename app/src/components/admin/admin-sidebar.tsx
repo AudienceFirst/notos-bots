@@ -97,6 +97,12 @@ const GROUPS: {
         linkOptions: { to: "/admin/people" },
       },
       {
+        // NOTOS: which model each workspace runs on, and where (stap 3).
+        title: "Workspaces",
+        icon: IconLayoutGrid,
+        linkOptions: { to: "/admin/workspaces" },
+      },
+      {
         title: "Identity providers",
         icon: IconBuildingBank,
         linkOptions: { to: "/admin/identity-providers" },

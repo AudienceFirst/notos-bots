@@ -131,36 +131,23 @@ where the worker runs rather than a fact about the deployment `loadConfig` descr
 it at the server's own port on a laptop; the Helm chart's routines CronJob points it at the server's
 in-cluster Service address.
 
-## OpenAI-compatible endpoints
+## Model: Gemini on Vertex AI
 
-`OPENAI_BASE_URL` decides where an OpenAI-shaped request is answered. Unset, that is OpenAI. Set, it is any endpoint speaking the same API: a gateway in front of several providers, a proxy, or a model on hardware you control.
+NOTOS: every built-in Bot, the intent router and the skill choice run on Gemini through Vertex AI in
+project `GOOGLE_VERTEX_PROJECT` (default `mge-zuid`), authenticated with Application Default
+Credentials: the service account on Cloud Run, `gcloud auth application-default login` on a laptop.
+There is no `OPENAI_API_KEY` and no `GOOGLE_API_KEY`.
 
-It moves the whole deployment rather than one Bot. The API server reads it for package built-in agents, `agent-bot` reads it for the client it constructs, and `agent-langgraph` reads it for `BOT_PROVIDER=openai`.
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GOOGLE_VERTEX_PROJECT` | `mge-zuid` | The GCP project the calls are billed to and authorised in. |
+| `VERTEX_LOCATION` | `europe-west4` | Default location. `europe-west4` stays in the EU and has Gemini 2.5 only; `global` has Gemini 3.x and leaves the EU. |
+| `MODEL_DEFAULT` | `gemini-2.5-pro` | Default model. |
 
-The other two providers work the same way under their own names, because they are different APIs rather than different URLs for this one: `ANTHROPIC_BASE_URL` and `GOOGLE_GENERATIVE_AI_BASE_URL`. All three are the names the API server already reads, so one line moves the built-in agents and the Bots together and a deployment cannot end up with half of itself pointed somewhere else.
-
-Model names travel verbatim, so use whatever the endpoint publishes. An endpoint that namespaces its catalogue wants both halves of the name, in `BOT_MODEL` and in the tenant package's `default_model` alike.
-
-A gateway that fronts several providers behind one key is addressed the usual way:
-
-```sh
-OPENAI_BASE_URL=https://gateway.internal/v1
-OPENAI_API_KEY=...
-BOT_MODEL=openai/gpt-5.6-terra
-```
-
-and in the tenant package, where the name is namespaced the same way:
-
-```yaml
-model:
-  provider: openai
-  credential_secret_ref: openai-api-key
-  default_model: openai/gpt-5.6-terra
-```
-
-Most gateways publish a model list, which is the way to check a name before configuring it.
-
-Two things are worth knowing before pointing a deployment at any gateway. Not every catalogue entry accepts tools, and a Bot without tool calling cannot drive its computer; the model list says which do. And `BOT_RESPONSES_API=true` needs an endpoint that implements the Responses API, not only chat completions.
+A workspace may choose its own pair under Admin › Workspaces (`deployment_packages.vertex_location`
+and `default_model`); the change applies to the next run. The LangGraph Bot reads `BOT_PROVIDER=vertex`,
+`GOOGLE_VERTEX_PROJECT` and `GOOGLE_VERTEX_LOCATION`. Anthropic on Vertex is not offered: publisher
+quota is zero for new projects and needs a separate request.
 
 ## Authentication
 

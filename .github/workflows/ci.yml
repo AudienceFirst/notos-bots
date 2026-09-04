@@ -211,10 +211,7 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      # The Bots are not root workspaces and each keeps its own lockfile. The startup tests spawn
-      # the real entrypoint, so its dependencies have to be installed as well.
-      - run: bun install --frozen-lockfile
-        working-directory: agent-bot
+      # NOTOS: agent-bot (the OpenAI proof-of-concept) is gone; the LangGraph Bot keeps its own lockfile.
       # Same for the LangGraph Bot: its history tests import @langchain/core, which lives in that
       # Bot's own tree and not in the root one.
       - run: bun install --frozen-lockfile

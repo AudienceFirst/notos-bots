@@ -8,6 +8,7 @@ import {
   agents,
   channelAgents,
   channelMemberships,
+  deploymentPackages,
 } from "../db/schema";
 import { agentAuthHeaders, authFromConfiguration } from "./auth-header";
 import type { AgentActor } from "./profile-types";
@@ -83,9 +84,15 @@ function selectActiveAgents(database: Database, actor: AgentActor) {
       configuration: agents.configuration,
       title: agentProfiles.title,
       roleDescription: agentProfiles.roleDescription,
+      // NOTOS: the workspace's model choice, so a Bot runs where its workspace said (stap 3).
+      model: {
+        location: deploymentPackages.vertexLocation,
+        name: deploymentPackages.defaultModel,
+      },
     })
     .from(agents)
     .innerJoin(agentProfiles, eq(agentProfiles.agentId, agents.id))
+    .leftJoin(deploymentPackages, eq(deploymentPackages.id, agents.workspaceId))
     .where(
       and(
         isNull(agentProfiles.deletedAt),

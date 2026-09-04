@@ -53,7 +53,6 @@ import {
 import {
   createCredentialAdminService,
   createCredentialStore,
-  resolveModelApiKey,
 } from "./credentials";
 import { createDatabase } from "./db/client";
 import { agents, intelligenceChannelMappings } from "./db/schema";
@@ -64,6 +63,7 @@ import {
   type NotosIdentity,
   RevokedError,
 } from "./notos/auth";
+import { createVertexModels } from "./notos/model";
 import {
   createThreadLock,
   createThreadStore,
@@ -205,10 +205,16 @@ const threadIdentity = createThreadIdentity(
   config.deploymentId ?? "notos-bots",
 );
 const deploymentModel = {
-  provider: "openai" as const,
-  credentialSecretRef: config.model.credentialSecretRef,
+  provider: "vertex" as const,
   defaultModel: config.model.defaultModel,
+  defaultLocation: config.model.defaultLocation,
 };
+// NOTOS: Gemini on Vertex AI through ADC; the one factory every Bot, the router and the skill choice use (stap 3).
+const modelFor = createVertexModels({
+  project: config.model.project,
+  location: config.model.defaultLocation,
+  name: config.model.defaultModel,
+});
 const workspaceStore = createWorkspaceStore(database);
 const syncWorkspaces = createWorkspaceSync({
   database,
@@ -223,7 +229,10 @@ const syncWorkspaces = createWorkspaceSync({
           );
         },
   packagesRoot: config.workspaces.dir,
-  model: deploymentModel,
+  model: {
+    credentialSecretRef: "vertex-adc",
+    defaultModel: config.model.defaultModel,
+  },
 });
 const channelStore = createChannelStore(
   database,
@@ -535,17 +544,7 @@ const stallGuard = createStallGuard({
 });
 
 const intentRouter = createIntentRouter({
-  complete: createModelCompleter({
-    model: deploymentModel,
-    resolveApiKey: () =>
-      resolveModelApiKey({
-        encryptionKey: config.keyEncryptionKey,
-        reader: credentialStore,
-        provider: deploymentModel.provider,
-        keyId: deploymentModel.credentialSecretRef,
-        environment: process.env,
-      }),
-  }),
+  complete: createModelCompleter({ modelFor }),
 });
 
 /**
@@ -554,17 +553,7 @@ const intentRouter = createIntentRouter({
  * Built once rather than per request, because it holds nothing about a person: the key is resolved
  * on every call, so a credential rotated a moment ago is used by the next run.
  */
-const chooseSkills = createModelCompleter({
-  model: deploymentModel,
-  resolveApiKey: () =>
-    resolveModelApiKey({
-      encryptionKey: config.keyEncryptionKey,
-      reader: credentialStore,
-      provider: deploymentModel.provider,
-      keyId: deploymentModel.credentialSecretRef,
-      environment: process.env,
-    }),
-});
+const chooseSkills = createModelCompleter({ modelFor });
 
 /*
  * WHY THESE ARE NAMED CONSTANTS RATHER THAN ARGUMENTS WRITTEN INLINE.
@@ -576,16 +565,6 @@ const chooseSkills = createModelCompleter({
  * another way at three in the morning, with nothing to point at. So each of these is written once and
  * passed to both.
  */
-
-/** The deployment's model key, resolved per call so a credential rotated a moment ago is used next. */
-const resolveRuntimeModelApiKey = () =>
-  resolveModelApiKey({
-    encryptionKey: config.keyEncryptionKey,
-    reader: credentialStore,
-    provider: deploymentModel.provider,
-    keyId: deploymentModel.credentialSecretRef,
-    environment: process.env,
-  });
 
 // Tools run here, not in the browser. Each one still executes through the plugin store, so the
 // grant, the policy and the audit row are exactly where they were.
@@ -755,7 +734,7 @@ const buildAgentFor = async ({
   const runtimeAgents = await resolveRuntimeAgents(
     () => loadAgentsForActor(actor),
     deploymentModel,
-    resolveRuntimeModelApiKey,
+    modelFor,
     stallGuard,
     loadToolsForActor(actor.id),
     signRunForActor(actor.id),
@@ -812,7 +791,7 @@ const copilotRuntime = mountCopilotRuntime(
   config,
   deploymentModel,
   loadAgentsForActor,
-  resolveRuntimeModelApiKey,
+  modelFor,
   identifyActor,
   stallGuard,
   threadRunner,

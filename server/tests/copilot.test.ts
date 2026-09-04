@@ -14,6 +14,18 @@ import {
 } from "../src/copilot";
 import { grantedToolGuidance } from "../src/plugins/tools";
 
+// NOTOS: the model is a Vertex LanguageModel from a factory; tests hand in a stand-in (stap 3).
+const VERTEX = {
+  provider: "vertex" as const,
+  defaultModel: "gemini-2.5-pro",
+  defaultLocation: "europe-west4",
+};
+const FAKE_MODEL = {
+  specificationVersion: "v3",
+  provider: "fake",
+  modelId: "fake",
+} as never;
+
 // Every agent row now joins its profile, so the row a coworker is built from always names it.
 const assistantRow = {
   id: "general-assistant",
@@ -88,7 +100,13 @@ describe("registered Copilot agents", () => {
     ).toMatchObject({ endpoint: "https://risk.internal:443/ag-ui" });
   });
 
-  test("configures an OpenAI built-in agent", () => {
+  test("configures a built-in agent on the workspace's model, or the default", () => {
+    // NOTOS: the model is whatever the factory hands out for the choice, not a string plus a key.
+    const asked: unknown[] = [];
+    const modelFor = (choice?: unknown) => {
+      asked.push(choice);
+      return FAKE_MODEL;
+    };
     expect(
       builtInAgentConfiguration(
         {
@@ -97,15 +115,33 @@ describe("registered Copilot agents", () => {
           type: "built_in",
           systemPrompt: "Be helpful.",
         },
-        { provider: "openai", defaultModel: "gpt-5.6-terra" },
-        "openai-secret",
+        VERTEX,
+        modelFor,
       ),
     ).toEqual({
-      model: "openai/gpt-5.6-terra",
+      model: FAKE_MODEL,
       // The provenance rule is unconditional, so even a Bot with no tools and no computer carries
       // it. That Bot needs it most: nothing it says was read anywhere.
       prompt: `Be helpful.\n\n${PROVENANCE_GUIDANCE}`,
-      apiKey: "openai-secret",
+    });
+    expect(asked).toEqual([
+      { location: "europe-west4", name: "gemini-2.5-pro" },
+    ]);
+
+    builtInAgentConfiguration(
+      {
+        id: "zoover--media-manager",
+        name: "Media Manager",
+        type: "built_in",
+        systemPrompt: "Be helpful.",
+        model: { location: "global", name: "gemini-3.1-pro-preview" },
+      },
+      VERTEX,
+      modelFor,
+    );
+    expect(asked[1]).toEqual({
+      location: "global",
+      name: "gemini-3.1-pro-preview",
     });
   });
 
@@ -119,8 +155,10 @@ describe("registered Copilot agents", () => {
           systemPrompt: "Be helpful.",
         },
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      null,
+      VERTEX,
+      () => {
+        throw new Error("Could not load the default credentials");
+      },
     );
     const agent = agents["general-assistant"];
     if (!agent) {
@@ -136,12 +174,12 @@ describe("registered Copilot agents", () => {
             lifecycleError = error;
           },
         }),
-      ).rejects.toThrow("Add the package credential or set OPENAI_API_KEY");
+      ).rejects.toThrow("Could not load the default credentials");
     } finally {
       consoleError.mockRestore();
     }
     expect(lifecycleError?.message).toContain(
-      "Add the package credential or set OPENAI_API_KEY",
+      "Could not load the default credentials",
     );
   });
 
@@ -161,8 +199,8 @@ describe("registered Copilot agents", () => {
           endpoint: "http://risk.internal/ag-ui",
         },
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      "openai-secret",
+      VERTEX,
+      () => FAKE_MODEL,
     );
 
     expect(agents["general-assistant"]).toBeInstanceOf(BuiltInAgent);
@@ -202,7 +240,7 @@ describe("registered Copilot agents", () => {
           endpoint: "http://risk.internal/ag-ui",
         },
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
+      VERTEX,
       "openai-secret",
       stallGuard,
     );
@@ -229,7 +267,7 @@ describe("registered Copilot agents", () => {
         endpoint: "http://risk.internal/ag-ui",
       },
     ];
-    const model = { provider: "openai" as const, defaultModel: "gpt-4.1" };
+    const model = VERTEX;
 
     const plain = (
       await buildAgents(
@@ -296,8 +334,8 @@ describe("registered Copilot agents", () => {
           endpoint: "http://risk.internal/ag-ui",
         },
       ],
-      { provider: "openai" as const, defaultModel: "gpt-4.1" },
-      async () => null,
+      VERTEX,
+      () => FAKE_MODEL,
       undefined,
       undefined,
       undefined,
@@ -361,20 +399,21 @@ describe("registered Copilot agents", () => {
       },
     ];
     let resolutionCount = 0;
-    const resolveModelApiKey = async () => {
+    const modelFor = () => {
       resolutionCount += 1;
-      return resolutionCount === 1 ? "first-secret" : null;
+      if (resolutionCount === 1) return FAKE_MODEL;
+      throw new Error("Could not load the default credentials");
     };
 
     const first = await resolveRuntimeAgents(
       async () => registered,
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      resolveModelApiKey,
+      VERTEX,
+      modelFor,
     );
     const second = await resolveRuntimeAgents(
       async () => registered,
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      resolveModelApiKey,
+      VERTEX,
+      modelFor,
     );
 
     expect(first["general-assistant"]).not.toBe(second["general-assistant"]);
@@ -382,7 +421,7 @@ describe("registered Copilot agents", () => {
     const consoleError = spyOn(console, "error").mockImplementation(() => {});
     try {
       await expect(second["general-assistant"]?.runAgent()).rejects.toThrow(
-        "Add the package credential or set OPENAI_API_KEY",
+        "Could not load the default credentials",
       );
     } finally {
       consoleError.mockRestore();
@@ -400,7 +439,7 @@ describe("registered Copilot agents", () => {
           endpoint: "http://risk.internal/ag-ui",
         },
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
+      VERTEX,
       async () => {
         resolverInvoked = true;
         throw new Error("corrupt model credential");
@@ -444,11 +483,7 @@ describe("standing agent roles", () => {
 
   test("sends one standing role message ahead of the conversation", async () => {
     await using endpoint = fakeAgUiEndpoint();
-    const agents = await buildAgents(
-      [remoteAgent(endpoint.url)],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      null,
-    );
+    const agents = await buildAgents([remoteAgent(endpoint.url)], VERTEX, null);
 
     const agent = agents.agent_expense;
     // A replayed thread already carries the standing message; it must not produce a second copy.
@@ -468,11 +503,7 @@ describe("standing agent roles", () => {
 
   test("keeps the standing role out of forwarded props and agent state", async () => {
     await using endpoint = fakeAgUiEndpoint();
-    const agents = await buildAgents(
-      [remoteAgent(endpoint.url)],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      null,
-    );
+    const agents = await buildAgents([remoteAgent(endpoint.url)], VERTEX, null);
 
     const agent = agents.agent_expense;
     agent?.setMessages([userMessage("Sort these.")]);
@@ -496,7 +527,7 @@ describe("standing agent roles", () => {
           reason: "Expense Manager has been deleted.",
         },
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
+      VERTEX,
       null,
     );
 
@@ -524,8 +555,8 @@ describe("standing agent roles", () => {
         seen.actors.push(actor);
         return [remoteAgent("http://coworker.internal/ag-ui")];
       },
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      async () => null,
+      VERTEX,
+      () => FAKE_MODEL,
     );
 
     const request = new Request("http://openbot.test/api/copilotkit");
@@ -543,8 +574,8 @@ describe("standing agent roles", () => {
       async () => [
         remoteAgent("http://coworker.internal/ag-ui", { roleDescription }),
       ],
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      async () => null,
+      VERTEX,
+      () => FAKE_MODEL,
     );
     const request = new Request("http://openbot.test/api/copilotkit");
 
@@ -719,8 +750,8 @@ describe("what a Bot is told it holds", () => {
         type: "built_in",
         systemPrompt: "Investigate policies.",
       },
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      "openai-secret",
+      VERTEX,
+      () => FAKE_MODEL,
       drive,
       "BROWSER GUIDANCE HERE",
     ).prompt as string;
@@ -759,8 +790,8 @@ describe("where a Bot says its answer came from", () => {
         type: "built_in",
         systemPrompt: "Be helpful.",
       },
-      { provider: "openai", defaultModel: "gpt-5.6-terra" },
-      "openai-secret",
+      VERTEX,
+      () => FAKE_MODEL,
     ).prompt as string;
 
     expect(prompt).toContain(PROVENANCE_GUIDANCE);

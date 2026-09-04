@@ -222,9 +222,8 @@ export async function resolveModelApiKey(input: {
   if (stored) {
     return decryptSecret(input.encryptionKey, stored.encryptedValue);
   }
-
-  const environmentKey = input.environment.OPENAI_API_KEY?.trim();
-  return environmentKey || null;
+  // NOTOS: no environment fallback; the model runs on Vertex through ADC and needs no key (stap 3).
+  return null;
 }
 
 export function createCredentialStore(

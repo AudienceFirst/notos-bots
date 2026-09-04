@@ -29,7 +29,6 @@ test("publishes every service on a settable port with the documented default", (
     ["POSTGRES_PORT", "5432", "5432"],
     ["COMPUTER_PORT", "4100", "4100"],
     ["SUPERVISOR_PORT", "4500", "4300"],
-    ["BOT_PORT", "4200", "4200"],
     ["LANGGRAPH_PORT", "4201", "4201"],
   ] as const;
 
@@ -57,12 +56,7 @@ test("publishes every service that holds a secret on loopback only", () => {
     "utf8",
   );
 
-  for (const name of [
-    "SUPERVISOR_PORT",
-    "COMPUTER_PORT",
-    "BOT_PORT",
-    "LANGGRAPH_PORT",
-  ]) {
+  for (const name of ["SUPERVISOR_PORT", "COMPUTER_PORT", "LANGGRAPH_PORT"]) {
     const published = compose.match(
       new RegExp(`^\\s*- "(.*)\\$\\{${name}:-\\d+\\}:\\d+"`, "m"),
     );
@@ -72,27 +66,28 @@ test("publishes every service that holds a secret on loopback only", () => {
 });
 
 /**
- * Both Bots are reachable at whatever `OPENAI_BASE_URL` names.
- *
- * The API server reads that variable from `.env` directly, so it moves with the deployment. The
- * Bots run in containers and see only what compose hands them, and a deployment that moved its
- * models to a gateway and found half of itself still calling OpenAI would have no way to tell.
+ * NOTOS: the framework Bot runs Gemini on Vertex AI through ADC and holds no model key (stap 3).
+ * Compose hands it the project and the location and nothing that looks like a credential.
  */
-test("gives both shipped Bots the OpenAI-compatible endpoint", () => {
+test("gives the framework Bot Vertex and no model key", () => {
   const compose = readFileSync(
     join(import.meta.dir, "..", "docker-compose.yml"),
     "utf8",
   );
 
-  // Both Bots speak OpenAI; only the framework Bot can be pointed at the other two.
-  expect(
-    compose.match(/OPENAI_BASE_URL: \$\{OPENAI_BASE_URL:-?\}/g),
-  ).toHaveLength(2);
+  expect(compose).toContain("BOT_PROVIDER: $" + "{BOT_PROVIDER:-vertex}");
+  expect(compose).toContain(
+    "GOOGLE_VERTEX_PROJECT: $" + "{GOOGLE_VERTEX_PROJECT:-mge-zuid}",
+  );
+  expect(compose).toContain(
+    "GOOGLE_VERTEX_LOCATION: $" + "{GOOGLE_VERTEX_LOCATION:-europe-west4}",
+  );
   for (const variable of [
-    "ANTHROPIC_BASE_URL",
-    "GOOGLE_GENERATIVE_AI_BASE_URL",
+    "OPENAI_API_KEY",
+    "GOOGLE_API_KEY",
+    "ANTHROPIC_API_KEY",
   ]) {
-    expect(compose).toContain(`${variable}: \${${variable}:-}`);
+    expect(compose).not.toContain(`${variable}:`);
   }
 });
 
