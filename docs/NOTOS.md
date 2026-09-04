@@ -257,6 +257,33 @@ workspaces heeft; de tab "Bots" in NOTOS zichtbaar maken (module en registry sta
 repo's niet gedeployed); een echte NOTOS-sessie tegen staging (zonder worker geen zelfde origin);
 Cloud Run Job `notos-bots-migrate` (de migratie draait nu vanaf een laptop met het secret).
 
+## Audit na stap 4 (5 september 2026)
+
+Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
+Wat blijvend anders is dan upstream, met de reden:
+
+- `serve({ idleTimeout: 255 })` in `server/src/index.ts`: Bun sluit een response na tien
+  seconden zonder bytes. Upstream merkte dat niet, want daar liep elke run over de
+  Intelligence-websocket; onze SSE-run (stap 0) brak af zodra Gemini langer nadacht, terwijl
+  de events wél in `thread_events` stonden. De stall-guard bewaakt een dode beurt, niet dit.
+- `/api/capabilities` meldt `computers` (`config.computer !== undefined`). Zonder computer-provider
+  zijn de computer-routes niet gemount; de app pollde ze toch elke drie seconden per open
+  kanaal. Nu pollt en toont de app niets over computers als die er niet zijn.
+- `shared/bot-prompt.ts` `PROVENANCE_GUIDANCE`: bronvermelding alleen waar iemand op het
+  antwoord handelt (cijfer, drempel, deadline, regel van de organisatie), nooit als vaste
+  openingszin. "Say so in a line" liet Gemini elk antwoord openen met "Op basis van mijn
+  kennis als SEA-specialist.", ook bij gewoon vakadvies.
+- Agents-, Skills- en kanaallijst: eerst wat de workspace heeft, persoonlijke items pas als
+  ze bestaan; lege staten als één regel. De grote gestreepte boxen van upstream duwden de
+  echte inhoud onder de vouw.
+- Admin: geen Identity providers in het menu (inloggen is NOTOS, stap 1), geen rol-schakelaar op
+  People (de rol komt uit `team_members`); Remove blijft, dat is de enige lokale beslissing.
+- App-tekst is Engels, ook de eigen schermen. Eén taal is beter dan twee door elkaar; of de
+  hele app Nederlands wordt, is een keuze bij stap 10.
+- Testsuite: draai altijd met `DATABASE_URL` naar de Docker-Postgres (5433) en zonder
+  draaiende dev-server op diezelfde database. De dev-server veegt anders de handoff-testrijen
+  weg (5 rode tests die los groen zijn); zonder `DATABASE_URL` pakt de suite localhost:5432.
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide
