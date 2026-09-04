@@ -1,14 +1,8 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
-import { client } from "@/lib/client";
+import { signOut } from "./client";
 import { authKeys } from "./queries";
 
-async function signOut() {
-  await client("/api/auth/sign-out", {
-    method: "POST",
-    fallback: "Could not sign out",
-  });
-}
-
+// NOTOS: uitloggen gaat via de gedeelde Supabase-sessie, niet via /api/auth/sign-out (stap 1).
 export function signOutMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     mutationFn: signOut,

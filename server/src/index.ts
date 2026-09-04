@@ -1,4 +1,4 @@
-// NOTOS: threads, events en run-lock in eigen Postgres via notos/runner; Intelligence eruit (stap 0).
+// NOTOS: threads/run-lock in eigen Postgres (stap 0); identiteit is de Supabase-sessie van NOTOS, Better Auth eruit (stap 1).
 import { randomUUID } from "node:crypto";
 import type { AgentRunnerRunRequest } from "@copilotkit/runtime/v2";
 import { serve } from "bun";
@@ -17,7 +17,6 @@ import { createRuntimeAgentLoader } from "./agents/runtime-agents";
 import { createApp } from "./app";
 import { createAuditReader, createAuditStore, recordAuditEvent } from "./audit";
 import { startRetentionSweeps } from "./audit-retention";
-import { createAuth } from "./auth";
 import { DEV_ACTOR, initializeDevActorUser } from "./auth/dev-actor";
 import { createRoleRepository } from "./auth/guards";
 import { createIdentityProviderStore } from "./auth/identity-provider-store";
@@ -58,6 +57,13 @@ import {
 } from "./credentials";
 import { createDatabase } from "./db/client";
 import { intelligenceChannelMappings } from "./db/schema";
+import {
+  createActorResolver,
+  createNotosIdentity,
+  createSupabaseVerifier,
+  type NotosIdentity,
+  RevokedError,
+} from "./notos/auth";
 import {
   createThreadLock,
   createThreadStore,
@@ -102,19 +108,18 @@ async function resolveRequestActor(request: Request): Promise<{
   if (config.singleUser) {
     return { id: DEV_ACTOR.id, name: DEV_ACTOR.email, role: DEV_ACTOR.role };
   }
-  const session = await auth?.api.getSession({ headers: request.headers });
-  const user = session?.user;
-  if (!user) {
+  // NOTOS: the same guard every route uses, so a run is attributed to the person the token names.
+  const actor = await identity?.actorFor(request).catch((error: unknown) => {
+    if (error instanceof RevokedError) return null;
+    throw error;
+  });
+  if (!actor) {
     throw new Error("A CopilotKit run requires a signed-in user.");
   }
-  const roles = await roleRepository.rolesForUser(user.id);
-  if (!roles.includes("admin") && !roles.includes("user")) {
-    throw new Error("A CopilotKit run requires an authorized user.");
-  }
   return {
-    id: user.id,
-    name: user.name ?? user.email ?? user.id,
-    role: roles.includes("admin") ? "admin" : "user",
+    id: actor.id,
+    name: actor.name ?? actor.email,
+    role: actor.role,
   };
 }
 
@@ -213,7 +218,8 @@ await synchronizeTenantPackage(database, tenantPackage);
  */
 const peopleStore = createPeopleStore(
   database,
-  config.auth?.initialAdminEmails ?? [],
+  // NOTOS: no configured administrators; NOTOS' team_members decides, on every request (stap 1).
+  [],
   /*
    * Removing somebody retires the credentials they granted this deployment.
    *
@@ -229,13 +235,26 @@ const identityProviderStore = createIdentityProviderStore(database);
  * Built before `auth` for the same reason the people store is: sign-in writes to the trail, and the
  * store that receives those rows has to exist before anything can sign in.
  */
-const signInAuditStore = createAuditStore(database);
-const auth = config.auth
-  ? createAuth(
-      config,
-      database,
-      (email) => peopleStore.isRevoked(email),
-      signInAuditStore,
+/*
+ * NOTOS: identity is the Supabase session of NOTOS (stap 1). The verifier checks the JWT against
+ * the project's public JWKS; the resolver turns it into the actor OpenBot expects, reading
+ * `team_members` for the role and writing `users` and `user_roles` so everything upstream keeps
+ * working. Absent under OPENBOT_SINGLE_USER, where every visitor is the one administrator.
+ */
+const identity: NotosIdentity | undefined = config.auth
+  ? createNotosIdentity(
+      createActorResolver({
+        verify: createSupabaseVerifier({
+          issuer: config.auth.issuer,
+          audience: config.auth.audience,
+          jwksUrl: config.auth.jwksUrl,
+        }),
+        supabaseUrl: config.auth.supabaseUrl,
+        publishableKey: config.auth.publishableKey,
+        internalDomains: config.auth.internalDomains,
+        database,
+        isRevoked: (email) => peopleStore.isRevoked(email),
+      }),
     )
   : undefined;
 const computerProvider = config.computer
@@ -1014,7 +1033,7 @@ repeatAfterEach(
 
 const app = createApp(
   config,
-  auth,
+  identity,
   roleRepository,
   createAuditReader(database),
   createCredentialAdminService(

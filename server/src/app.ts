@@ -1,4 +1,4 @@
-// NOTOS: thread-historie en -status uit de eigen threads-tabel; Intelligence-client eruit (stap 0).
+// NOTOS: thread-historie/-status uit de eigen tabel (stap 0); sessieguard op de Supabase-JWT, /api/auth eruit (stap 1).
 import type { Hono as HonoApp, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
@@ -15,8 +15,6 @@ import {
 import { createDevRequireUser } from "./auth/dev-actor";
 import {
   type AppVariables,
-  type AuthService,
-  createRequireUser,
   type RoleRepository,
   requireAdmin,
 } from "./auth/guards";
@@ -36,6 +34,7 @@ import type { PolicyStore } from "./computer/policy-store";
 import { createComputerRoutes } from "./computer/routes";
 import { configuredAuthProviders, type DeploymentConfig } from "./config";
 import type { CredentialAdminService, CredentialInput } from "./credentials";
+import type { NotosIdentity } from "./notos/auth";
 import type { ThreadStore } from "./notos/runner";
 import type { OnboardingStore } from "./people/onboarding";
 import type { PeopleStore } from "./people/store";
@@ -76,8 +75,10 @@ async function recordPersonEvent(
 
 export function createApp(
   config: DeploymentConfig,
-  auth?: AuthService,
-  roleRepository?: RoleRepository,
+  /** NOTOS: the Supabase-JWT guard from notos/auth. Absent with OPENBOT_SINGLE_USER, or sign-in is unavailable. */
+  identity?: NotosIdentity,
+  /** NOTOS: no longer read here (the /api/auth admin check that used it is gone); kept for the call shape. */
+  _roleRepository?: RoleRepository,
   auditReader?: AuditReader,
   credentialService?: CredentialAdminService,
   packageStatusReader?: PackageStatusReader,
@@ -248,61 +249,32 @@ export function createApp(
        * companies use this deployment, which is not theirs to have before they sign in.
        */
       ssoConfigured: ((await identityProviders?.list()) ?? []).length > 0,
+      /*
+       * NOTOS: what the browser needs to find the NOTOS session it shares (stap 1). The URL and
+       * the publishable key are public by design: the same two values sit in NOTOS' own bundle.
+       */
+      supabase: config.auth
+        ? {
+            url: config.auth.supabaseUrl,
+            publishableKey: config.auth.publishableKey,
+          }
+        : null,
     }),
   );
-  /*
-   * Registering an identity provider is an administrator's decision, not a signed-in one.
-   *
-   * Better Auth's SSO plugin guards these with `sessionMiddleware`, which asks only that somebody is
-   * signed in. That is the wrong bar here: registering an IdP for a domain means anybody it vouches
-   * for can sign in, so a plain user reaching this could mint themselves colleagues. The routes are
-   * mounted through this handler, so the check goes in front of it.
-   */
-  const ADMIN_ONLY_AUTH_ROUTES = new Set([
-    "/api/auth/sso/register",
-    "/api/auth/sso/update-provider",
-    "/api/auth/sso/delete-provider",
-  ]);
-
-  app.on(["GET", "POST"], "/api/auth/*", async (context) => {
-    if (!auth) {
-      return context.json(
-        { error: "No identity provider is configured." },
-        503,
-      );
-    }
-
-    if (ADMIN_ONLY_AUTH_ROUTES.has(new URL(context.req.url).pathname)) {
-      const session = await auth.api.getSession({
-        headers: context.req.raw.headers,
-        // Fresh, not the cookie cache: a role changed a moment ago has to apply to this request.
-        query: { disableCookieCache: true },
-      });
-      const roles = session?.user
-        ? ((await roleRepository?.rolesForUser(session.user.id)) ?? [])
-        : [];
-      if (!roles.includes("admin")) {
-        return context.json(
-          { error: "Only an administrator may change identity providers." },
-          403,
-        );
-      }
-    }
-
-    return auth.handler(context.req.raw);
-  });
+  // NOTOS: no /api/auth/* routes. Signing in happens in NOTOS; this server only verifies the token.
 
   const authenticationUnavailable: MiddlewareHandler<{
     Variables: AppVariables;
   }> = async (context) =>
-    context.json({ error: "No identity provider is configured." }, 503);
+    context.json(
+      { error: "Sign-in is not configured: SUPABASE_URL is not set." },
+      503,
+    );
   // One administrator, when nothing is configured to sign anybody in. Checked first, and only ever
-  // true when there is no provider, so a configured deployment cannot fall back to it.
+  // true when there is no Supabase project, so a configured deployment cannot fall back to it.
   const requireUser = config.singleUser
     ? createDevRequireUser()
-    : auth && roleRepository
-      ? createRequireUser(auth, roleRepository)
-      : authenticationUnavailable;
+    : (identity?.requireUser ?? authenticationUnavailable);
 
   app.get("/api/me", requireUser, async (context) =>
     context.json({

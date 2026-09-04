@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readdir, readFile } from "node:fs/promises";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import {
   auditEventTypes,
   recordAuditEvent,

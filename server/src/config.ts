@@ -1,4 +1,4 @@
-// NOTOS: CopilotKit Intelligence eruit; de runtime draait in SSE-modus op een eigen Postgres-runner (stap 0).
+// NOTOS: Intelligence eruit (stap 0); sign-in is de Supabase-sessie van NOTOS, Better Auth eruit (stap 1).
 /**
  * What the runtime can do. One answer: the SSE runtime of `@copilotkit/runtime`, with threads, their
  * events and the run lock in this deployment's own database (see `notos/runner`). Configuration
@@ -56,49 +56,38 @@ export type ComputerConfig =
   | SandboxComputerConfig;
 
 /**
- * Who a deployment lets in, and through which front door.
+ * NOTOS: sign-in is NOTOS' Supabase session, and nothing else (stap 1).
  *
- * One identity provider is a product decision somebody else already made. A company running this
- * has Google or Entra or Okta and is not going to acquire another, so the shape here is a set of
- * optional providers rather than one required one, and the deployment turns on whichever it has.
+ * Upstream had Google, Microsoft and Okta through Better Auth, with `INITIAL_ADMIN_EMAILS` naming
+ * the administrators. Here a person signs in in NOTOS (Google for zuid.com addresses, a password
+ * for client guests, both through Supabase) and this server only verifies the Supabase JWT. Who is
+ * an administrator is what NOTOS' `team_members` says.
  */
-export type AuthProviderId = "google" | "microsoft" | "okta";
+export type AuthProviderId = "notos";
 
-/** An OAuth client, as every provider here needs one. */
+/** An OAuth client, for the connectors a person links their own account to (Google Drive). */
 export type OAuthClient = { clientId: string; clientSecret: string };
 
 export type AuthConfig = {
-  baseUrl: string;
-  secret: string;
+  /** The Supabase project NOTOS signs people in with, e.g. `https://<ref>.supabase.co`. */
+  supabaseUrl: string;
+  /** `SUPABASE_ISSUER`, default `<supabaseUrl>/auth/v1`. */
+  issuer: string;
+  /** `SUPABASE_AUDIENCE`, default `authenticated`. */
+  audience: string;
+  jwksUrl: string;
+  /** The project's publishable (anon) key. Public by design; the browser holds it too. */
+  publishableKey: string;
+  /** `INTERNAL_DOMAINS`, default `zuid.com`: whose addresses count as ZUID. Lower case. */
+  internalDomains: string[];
   trustedOrigins: string[];
-  initialAdminEmails: string[];
-  google?: OAuthClient;
-  /**
-   * `tenantId` decides who may sign in at all, so it is not a detail. `common` admits any Microsoft
-   * account including personal ones, `organizations` any work or school account anywhere, and a GUID
-   * admits one directory. A deployment that wants only its own company needs the GUID.
-   */
-  microsoft?: OAuthClient & { tenantId: string };
-  /** Okta is an OIDC provider rather than a named one, so it is identified by its issuer. */
-  okta?: OAuthClient & { issuer: string };
 };
 
-/**
- * The providers this deployment can actually sign somebody in with.
- *
- * Ordered, and deliberately not alphabetically: this is the order the buttons appear in, and it is
- * fixed here rather than left to object key order so the sign-in screen cannot change shape because
- * of how a configuration happened to be written.
- */
+/** `["notos"]` when sign-in is configured, so the sign-in screen knows what to say. */
 export function configuredAuthProviders(
   auth: AuthConfig | undefined,
 ): AuthProviderId[] {
-  if (!auth) return [];
-  const providers: AuthProviderId[] = [];
-  if (auth.google) providers.push("google");
-  if (auth.microsoft) providers.push("microsoft");
-  if (auth.okta) providers.push("okta");
-  return providers;
+  return auth ? ["notos"] : [];
 }
 
 export type ManagedAgentConfig = {
@@ -167,9 +156,9 @@ export type DeploymentConfig = {
    * configuration rather than from the incoming request: a redirect URI assembled out of a Host
    * header is one an attacker has a say in.
    *
-   * `OPENBOT_PUBLIC_URL` when set, otherwise `BETTER_AUTH_URL`, which is the same public address for
-   * every deployment that has real sign-in. Undefined only where neither exists, which is a local
-   * deployment running without authentication — and there is nothing to connect there anyway.
+   * `OPENBOT_PUBLIC_URL`, and nothing else. NOTOS: upstream fell back to `BETTER_AUTH_URL`; that
+   * is gone, so a deployment with connectors sets this. Undefined means nobody can connect an
+   * account, and the Plugins page says so.
    */
   publicUrl: string | undefined;
   /**
@@ -437,118 +426,39 @@ function commaSeparated(environment: Environment, name: string): string[] {
 }
 
 /**
- * Sign-in, if this deployment has an identity provider to sign people in with.
+ * NOTOS: the Supabase contract, or nothing at all.
  *
- * Any one of the three turns authentication on. More than one is allowed and is the normal shape
- * for a company mid-migration, where some people are on Entra and some are still on Okta.
- *
- * Every combination that cannot work refuses at start-up rather than at somebody's first attempt to
- * sign in, which is the worst moment to discover it: a provider with half its credentials, a
- * provider with no session secret to mint against, or a session secret configured with no provider
- * to use it.
+ * `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` come together; half of the pair is refused at
+ * start-up rather than at the first sign-in. Neither set means no sign-in, which is only allowed
+ * with `OPENBOT_SINGLE_USER=true` (see `auth/dev-actor.ts`).
  */
-function authConfig(
-  environment: Environment,
-  google: OAuthClient | undefined,
-): AuthConfig | undefined {
-  const microsoft = microsoftAuth(environment);
-  const okta = oktaAuth(environment);
-
-  const secret = optional(environment, "BETTER_AUTH_SECRET");
-  const baseUrl = url(environment, "BETTER_AUTH_URL");
-
-  if (!google && !microsoft && !okta) {
-    if (secret || baseUrl) {
-      throw new Error(
-        "BETTER_AUTH_SECRET or BETTER_AUTH_URL is set but no identity provider is. Configure GOOGLE_OAUTH_*, MICROSOFT_OAUTH_* or OKTA_OAUTH_*, or unset both",
-      );
-    }
-    return undefined;
-  }
-  if (!secret) {
-    throw new Error("Sign-in requires BETTER_AUTH_SECRET");
-  }
-  if (secret.length < 32) {
-    throw new Error("BETTER_AUTH_SECRET must be at least 32 characters");
-  }
-  if (!baseUrl) {
-    throw new Error("Sign-in requires BETTER_AUTH_URL");
-  }
-
-  /*
-   * Somebody has to be an administrator, and only this says who.
-   *
-   * The role is written from this list and there is no route anywhere that changes one, so a
-   * deployment that configures sign-in without it admits everybody as a plain user, shows nobody
-   * the admin screens, and offers no way to promote anyone. Refusing at start-up is the only cheap
-   * moment to catch that; the expensive one is after the first person has signed in.
-   */
-  const initialAdminEmails = commaSeparated(
-    environment,
-    "INITIAL_ADMIN_EMAILS",
-  );
-  if (initialAdminEmails.length === 0) {
+function authConfig(environment: Environment): AuthConfig | undefined {
+  const supabaseUrl = url(environment, "SUPABASE_URL")?.replace(/\/+$/, "");
+  const publishableKey = optional(environment, "SUPABASE_PUBLISHABLE_KEY");
+  if (!supabaseUrl && !publishableKey) return undefined;
+  if (!supabaseUrl || !publishableKey) {
     throw new Error(
-      "Sign-in requires INITIAL_ADMIN_EMAILS naming at least one administrator. Nothing else grants the role, and no screen can promote somebody once the deployment is running",
+      "Sign-in through NOTOS needs both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, or neither",
     );
   }
-
+  const issuer =
+    url(environment, "SUPABASE_ISSUER")?.replace(/\/+$/, "") ??
+    `${supabaseUrl}/auth/v1`;
+  const internalDomains = commaSeparated(environment, "INTERNAL_DOMAINS")
+    .map((domain) => domain.toLowerCase())
+    .filter((domain) => domain.length > 0);
   return {
-    baseUrl,
-    secret,
+    supabaseUrl,
+    issuer,
+    audience: optional(environment, "SUPABASE_AUDIENCE") ?? "authenticated",
+    jwksUrl: `${issuer}/.well-known/jwks.json`,
+    publishableKey,
+    internalDomains:
+      internalDomains.length > 0 ? internalDomains : ["zuid.com"],
     trustedOrigins: commaSeparated(environment, "TRUSTED_ORIGINS").length
       ? commaSeparated(environment, "TRUSTED_ORIGINS")
       : ["http://localhost:3010"],
-    initialAdminEmails,
-    ...(google ? { google } : {}),
-    ...(microsoft ? { microsoft } : {}),
-    ...(okta ? { okta } : {}),
   };
-}
-
-/**
- * Entra ID, and which directory it admits.
- *
- * `common` by default, matching Microsoft's own default, and said out loud in `.env.example` because
- * it admits personal Microsoft accounts as well as work ones. A company that means "our staff"
- * wants its directory GUID here.
- */
-function microsoftAuth(
-  environment: Environment,
-): (OAuthClient & { tenantId: string }) | undefined {
-  const client = oauthClient(environment, "MICROSOFT");
-  if (!client) return undefined;
-  return {
-    ...client,
-    tenantId: optional(environment, "MICROSOFT_OAUTH_TENANT_ID") ?? "common",
-  };
-}
-
-/**
- * Okta, which is an OIDC provider rather than a named one.
- *
- * The issuer is what makes it a particular Okta rather than Okta in general, so it is required
- * alongside the credentials rather than defaulted to anything.
- */
-function oktaAuth(
-  environment: Environment,
-): (OAuthClient & { issuer: string }) | undefined {
-  const client = oauthClient(environment, "OKTA");
-  const issuer = url(environment, "OKTA_OAUTH_ISSUER");
-  if (!client) {
-    if (issuer) {
-      throw new Error(
-        "OKTA_OAUTH_ISSUER is set but OKTA_OAUTH_CLIENT_ID and OKTA_OAUTH_CLIENT_SECRET are not",
-      );
-    }
-    return undefined;
-  }
-  if (!issuer) {
-    throw new Error(
-      "Okta sign-in requires OKTA_OAUTH_ISSUER, such as https://example.okta.com/oauth2/default",
-    );
-  }
-  return { ...client, issuer };
 }
 
 /**
@@ -877,7 +787,7 @@ export function loadConfig(
   environment: Environment = process.env,
 ): DeploymentConfig {
   const google = oauthClient(environment, "GOOGLE");
-  const auth = authConfig(environment, google);
+  const auth = authConfig(environment);
   const managedAgent = managedAgentConfig(environment);
   const workerSharedSecret = optional(environment, "WORKER_SHARED_SECRET");
 
@@ -888,14 +798,12 @@ export function loadConfig(
     ...(managedAgent ? { managedAgent } : {}),
     agentEndpointAllowedHosts: agentEndpointAllowedHosts(environment),
     deploymentId: optional(environment, "DEPLOYMENT_ID"),
-    publicUrl: (
-      optional(environment, "OPENBOT_PUBLIC_URL") ?? auth?.baseUrl
-    )?.replace(/\/+$/, ""),
+    // NOTOS: no BETTER_AUTH_URL to fall back to; a deployment with connectors sets OPENBOT_PUBLIC_URL.
+    publicUrl: optional(environment, "OPENBOT_PUBLIC_URL")?.replace(/\/+$/, ""),
     appUrl: (
       optional(environment, "OPENBOT_APP_URL") ??
       commaSeparated(environment, "TRUSTED_ORIGINS")[0] ??
-      optional(environment, "OPENBOT_PUBLIC_URL") ??
-      auth?.baseUrl
+      optional(environment, "OPENBOT_PUBLIC_URL")
     )?.replace(/\/+$/, ""),
     tenantPackageDirectory:
       optional(environment, "TENANT_PACKAGE_DIR") ?? "../examples/fintech",
@@ -904,10 +812,7 @@ export function loadConfig(
     auditRetentionDays: auditRetentionDays(environment),
     oauth: { google },
     auth,
-    singleUser: singleUserEnabled(
-      environment,
-      configuredAuthProviders(auth).length > 0,
-    ),
+    singleUser: singleUserEnabled(environment, auth !== undefined),
     accessibility: accessibilityEnabled(environment),
     generativeUi: generativeUiEnabled(environment),
     ...(optional(environment, "APP_DIST_DIR")

@@ -14,12 +14,12 @@ export function testEnvironment(
   return {
     DATABASE_URL: "postgres://openbot:openbot@localhost:5432/openbot",
     KEY_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    // Connectors (Google Drive) keep their OAuth client; sign-in no longer uses it.
     GOOGLE_OAUTH_CLIENT_ID: "google-client-id",
     GOOGLE_OAUTH_CLIENT_SECRET: "google-client-secret",
-    BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
-    BETTER_AUTH_URL: "http://localhost:3001",
-    // Required whenever a provider is configured: nothing else grants the administrator role.
-    INITIAL_ADMIN_EMAILS: "admin@openbot.test",
+    // NOTOS: sign-in is the NOTOS Supabase session (stap 1). Configured, so single-user is off.
+    SUPABASE_URL: "https://project.supabase.test",
+    SUPABASE_PUBLISHABLE_KEY: "publishable-key",
     MANAGED_AGENT_AG_UI_URL: "http://localhost:4200/ag-ui",
     MANAGED_AGENT_TOKEN: "managed-agent-token",
     ...overrides,

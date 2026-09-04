@@ -93,6 +93,43 @@ Niet gedaan: een routine handmatig laten vuren via `POST /internal/routines/run`
 model. Er is geen OpenAI-sleutel in de secrets-index en stap 3 verhuist het model naar Vertex;
 de test hierboven dekt hetzelfde pad met een gescripte bot.
 
+## Identiteit: de Supabase-sessie van NOTOS (stap 1)
+
+Iedereen logt in zoals in NOTOS; deze server vertrouwt alleen de Supabase-JWT. Better Auth is weg
+(`server/src/auth/index.ts`, de providers in `config.ts`, de `/api/auth/*`-routes). Wat er staat:
+
+- `server/src/notos/auth/supabase-jwt.ts`: `jose` verifieert ES256 tegen de JWKS van het project,
+  met `issuer` en `audience` uit `SUPABASE_*`. Zelfde contract als `mge-platform/src/api/auth.py`.
+- `server/src/notos/auth/actor.ts`: rol `admin` als `team_members.role = 'administrator'` (PostgREST
+  met het token van de beller, dus onder RLS), anders `user`; `isInternal` op `INTERNAL_DOMAINS`;
+  rij in `users` (id = Supabase `sub`) en één rol in `user_roles`; 60 s cache per `session_id`.
+- `server/src/notos/auth/guard.ts`: `requireUser` en `actorFor`. Token uit `X-Notos-Authorization`,
+  anders `Authorization`, en alleen op een WebSocket-upgrade uit `?access_token=`.
+- `app/src/notos/supabase.ts`: dezelfde client, URL en publishable key als NOTOS (via
+  `/api/capabilities`, niet uit de build) en dezelfde cookie-op-.zuid.com-opslag als NOTOS, zodat
+  de sessie onder `notos.zuid.com/bots/` er al is. `client.ts` en de CopilotKit-provider sturen het
+  token mee; de twee sockets zetten het in de query. `/sign` zegt alleen "Log in via NOTOS".
+- De tabellen `sessions`, `accounts`, `verifications` en `sso_providers` blijven bestaan (foreign
+  keys), niets schrijft er nog in. Het identity-providers-scherm in de app is daarmee dood; stap 10.
+- `OPENBOT_SINGLE_USER=true` blijft werken voor lokaal ontwikkelen zonder Supabase.
+
+### Controle stap 1 (4 september 2026)
+
+| Controle | Uitkomst |
+|---|---|
+| `bun run format:check` · `lint` · `typecheck` | groen |
+| `bun run test:ci` met database | 2179 geslaagd, 23 overgeslagen, 1 gefaald (dezelfde kanaalvolgorde-test) |
+| `grep -rn "better-auth" server/src app/src` | 0 regels |
+| Boot met `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` van het NOTOS-project | `/api/capabilities` toont `authProviders: ["notos"]` en de publieke Supabase-waarden |
+| `GET /api/me` zonder token · met een zelf-ondertekend ES256-token van een ander project | 401 · 401 |
+| `GET /api/me` met een echt NOTOS-token (mitch@zuid.com, uit zijn eigen browser) | `role: "admin"`, `isInternal: true`, naam uit `user_metadata`; rij in `users` + `user_roles` |
+| Zelfde token via `X-Notos-Authorization` · `GET /api/admin/status` | 200 · 200 |
+| `GET /api/auth/session` | 404 (routes weg) |
+| `tests/notos/supabase-jwt.test.ts` · `tests/notos/identity.test.ts` | ES256/issuer/audience/verloop/vreemde sleutel; tokenbron, 401/403, actor op de context |
+
+Niet gedaan: een tweede ZUID-adres zonder beheerdersrol (geen tweede token beschikbaar); de app
+tegen de echte sessie draaien (alleen typecheck, stap 4 brengt de inbedding).
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

@@ -15,7 +15,7 @@ import {
   createAgentProfileStore,
 } from "../src/agents/profile-store";
 import type { AgentActor } from "../src/agents/profile-types";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import type { AuditEventInput, AuditStore } from "../src/audit";
 import { DEV_ACTOR } from "../src/auth/dev-actor";
 import type { AppVariables } from "../src/auth/guards";

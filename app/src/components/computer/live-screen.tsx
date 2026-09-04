@@ -1,3 +1,5 @@
+// NOTOS: token als query op de stream-socket (stap 1).
+import { withAccessToken } from "@/notos/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pageCoordinates } from "./take-the-wheel";
 
@@ -52,8 +54,13 @@ export function LiveScreen({ computerId, driving, onProblem }: Props) {
   useEffect(() => {
     // Same origin, so the scheme follows the page: wss when the app is served over https.
     const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    // NOTOS: the token travels in the query, a browser cannot put a header on an upgrade (stap 1).
     const socket = new WebSocket(
-      `${scheme}://${window.location.host}/api/computers/${encodeURIComponent(computerId)}/stream`,
+      withAccessToken(
+        new URL(
+          `${scheme}://${window.location.host}/api/computers/${encodeURIComponent(computerId)}/stream`,
+        ),
+      ),
     );
     socketRef.current = socket;
     let closed = false;

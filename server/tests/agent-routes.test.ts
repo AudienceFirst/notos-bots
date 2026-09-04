@@ -12,7 +12,7 @@ import type {
   CreateAgentInput,
 } from "../src/agents/profile-types";
 import { createAgentRoutes, parseAgentInput } from "../src/agents/routes";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import type { AppVariables, AuthenticatedActor } from "../src/auth/guards";
 import { loadConfig } from "../src/config";
 import { testEnvironment } from "./support/environment";

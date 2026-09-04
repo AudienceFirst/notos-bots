@@ -1,5 +1,7 @@
+// NOTOS: token als query op de socket-URL (stap 1).
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
+import { withAccessToken } from "@/notos/supabase";
 import { useEffect } from "react";
 import { type ChannelPage, type ChannelSummary, channelKeys } from "./queries";
 
@@ -147,7 +149,8 @@ const MAX_RETRY_MS = 30_000;
 function socketUrl() {
   const url = new URL("/api/channels/events", window.location.href);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return url.toString();
+  // NOTOS: a browser cannot put a header on an upgrade, so the token travels in the query (stap 1).
+  return withAccessToken(url).toString();
 }
 
 export function useChannelEvents() {

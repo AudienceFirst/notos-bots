@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import { loadConfig } from "../src/config";
 import type { PeopleStore, Person } from "../src/people/store";
 import { testEnvironment } from "./support/environment";

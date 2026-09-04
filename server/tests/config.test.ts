@@ -8,9 +8,8 @@ const baseEnvironment = {
   KEY_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   GOOGLE_OAUTH_CLIENT_ID: "google-client-id",
   GOOGLE_OAUTH_CLIENT_SECRET: "google-client-secret",
-  BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
-  BETTER_AUTH_URL: "http://localhost:3001",
-  INITIAL_ADMIN_EMAILS: "admin@openbot.test",
+  SUPABASE_URL: "https://project.supabase.test",
+  SUPABASE_PUBLISHABLE_KEY: "publishable-key",
   MANAGED_AGENT_AG_UI_URL: " http://localhost:4200/ag-ui ",
   MANAGED_AGENT_TOKEN: "managed-agent-token",
 };
@@ -34,15 +33,6 @@ const productionEnvironment = {
   NODE_ENV: "production",
   KEY_ENCRYPTION_KEY: "b3BlbmJvdC1wcm9kdWN0aW9uLXRlc3Qta2V5LTMyMzI=",
 };
-
-const {
-  GOOGLE_OAUTH_CLIENT_ID: _googleId,
-  GOOGLE_OAUTH_CLIENT_SECRET: _googleSecret,
-  BETTER_AUTH_SECRET: _authSecret,
-  BETTER_AUTH_URL: _authUrl,
-  INITIAL_ADMIN_EMAILS: _adminEmails,
-  ...withoutSignIn
-} = baseEnvironment;
 
 describe("deployment configuration", () => {
   test("resolves the SSE runtime on durable history, which is the only runtime", () => {
@@ -149,190 +139,85 @@ describe("deployment configuration", () => {
     ).toThrow("KEY_ENCRYPTION_KEY must be a base64-encoded 32-byte key");
   });
 
-  test("enables Google authentication when its complete deployment contract is present", () => {
-    const config = loadConfig({
-      ...baseEnvironment,
-      GOOGLE_OAUTH_CLIENT_ID: "google-client-id",
-      GOOGLE_OAUTH_CLIENT_SECRET: "google-client-secret",
-      BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
-      BETTER_AUTH_URL: "http://localhost:3001",
-      INITIAL_ADMIN_EMAILS: "admin@openbot.test, owner@openbot.test",
-    });
+  // NOTOS: sign-in is the NOTOS Supabase session (stap 1). No providers, no Better Auth, no
+  // configured administrators; the two Supabase values come together or not at all.
+  test("resolves the Supabase contract with its defaults", () => {
+    const config = loadConfig(baseEnvironment);
 
     expect(config.auth).toEqual({
-      baseUrl: "http://localhost:3001",
-      secret: "a-long-enough-local-development-auth-secret",
-      google: {
-        clientId: "google-client-id",
-        clientSecret: "google-client-secret",
-      },
+      supabaseUrl: "https://project.supabase.test",
+      issuer: "https://project.supabase.test/auth/v1",
+      audience: "authenticated",
+      jwksUrl: "https://project.supabase.test/auth/v1/.well-known/jwks.json",
+      publishableKey: "publishable-key",
+      internalDomains: ["zuid.com"],
       trustedOrigins: ["http://localhost:3010"],
-      initialAdminEmails: ["admin@openbot.test", "owner@openbot.test"],
     });
+    expect(configuredAuthProviders(config.auth)).toEqual(["notos"]);
+    expect(config.singleUser).toBe(false);
   });
 
-  /**
-   * Sign-in with more than one identity provider.
-   *
-   * A company mid-migration has some people on Entra and some still on Okta, so more than one at a
-   * time is the normal shape rather than a corner. These assert the shape the sign-in screen reads
-   * and every arrangement that cannot work refusing at start-up, which is the only moment a
-   * misconfiguration is cheap to find.
-   */
-  const SESSION = {
-    BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
-    BETTER_AUTH_URL: "http://localhost:3001",
-    INITIAL_ADMIN_EMAILS: "admin@openbot.test",
-  };
-
-  /** What a deployment with no provider has to say before it is allowed to come up. */
-  const OPEN = { OPENBOT_SINGLE_USER: "true" };
-
-  test("enables Microsoft, and admits any account until told a directory", () => {
+  test("takes an explicit issuer, audience and internal domains", () => {
     const config = loadConfig({
-      ...withoutSignIn,
-      ...SESSION,
-      MICROSOFT_OAUTH_CLIENT_ID: "entra-client-id",
-      MICROSOFT_OAUTH_CLIENT_SECRET: "entra-client-secret",
+      ...baseEnvironment,
+      SUPABASE_ISSUER: "https://auth.example.test/",
+      SUPABASE_AUDIENCE: "bots",
+      INTERNAL_DOMAINS: "ZUID.com, notos.example ,",
     });
 
-    // `common` is Microsoft's own default and admits personal accounts as well as work ones. A
-    // deployment that means "our staff" has to say so with a directory GUID.
-    expect(config.auth?.microsoft).toEqual({
-      clientId: "entra-client-id",
-      clientSecret: "entra-client-secret",
-      tenantId: "common",
-    });
-    expect(configuredAuthProviders(config.auth)).toEqual(["microsoft"]);
-  });
-
-  test("narrows Microsoft to one directory when given a tenant", () => {
-    const config = loadConfig({
-      ...withoutSignIn,
-      ...SESSION,
-      MICROSOFT_OAUTH_CLIENT_ID: "entra-client-id",
-      MICROSOFT_OAUTH_CLIENT_SECRET: "entra-client-secret",
-      MICROSOFT_OAUTH_TENANT_ID: "8f2c1e40-0000-0000-0000-000000000000",
-    });
-
-    expect(config.auth?.microsoft?.tenantId).toBe(
-      "8f2c1e40-0000-0000-0000-000000000000",
-    );
-  });
-
-  test("enables Okta against its issuer", () => {
-    const config = loadConfig({
-      ...withoutSignIn,
-      ...SESSION,
-      OKTA_OAUTH_CLIENT_ID: "okta-client-id",
-      OKTA_OAUTH_CLIENT_SECRET: "okta-client-secret",
-      OKTA_OAUTH_ISSUER: "https://example.okta.com/oauth2/default",
-    });
-
-    expect(config.auth?.okta).toEqual({
-      clientId: "okta-client-id",
-      clientSecret: "okta-client-secret",
-      issuer: "https://example.okta.com/oauth2/default",
+    expect(config.auth).toMatchObject({
+      issuer: "https://auth.example.test",
+      audience: "bots",
+      jwksUrl: "https://auth.example.test/.well-known/jwks.json",
+      internalDomains: ["zuid.com", "notos.example"],
     });
   });
 
-  test("refuses Okta without an issuer, which names no particular Okta", () => {
+  test("refuses half of the Supabase pair", () => {
     expect(() =>
-      loadConfig({
-        ...withoutSignIn,
-        ...SESSION,
-        OKTA_OAUTH_CLIENT_ID: "okta-client-id",
-        OKTA_OAUTH_CLIENT_SECRET: "okta-client-secret",
-      }),
-    ).toThrow("OKTA_OAUTH_ISSUER");
-  });
-
-  test("refuses an Okta issuer with no credentials behind it", () => {
+      loadConfig({ ...baseEnvironment, SUPABASE_PUBLISHABLE_KEY: undefined }),
+    ).toThrow("both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY");
     expect(() =>
-      loadConfig({
-        ...withoutSignIn,
-        ...SESSION,
-        OKTA_OAUTH_ISSUER: "https://example.okta.com/oauth2/default",
-      }),
-    ).toThrow("OKTA_OAUTH_CLIENT_ID");
+      loadConfig({ ...baseEnvironment, SUPABASE_URL: undefined }),
+    ).toThrow("both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY");
   });
 
-  test("carries all three at once, in a fixed order", () => {
-    const config = loadConfig({
-      ...withoutSignIn,
-      ...SESSION,
-      GOOGLE_OAUTH_CLIENT_ID: "google-client-id",
-      GOOGLE_OAUTH_CLIENT_SECRET: "google-client-secret",
-      MICROSOFT_OAUTH_CLIENT_ID: "entra-client-id",
-      MICROSOFT_OAUTH_CLIENT_SECRET: "entra-client-secret",
-      OKTA_OAUTH_CLIENT_ID: "okta-client-id",
-      OKTA_OAUTH_CLIENT_SECRET: "okta-client-secret",
-      OKTA_OAUTH_ISSUER: "https://example.okta.com/oauth2/default",
-    });
-
-    // The order the buttons appear in, fixed here so it cannot change with how a .env was written.
-    expect(configuredAuthProviders(config.auth)).toEqual([
-      "google",
-      "microsoft",
-      "okta",
-    ]);
-  });
-
-  /**
-   * Somebody has to be an administrator.
-   *
-   * The role is written from this list and no route anywhere changes one, so a deployment that
-   * configures sign-in without it admits everybody as a plain user and can never promote anyone.
-   * Start-up is the only cheap moment to notice.
-   */
-  test("refuses sign-in with nobody named as an administrator", () => {
-    const { INITIAL_ADMIN_EMAILS: _none, ...withoutAdmins } = baseEnvironment;
-
-    expect(() => loadConfig(withoutAdmins)).toThrow("INITIAL_ADMIN_EMAILS");
-  });
-
-  test("asks for no administrator when nothing signs anybody in", () => {
-    // One administrator either way, and no list to write. Requiring one here as well would mean a
-    // deployment had to name an administrator for a mode that has exactly one.
-    expect(() => loadConfig({ ...withoutSignIn, ...OPEN })).not.toThrow();
-  });
-
-  test("refuses to start with no provider and nothing saying that was meant", () => {
-    // The whole of the sign-in story in one line. This used to come up open, and `NODE_ENV` was the
-    // only thing standing between a bare-VM deployment and serving every visitor as an
-    // administrator, which is unset by default on exactly that deployment.
-    expect(() => loadConfig(withoutSignIn)).toThrow(
-      "No identity provider is configured",
-    );
-  });
-
-  test("is off, and lists nothing, when no provider is configured", () => {
-    const config = loadConfig({ ...withoutSignIn, ...OPEN });
-
-    expect(config.auth).toBeUndefined();
-    expect(configuredAuthProviders(config.auth)).toEqual([]);
-  });
-
-  test("refuses a session secret with no provider to use it", () => {
-    expect(() => loadConfig({ ...withoutSignIn, ...SESSION })).toThrow(
-      "no identity provider",
-    );
-  });
-
-  test("rejects incomplete Google authentication deployment settings", () => {
+  test("refuses to start with no Supabase and nothing saying that was meant", () => {
     expect(() =>
       loadConfig({
         ...baseEnvironment,
-        GOOGLE_OAUTH_CLIENT_ID: "google-client-id",
-        GOOGLE_OAUTH_CLIENT_SECRET: "google-client-secret",
-        BETTER_AUTH_SECRET: "",
-        BETTER_AUTH_URL: "http://localhost:3001",
+        SUPABASE_URL: undefined,
+        SUPABASE_PUBLISHABLE_KEY: undefined,
       }),
-    ).toThrow("Sign-in requires BETTER_AUTH_SECRET");
+    ).toThrow("OPENBOT_SINGLE_USER=true");
   });
 
-  // A turn that is ended is a turn somebody loses, so an unset variable leaves every stream alone
-  // rather than acquiring a timeout the deployment never asked for. `.env.example` ships a value.
+  test("is off, and lists nothing, when no Supabase is configured", () => {
+    const config = loadConfig({
+      ...baseEnvironment,
+      SUPABASE_URL: undefined,
+      SUPABASE_PUBLISHABLE_KEY: undefined,
+      OPENBOT_SINGLE_USER: "true",
+    });
+    expect(config.auth).toBeUndefined();
+    expect(configuredAuthProviders(config.auth)).toEqual([]);
+    expect(config.singleUser).toBe(true);
+  });
+
+  test("ignores leftover Better Auth and provider configuration", () => {
+    const config = loadConfig({
+      ...baseEnvironment,
+      BETTER_AUTH_SECRET: "a-long-enough-local-development-auth-secret",
+      BETTER_AUTH_URL: "http://localhost:3001",
+      INITIAL_ADMIN_EMAILS: "admin@openbot.test",
+      MICROSOFT_OAUTH_CLIENT_ID: "m",
+      MICROSOFT_OAUTH_CLIENT_SECRET: "s",
+      OKTA_OAUTH_ISSUER: "https://example.okta.com/oauth2/default",
+    });
+    expect(configuredAuthProviders(config.auth)).toEqual(["notos"]);
+    expect(config.publicUrl).toBeUndefined();
+  });
+
   test("leaves the stall watchdog off when nothing is configured", () => {
     expect(loadConfig(baseEnvironment).agentStallTimeoutMs).toBe(0);
   });

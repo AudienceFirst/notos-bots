@@ -1,3 +1,4 @@
+// NOTOS: Authorization: Bearer <Supabase-token> op elke aanroep (stap 1).
 /**
  * The one place the browser talks to the API server.
  *
@@ -11,6 +12,8 @@
  * sentence a person reads are per-endpoint facts, so they stay at the call site — a client that
  * guessed the envelope would be a client that had to be argued with.
  */
+
+import { accessToken } from "@/notos/supabase";
 
 export type ClientOptions = {
   /** Absent means GET. */
@@ -30,13 +33,17 @@ export type ClientOptions = {
 
 /** Every request in this app is authenticated, and every one of them is JSON or nothing. */
 async function send(path: string, options: ClientOptions): Promise<Response> {
+  // NOTOS: the NOTOS session's token goes on every call; the server trusts nothing else (stap 1).
+  const token = await accessToken();
   return fetch(path, {
     method: options.method,
     credentials: "include",
-    headers:
-      options.body === undefined
-        ? undefined
-        : { "content-type": "application/json" },
+    headers: {
+      ...(options.body === undefined
+        ? {}
+        : { "content-type": "application/json" }),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     ...(options.signal ? { signal: options.signal } : {}),
   });

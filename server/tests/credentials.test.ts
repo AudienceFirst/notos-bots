@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import { loadConfig } from "../src/config";
 import {
   createCredential,

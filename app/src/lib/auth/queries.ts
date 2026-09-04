@@ -1,3 +1,4 @@
+// NOTOS: één provider, de NOTOS-sessie; de gebruiker krijgt isInternal mee (stap 1).
 import { queryOptions } from "@tanstack/react-query";
 import { client, tryClient } from "@/lib/client";
 
@@ -18,6 +19,8 @@ export type AuthenticatedUser = {
   name?: string | null;
   image?: string | null;
   role: "admin" | "user";
+  /** NOTOS: whether the address is a ZUID one. Absent on a single-user deployment. */
+  isInternal?: boolean;
   /** Null means this deployment does not track onboarding, which reads as nothing to finish. */
   onboarding: OnboardingStatus | null;
 };
@@ -33,8 +36,8 @@ export const authKeys = {
   providers: () => [...authKeys.all, "providers"] as const,
 };
 
-/** An identity provider this deployment can sign somebody in with. */
-export type AuthProviderId = "google" | "microsoft" | "okta";
+/** NOTOS: the one way in is the NOTOS session (stap 1). */
+export type AuthProviderId = "notos";
 
 /** What the sign-in screen may offer, answered by the process that knows. */
 export type SignInOptions = {

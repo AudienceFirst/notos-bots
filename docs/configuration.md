@@ -164,62 +164,37 @@ Two things are worth knowing before pointing a deployment at any gateway. Not ev
 
 ## Authentication
 
-| Variable                     | Meaning                                                                                |
-| ---------------------------- | -------------------------------------------------------------------------------------- |
-| `OPENBOT_SINGLE_USER`        | One fixed administrator and no sign-in. **Required** when no identity provider is configured, or the deployment refuses to start. Ignored when one is. |
-| `GOOGLE_OAUTH_CLIENT_ID`     | Google OAuth client id.                                                                |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | Google OAuth client secret.                                                            |
-| `MICROSOFT_OAUTH_CLIENT_ID`  | Microsoft Entra ID application id.                                                     |
-| `MICROSOFT_OAUTH_CLIENT_SECRET` | Microsoft Entra ID client secret.                                                   |
-| `MICROSOFT_OAUTH_TENANT_ID`  | Directory to admit. `common` by default, which admits personal accounts too; a GUID admits one directory. |
-| `OKTA_OAUTH_CLIENT_ID`       | Okta client id.                                                                        |
-| `OKTA_OAUTH_CLIENT_SECRET`   | Okta client secret.                                                                    |
-| `OKTA_OAUTH_ISSUER`          | Which Okta, for example `https://example.okta.com/oauth2/default`.                     |
-| `BETTER_AUTH_SECRET`         | At least 32 characters. Required with any provider.                                    |
-| `BETTER_AUTH_URL`            | Public API server base URL, where OAuth callbacks return. Required with any provider.  |
-| `TRUSTED_ORIGINS`            | Comma-separated app origins accepted by the API, plus every host in a registered OIDC provider's discovery document. |
-| `INITIAL_ADMIN_EMAILS`       | Comma-separated administrators. **Required** with any provider.                        |
-| `OPENBOT_PUBLIC_URL`         | Public address of this API. Defaults to `BETTER_AUTH_URL`.                              |
-| `OPENBOT_APP_URL`            | Where the browser app is served. Defaults to the first `TRUSTED_ORIGINS` entry.          |
+NOTOS: sign-in is the NOTOS Supabase session, and nothing else (bouwplan stap 1). A person signs
+in in NOTOS (Google for zuid.com addresses, a password for client guests, both through Supabase);
+this server verifies the Supabase JWT (ES256, against the project's public JWKS) on every request
+and never signs anybody in itself. Upstream's Google, Microsoft and Okta providers, Better Auth and
+`INITIAL_ADMIN_EMAILS` are gone.
 
-**With no provider at all, `OPENBOT_SINGLE_USER=true` is required.** A deployment that configures
-nothing to sign anybody in and does not say that was deliberate refuses to start, naming what to
-configure, because a public URL where every visitor is an administrator fails silently. `NODE_ENV`
-does not enter into it. `.env.example` ships the line switched on, so a clone runs with no
-configuration at all.
+| Variable                   | Meaning                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`             | The Supabase project NOTOS signs people in with, `https://<ref>.supabase.co`. With the key below. |
+| `SUPABASE_PUBLISHABLE_KEY` | The project's publishable (anon) key. Public by design; the browser holds it too.             |
+| `SUPABASE_ISSUER`          | Optional. Default `<SUPABASE_URL>/auth/v1`; the JWKS is read from `<issuer>/.well-known/jwks.json`. |
+| `SUPABASE_AUDIENCE`        | Optional. Default `authenticated`.                                                            |
+| `INTERNAL_DOMAINS`         | Optional, comma-separated. Default `zuid.com`: whose addresses count as ZUID (`isInternal`).  |
+| `OPENBOT_SINGLE_USER`      | One fixed administrator and no sign-in. **Required** when `SUPABASE_URL` is not set, or the deployment refuses to start. Ignored when it is. |
+| `TRUSTED_ORIGINS`          | Comma-separated app origins accepted by the API.                                               |
+| `OPENBOT_PUBLIC_URL`       | Public address of this API, for connector redirect URIs. No default any more.                  |
+| `OPENBOT_APP_URL`          | Where the browser app is served. Defaults to the first `TRUSTED_ORIGINS` entry.                |
 
-**Any one provider turns sign-in on**, and several may be configured at once. Each provider's id and
-secret must be set together, Okta additionally needs its issuer, and any of them requires
-`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` and `INITIAL_ADMIN_EMAILS`. Every incomplete combination is
-refused at start-up rather than at somebody's first attempt to sign in.
+Where the token comes from, in this order: `X-Notos-Authorization: Bearer …` (how the NOTOS worker
+forwards it, since `Authorization` carries the worker's own Cloud Run token there),
+`Authorization: Bearer …` (how the app sends it directly), and on a WebSocket upgrade only,
+`?access_token=…` (a browser cannot put a header on an upgrade).
 
-`INITIAL_ADMIN_EMAILS` is required because nothing else grants the administrator role at first: an
-address it names becomes an administrator at every sign-in and cannot be demoted from the People
-screen, which is what guarantees a way back in. Everybody else's role is decided there instead.
+Who is an administrator is what NOTOS' `team_members` says: an address with `role = 'administrator'`
+there is `admin` here, read through PostgREST with the caller's own token on every request (cached
+sixty seconds per session). Everybody else is `user`. `/api/me` answers `{ id, email, name, image,
+role, isInternal }`. The people screen's remove-access still applies: a removed address is refused
+with 403 whatever its token says.
 
-SAML and OpenID Connect providers are not configured here. They are registered while the deployment
-runs, under Admin → Identity providers, and routed by email domain.
-
-**Registering an OpenID Connect provider needs its endpoints in `TRUSTED_ORIGINS`.** Better Auth
-fetches the discovery document and refuses any endpoint inside it that is not a trusted origin, which
-is what stops a registration pointing the deployment at an address of somebody else's choosing. It is
-every host in the document and not only the issuer, so a Google issuer also needs
-`oauth2.googleapis.com` and `openidconnect.googleapis.com`; a typical Okta tenant serves all of them
-from one host and needs only that. A registration refused this way names the host it objected to.
-
-What is registered belongs to the deployment rather than to whoever registered it. Every
-administrator sees the same list and can remove any of it, and a provider outlives the person who
-added it. The client secret and any SAML signing material are encrypted at rest with
-`KEY_ENCRYPTION_KEY`.
-
-The redirect URI to register with each provider is `<BETTER_AUTH_URL>/api/auth/callback/<provider>`,
-where `<provider>` is `google`, `microsoft` or `okta`.
-
-`OPENBOT_PUBLIC_URL` and `OPENBOT_APP_URL` matter only for a connector each person connects their own account to, such as Google Drive.
-
-`OPENBOT_PUBLIC_URL` builds the redirect URI the vendor sends somebody back to after they consent, which has to match what an administrator registered with that vendor character for character — so it comes from configuration rather than from the incoming request. Most deployments never set it, because `BETTER_AUTH_URL` is already the same public address. With neither, the Plugins page says the deployment cannot complete a consent flow, and no account can be connected.
-
-`OPENBOT_APP_URL` is where the callback sends the person afterwards. It is a separate setting because the app and the API are separate addresses: locally the app is Vite on `3010` and the API is `3001`, so a relative redirect would land on the API, which serves no pages. A deployment serving both from one origin can leave it unset.
+Enterprise identity providers registered under Admin → Identity providers are no longer used for
+sign-in; the rows stay and the screen still lists them (cleaned up in stap 10).
 
 ## One Bot handing work to another
 

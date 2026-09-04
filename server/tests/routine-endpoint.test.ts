@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import type { AuditEventInput, AuditStore } from "../src/audit";
 import { loadConfig } from "../src/config";
 import type { RoutineRunner } from "../src/routines/runner";

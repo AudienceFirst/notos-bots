@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
-import { createApp } from "../src/app";
+import { createApp } from "./support/app";
 import { createAuditStore } from "../src/audit";
 import { loadConfig } from "../src/config";
 import { encryptSecret } from "../src/credentials";
