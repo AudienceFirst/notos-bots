@@ -30,14 +30,14 @@ function WorkspacesPage() {
   const setModel = useMutation(setWorkspaceModelMutationOptions(queryClient));
   const rows = workspaces.data?.workspaces ?? null;
   const problem = workspaces.error
-    ? "De workspaces konden niet geladen worden."
+    ? "The workspaces could not be loaded."
     : setModel.error
       ? setModel.error.message
       : null;
 
   return (
     <PageShell
-      description="Elke NOTOS-klant is een workspace. Het model staat standaard in de EU; global is een bewuste keuze per workspace, want dat verkeer verlaat de EU."
+      description="Every NOTOS client is a workspace. The model stays in the EU by default; global is a deliberate choice per workspace, because that traffic leaves the EU."
       title="Workspaces"
     >
       {problem ? <p className="text-sm text-destructive">{problem}</p> : null}
@@ -64,14 +64,15 @@ function WorkspacesPage() {
                       {workspace.kind === "demo" ? " (demo)" : ""}
                     </ItemTitle>
                     <ItemDescription>
-                      {workspace.notosClientId} · {workspace.defaultModel} op{" "}
-                      {workspace.vertexLocation}
-                      {!chosen ? " (eigen instelling)" : ""}
+                      {workspace.notosClientId}
+                      {!chosen
+                        ? ` · ${workspace.defaultModel} on ${workspace.vertexLocation} (own setting)`
+                        : ""}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
                     <select
-                      aria-label={`Model voor ${workspace.displayName}`}
+                      aria-label={`Model for ${workspace.displayName}`}
                       className="text-sm bg-transparent border rounded-md px-2 py-1"
                       disabled={setModel.isPending}
                       value={
@@ -90,9 +91,7 @@ function WorkspacesPage() {
                         });
                       }}
                     >
-                      {!chosen ? (
-                        <option value="">Eigen instelling</option>
-                      ) : null}
+                      {!chosen ? <option value="">Own setting</option> : null}
                       {MODEL_CHOICES.map((choice) => (
                         <option
                           key={choice.defaultModel}

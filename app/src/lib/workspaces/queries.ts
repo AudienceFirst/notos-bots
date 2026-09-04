@@ -20,12 +20,12 @@ export const MODEL_CHOICES = [
   {
     vertexLocation: "europe-west4",
     defaultModel: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro in europe-west4 (blijft in de EU)",
+    label: "Gemini 2.5 Pro in europe-west4 (stays in the EU)",
   },
   {
     vertexLocation: "global",
     defaultModel: "gemini-3.1-pro-preview",
-    label: "Gemini 3.1 Pro Preview op global (verlaat de EU)",
+    label: "Gemini 3.1 Pro Preview on global (leaves the EU)",
   },
 ] as const;
 

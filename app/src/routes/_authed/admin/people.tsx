@@ -20,12 +20,8 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
-import {
-  setPersonAccessMutationOptions,
-  setPersonRoleMutationOptions,
-} from "@/lib/people/mutations";
+import { setPersonAccessMutationOptions } from "@/lib/people/mutations";
 import { type Person, peopleListQueryOptions } from "@/lib/people/queries";
 import { queryClient } from "@/query-client";
 
@@ -76,12 +72,11 @@ function PeoplePage() {
   const people = useInfiniteQuery(peopleListQueryOptions(query));
   const rows = people.data?.pages.flatMap((page) => page.people) ?? [];
   const currentUser = useQuery(currentUserQueryOptions());
-  const setRole = useMutation(setPersonRoleMutationOptions(queryClient));
   const setAccess = useMutation(setPersonAccessMutationOptions(queryClient));
 
   // The server refuses these too. Disabling them here is so the screen does not offer something it
   // knows will be refused, not so the rule is enforced in the browser.
-  const failure = setRole.error ?? setAccess.error;
+  const failure = setAccess.error;
 
   return (
     <PageShell
@@ -89,7 +84,7 @@ function PeoplePage() {
       title="People"
     >
       <PageSection
-        description="An address named in INITIAL_ADMIN_EMAILS is an administrator whatever this screen says, so it cannot be changed here."
+        description="Who is an administrator is decided in NOTOS (Team), not here. Remove blocks an address in Bots even while NOTOS still lets it in."
         title="Who is here"
       >
         {failure ? (
@@ -123,7 +118,7 @@ function PeoplePage() {
           <PageRows>
             {rows.map((person, index) => {
               const isSelf = person.id === currentUser.data?.id;
-              const busy = setRole.isPending || setAccess.isPending;
+              const busy = setAccess.isPending;
 
               return (
                 <StaggerItem index={index} key={person.id}>
@@ -163,17 +158,7 @@ function PeoplePage() {
                       >
                         {person.revoked ? "Restore" : "Remove"}
                       </Button>
-                      <Switch
-                        aria-label={`Administrator: ${person.email}`}
-                        checked={person.role === "admin"}
-                        disabled={busy || person.configuredAdmin || isSelf}
-                        onCheckedChange={(checked) =>
-                          setRole.mutate({
-                            userId: person.id,
-                            role: checked ? "admin" : "user",
-                          })
-                        }
-                      />
+                      {/* NOTOS: no role switch; the admin role comes from team_members (stap 1). */}
                     </ItemActions>
                   </Item>
                   {index !== rows.length - 1 && <Separator />}

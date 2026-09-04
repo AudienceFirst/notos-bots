@@ -34,13 +34,14 @@ function SignScreen() {
           {appConfig.brand.productName}
         </h1>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          Je logt in bij NOTOS. Ben je daar ingelogd, dan werkt dit vanzelf.
+          You sign in at NOTOS. Once you are signed in there, this works by
+          itself.
         </p>
         <Button
           className="mt-8 h-10 w-full tracking-tight"
           render={<a href={signInUrl()} />}
         >
-          Log in via NOTOS
+          Sign in at NOTOS
         </Button>
         <p className="mt-4 text-center text-xs text-muted-foreground">
           Lokaal: log in op notos.zuid.com in dezelfde browser en herlaad deze

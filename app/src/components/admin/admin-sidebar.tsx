@@ -1,6 +1,5 @@
 import {
   IconArrowLeft,
-  IconBuildingBank,
   IconCode,
   IconDeviceDesktop,
   IconFileText,
@@ -102,11 +101,11 @@ const GROUPS: {
         icon: IconLayoutGrid,
         linkOptions: { to: "/admin/workspaces" },
       },
-      {
-        title: "Identity providers",
-        icon: IconBuildingBank,
-        linkOptions: { to: "/admin/identity-providers" },
-      },
+      /*
+       * NOTOS: no "Identity providers" entry. Sign-in happens in NOTOS (stap 1); the screen and its
+       * sso_providers rows are still in the tree but do nothing, and a dead screen in a menu reads
+       * as a broken one. The route goes with react-core in stap 10.
+       */
     ],
   },
   {
