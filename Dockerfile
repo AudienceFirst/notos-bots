@@ -65,6 +65,9 @@ RUN mkdir -p /prod && cp package.json bun.lock /prod/ \
 
 
 FROM deps AS app-build
+# NOTOS: the app is served under notos.zuid.com/bots/ by the NOTOS worker (stap 4). Override for another origin.
+ARG VITE_BASE_PATH=/bots/
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 
 COPY app app
 COPY scripts scripts
@@ -109,6 +112,8 @@ COPY --from=deps /src/agent-computer/node_modules agent-computer/node_modules
 COPY server server
 COPY shared shared
 COPY workspaces workspaces
+# NOTOS: the migration runner for the Cloud Run job (stap 4).
+COPY scripts/notos/migrate.ts scripts/notos/migrate.ts
 COPY agent-computer/src agent-computer/src
 COPY agent-computer/package.json agent-computer/package.json
 

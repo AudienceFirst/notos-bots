@@ -5,6 +5,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // NOTOS: `/bots/` under notos.zuid.com; the worker strips it before Cloud Run (stap 4).
+  base: process.env.VITE_BASE_PATH ?? "/",
   plugins: [tanstackRouter(), react(), tailwindcss()],
   resolve: {
     alias: {

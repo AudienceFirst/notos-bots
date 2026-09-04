@@ -1,4 +1,5 @@
 // NOTOS: token als query op de stream-socket (stap 1).
+import { apiUrl } from "@/notos/base";
 import { withAccessToken } from "@/notos/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pageCoordinates } from "./take-the-wheel";
@@ -58,7 +59,7 @@ export function LiveScreen({ computerId, driving, onProblem }: Props) {
     const socket = new WebSocket(
       withAccessToken(
         new URL(
-          `${scheme}://${window.location.host}/api/computers/${encodeURIComponent(computerId)}/stream`,
+          `${scheme}://${window.location.host}${apiUrl(`/api/computers/${encodeURIComponent(computerId)}/stream`)}`,
         ),
       ),
     );

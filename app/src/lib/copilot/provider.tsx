@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 import { currentAccessToken } from "@/notos/supabase";
+import { API_PREFIX } from "@/notos/base";
 import { workspaceHeaders } from "@/notos/workspace";
 import { ActiveBotProvider } from "./active-bot";
 import { ComputerTools } from "./computer-tools";
@@ -32,7 +33,7 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
 
   return (
     <CopilotKitProvider
-      runtimeUrl="/api/copilotkit"
+      runtimeUrl={`${API_PREFIX}/copilotkit`}
       credentials="include"
       // NOTOS: the runtime sits behind the same Supabase-JWT guard as every other route (stap 1).
       // A function, so a refreshed token is picked up without re-mounting the provider.

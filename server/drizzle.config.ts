@@ -29,6 +29,11 @@ export default defineConfig({
     "./src/db/schema/threads.ts",
   ],
   out: "./drizzle",
+  // NOTOS: in het NOTOS-Supabase-project wonen wij in een eigen schema (stap 4); `check` en
+  // `generate` kijken dan alleen daar. Migreren gaat via scripts/notos/migrate.ts.
+  ...(process.env.DATABASE_SCHEMA
+    ? { schemaFilter: [process.env.DATABASE_SCHEMA] }
+    : {}),
   dbCredentials: {
     url: databaseUrl,
   },

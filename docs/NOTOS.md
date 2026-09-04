@@ -208,6 +208,36 @@ end-to-end getest (het ID-token minten via impersonatie werkt wel).
 Niet gedaan: een klant-lead die de modelkeuze ziet maar niet kan wijzigen in de app (alleen de
 admin-pagina bestaat; de API weigert niet-ZUID met 403). Anthropic op Vertex bewust niet.
 
+## Deployen (stap 4)
+
+Drie commando's, in deze volgorde, altijd eerst staging.
+
+1. **Migratie** (schema `bots_staging` in het NOTOS-Supabase-project, rol `notos_bots`, session-pooler
+   poort 5432 omdat `LISTEN/NOTIFY` op de transaction-pooler niet werkt):
+   ```
+   DATABASE_URL=$(gcloud secrets versions access latest --secret=notos-bots-staging-database-url --project=mge-zuid) \
+   DATABASE_SCHEMA=bots_staging bun server/src/notos/migrate.ts
+   ```
+   Het script herschrijft `"public".` naar het schema en administreert in `<schema>.__drizzle_migrations`.
+   Idempotent. Productie: schema `bots` en een tweede secret; nooit automatisch bij boot.
+2. **Image en service**:
+   ```
+   gcloud builds submit --config cloudbuild.yaml --project mge-zuid .
+   gcloud run deploy notos-bots-staging --project mge-zuid --region europe-west4 \
+     --image europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest \
+     --service-account notos-bots@mge-zuid.iam.gserviceaccount.com --no-allow-unauthenticated \
+     --memory 4Gi --cpu 2 --min-instances 0 --max-instances 3 --concurrency 40 --port 3001 \
+     --set-env-vars ... --set-secrets ...   (zie de deploy-regel in de terugmelding van stap 4)
+   gcloud run services update-traffic notos-bots-staging --region europe-west4 --to-latest
+   ```
+3. **Worker** (notos-repo, `apps/app`): `BOTS_ORIGIN` in `wrangler.jsonc`, secret `BOTS_INVOKER_KEY`
+   (JSON-sleutel van `notos-worker@mge-zuid`, alleen `run.invoker` op de service), dan de gewone
+   NOTOS-deploy. De worker stuurt `/bots/*` en `/api/bots/*` door met een Google ID-token en zet het
+   Supabase-token van de persoon in `X-Notos-Authorization`.
+
+De app in de image is gebouwd met `VITE_BASE_PATH=/bots/`; rechtstreeks op de Cloud Run-URL werken
+de assets dus niet, alleen via de worker. `/api/*` werkt wel rechtstreeks (met een ID-token).
+
 ## Telemetrie
 
 Staat uit via `.env.example`: `COPILOTKIT_TELEMETRY_DISABLED=true` en `DO_NOT_TRACK=1`. Beide

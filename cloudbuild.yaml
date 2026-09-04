@@ -1,0 +1,19 @@
+# NOTOS: build en push van de notos-bots-image, naar het voorbeeld van mge-platform/cloudbuild.api.yaml (stap 4).
+#   gcloud builds submit --config cloudbuild.yaml --project mge-zuid .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest
+images:
+  - europe-west4-docker.pkg.dev/mge-zuid/mge/notos-bots:latest
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+timeout: 2400s

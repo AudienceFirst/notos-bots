@@ -10,6 +10,7 @@
  * één keer gebouwd en weet niets van het project waar hij tegenaan draait.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { apiUrl } from "./base";
 
 const COOKIE_DOMAIN = ".zuid.com";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -80,7 +81,7 @@ let knownToken: string | null = null;
 async function settings(): Promise<SupabaseSettings | null> {
   settingsPromise ??= (async () => {
     try {
-      const response = await fetch("/api/capabilities", {
+      const response = await fetch(apiUrl("/api/capabilities"), {
         credentials: "include",
       });
       if (!response.ok) return null;

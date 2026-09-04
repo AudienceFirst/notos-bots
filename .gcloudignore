@@ -1,0 +1,7 @@
+# NOTOS: wat niet naar Cloud Build hoeft. De image installeert zelf uit de lockfile.
+.git
+node_modules
+**/node_modules
+app/dist
+.local
+*.log
