@@ -29,6 +29,8 @@ describe("runtime capabilities", () => {
       // Off until a deployment asks for it. The browser reads this to decide whether to offer the
       // tool that generates an interface, so it has to be here and not only in the runtime.
       generativeUi: false,
+      // NOTOS: no computer provider in this test, so the browser must not poll for one.
+      computers: false,
       // NOTOS: the one way in. The sign-in screen reads this to know what to say.
       authProviders: ["notos"],
       // A boolean, not a list: naming the registered providers would tell anybody who loads the
@@ -56,6 +58,7 @@ describe("runtime capabilities", () => {
       "mode",
       "durableHistory",
       "generativeUi",
+      "computers",
       "authProviders",
       "ssoConfigured",
       "supabase",

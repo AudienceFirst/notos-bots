@@ -242,6 +242,12 @@ export function createApp(
        */
       generativeUi: config.generativeUi,
       /*
+       * NOTOS: whether Bots have computers at all. Without it the browser polled every open channel
+       * for a control prompt every three seconds and collected a 404 per poll, because the routes
+       * are not even mounted when `config.computer` is absent.
+       */
+      computers: config.computer !== undefined,
+      /*
        * Which identity providers this deployment can sign somebody in with.
        *
        * Ids only, never the credentials: `configuredAuthProviders` returns names, and the clients

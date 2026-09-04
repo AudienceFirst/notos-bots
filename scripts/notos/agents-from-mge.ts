@@ -28,42 +28,55 @@ const ROLES: {
   id: string;
   name: string;
   title: string;
+  /** De kaarttekst. Kort, in gewone taal; de persona zelf is de systeemprompt. */
+  description: string;
 }[] = [
   {
     persona: "media_manager",
     id: "media-manager",
     name: "Media Manager",
     title: "Kanaalmix en budget",
+    description:
+      "Leest de data, stelt de strategie en verdeelt budget over merk en performance. Adviseert; elke wijziging gaat langs een mens.",
   },
   {
     persona: "sea_specialist",
     id: "sea-specialist",
     name: "SEA Specialist",
     title: "Google Ads",
+    description:
+      "Zoekwoorden, campagnestructuur, biedingen en advertentieteksten in Google Ads.",
   },
   {
     persona: "meta_strategist",
     id: "meta-specialist",
     name: "Meta Specialist",
     title: "Meta Ads",
+    description: "Campagnes, doelgroepen en creatie op Facebook en Instagram.",
   },
   {
     persona: "seo_specialist",
     id: "seo-specialist",
     name: "SEO Specialist",
     title: "Organische vindbaarheid",
+    description:
+      "Organische vindbaarheid: zoekwoorden, content, techniek en AI-zoekmachines.",
   },
   {
     persona: "copywriter",
     id: "copywriter",
     name: "Copywriter",
     title: "Advertentieteksten en creatie",
+    description:
+      "Advertentieteksten, hooks en briefings voor creatie, beoordeeld op effect.",
   },
   {
     persona: "data_analytics",
     id: "data-analytics",
     name: "Data Analytics",
     title: "Meten en attributie",
+    description:
+      "Tracking, attributie, meetplannen en de vraag of de cijfers een conclusie dragen.",
   },
 ];
 
@@ -86,12 +99,6 @@ if (python.exitCode !== 0) {
 }
 const personas = JSON.parse(python.stdout.toString()) as Record<string, string>;
 
-/** De eerste zin van de persona, zonder markdown-vet, als rolbeschrijving voor de kaart. */
-function roleDescription(persona: string): string {
-  const firstSentence = persona.split(/(?<=\\.)\\s/)[0] ?? persona;
-  return firstSentence.replace(/\\*\\*/g, "").trim();
-}
-
 const missing = ROLES.filter((role) => !(role.persona in personas));
 if (missing.length > 0) {
   console.error(
@@ -104,7 +111,7 @@ const agents = ROLES.map((role) => ({
   id: role.id,
   name: role.name,
   title: role.title,
-  role_description: roleDescription(personas[role.persona] ?? ""),
+  role_description: role.description,
   avatar_seed: role.id,
   type: "built-in",
   system_prompt: personas[role.persona],

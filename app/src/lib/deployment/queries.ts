@@ -18,6 +18,8 @@ export type DeploymentCapabilities = {
    * so both halves read this one answer.
    */
   generativeUi: boolean;
+  /** NOTOS: whether Bots have computers; off means no computer routes exist, so nothing polls them. */
+  computers: boolean;
 };
 
 export const deploymentKeys = {
@@ -51,9 +53,12 @@ export function deploymentCapabilitiesQueryOptions() {
         await client("/api/capabilities", {
           fallback: "This deployment's capabilities could not be loaded.",
         })
-      ).json()) as { generativeUi?: boolean };
+      ).json()) as { generativeUi?: boolean; computers?: boolean };
 
-      return { generativeUi: body.generativeUi === true };
+      return {
+        generativeUi: body.generativeUi === true,
+        computers: body.computers === true,
+      };
     },
   });
 }

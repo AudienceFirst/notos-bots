@@ -1,4 +1,5 @@
 import { IconDeviceDesktop, IconSettings } from "@tabler/icons-react";
+import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 import {
   useInfiniteQuery,
   useMutation,
@@ -89,7 +90,12 @@ function RouteComponent() {
   /** Channel routing currently supports one coworker. */
   const agentId = channel.data?.agentIds[0];
   /** Only polled while the screen is closed; the screen panel polls control itself. */
-  const needsYou = useNeedsYou(agentId, !isWatching);
+  const capabilities = useQuery(deploymentCapabilitiesQueryOptions());
+  // NOTOS: no computers in this deployment means nothing to poll, and no 404 every three seconds.
+  const needsYou = useNeedsYou(
+    agentId,
+    !isWatching && capabilities.data?.computers === true,
+  );
 
   const queryClient = useQueryClient();
   const markRead = useMutation(markChannelReadMutationOptions(queryClient));
@@ -218,25 +224,28 @@ function RouteComponent() {
             </motion.span>
           </div>
           <div className="flex flex-row gap-1.5">
-            <Button
-              aria-label={
-                needsYou
-                  ? "This Bot is waiting for you. Open its screen"
-                  : "Watch this Bot's screen"
-              }
-              aria-pressed={isWatching}
-              className={`relative ${isWatching ? "bg-foreground/5" : ""}`}
-              disabled={agentId === undefined}
-              onClick={() => show(isWatching ? null : "watch")}
-              variant="ghost"
-              size="icon"
-            >
-              <IconDeviceDesktop className="size-4.5" />
-              {/* Mirrors needs-you state outside the hidden screen pane. */}
-              {needsYou ? (
-                <span className="absolute right-1 top-1 size-2 rounded-full bg-amber-500" />
-              ) : null}
-            </Button>
+            {/* NOTOS: no computers in this deployment, so no screen to watch and no button for it. */}
+            {capabilities.data?.computers === true ? (
+              <Button
+                aria-label={
+                  needsYou
+                    ? "This Bot is waiting for you. Open its screen"
+                    : "Watch this Bot's screen"
+                }
+                aria-pressed={isWatching}
+                className={`relative ${isWatching ? "bg-foreground/5" : ""}`}
+                disabled={agentId === undefined}
+                onClick={() => show(isWatching ? null : "watch")}
+                variant="ghost"
+                size="icon"
+              >
+                <IconDeviceDesktop className="size-4.5" />
+                {/* Mirrors needs-you state outside the hidden screen pane. */}
+                {needsYou ? (
+                  <span className="absolute right-1 top-1 size-2 rounded-full bg-amber-500" />
+                ) : null}
+              </Button>
+            ) : null}
             <Button
               aria-label="Channel coworker"
               aria-pressed={isSettingsOpen}

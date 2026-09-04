@@ -1206,6 +1206,12 @@ const asChannelSocket = (ws: { data: SocketData }) =>
 
 serve<SocketData>({
   port,
+  /*
+   * NOTOS: a run streams over SSE now (stap 0) and a model may think longer than Bun's default of
+   * ten seconds before its first token; Bun then closes the response and the browser sits on
+   * "Thinking" for ever. 255 is Bun's maximum. The stall guard, not this, is what ends a dead turn.
+   */
+  idleTimeout: 255,
   async fetch(request, server) {
     const url = new URL(request.url);
     const streamBotId = streamPathBotId(url.pathname);
