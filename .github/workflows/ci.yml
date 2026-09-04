@@ -1,9 +1,11 @@
+# NOTOS: draait ook op pushes naar de branch `notos`; de Helm-jobs (chart) slaan die branch over,
+# want we deployen op Cloud Run en raken charts/ niet aan. De Bun-jobs blijven ongewijzigd.
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, notos]
   # Callable, so publishing a release runs these same checks against the release commit rather than
   # trusting that they ran somewhere earlier.
   workflow_call:
@@ -76,6 +78,8 @@ jobs:
   chart:
     name: chart (${{ matrix.target }})
     runs-on: ubuntu-latest
+    # NOTOS: geen Helm op de notos-branch.
+    if: github.ref != 'refs/heads/notos'
     strategy:
       # One red target must not hide whether another is red too.
       fail-fast: false
