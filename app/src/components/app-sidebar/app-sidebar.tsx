@@ -299,17 +299,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </div>
             ) : null}
             {!searching && channels.data?.length === 0 ? (
-              <div className="py-4">
-                <Empty className="border border-dashed min-h-[40dvh]">
-                  <EmptyHeader>
-                    <EmptyTitle>You don't have channels yet</EmptyTitle>
-                    <EmptyDescription className="text-pretty">
-                      Start talking to agents and your channels will appear
-                      here.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              </div>
+              /* NOTOS: a quiet line, not a dashed box of 40dvh; a new workspace starts empty by design. */
+              <p className="px-3 py-4 text-muted-foreground text-sm text-pretty">
+                No channels in this workspace yet. Your channels appear here
+                once you start one.
+              </p>
             ) : null}
             <AnimatePresence initial={false}>
               {visibleChannels.map((channel) => (
