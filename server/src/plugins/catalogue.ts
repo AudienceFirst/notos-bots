@@ -121,6 +121,12 @@ export type CatalogueEntry = {
    */
   writeTools: readonly string[];
   /**
+   * NOTOS (stap 7): a name pattern that also counts as a write, for a vendor whose MCP lists its
+   * tools only after somebody has connected (Webflow). Without it an advertised tool absent from
+   * `writeTools` reads as a READ, and "publish site" would pass the gate the moment it was seen.
+   */
+  writeToolPattern?: RegExp;
+  /**
    * Which protocol reaches this vendor. Absent means MCP, which is what every entry was.
    *
    * A field rather than an inference, because the answer is not derivable from the host: Google
@@ -316,6 +322,94 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
     writeTools: Object.freeze([]),
     docsUrl: "https://frida.zuid.ai/.well-known/oauth-protected-resource",
   },
+  /*
+   * NOTOS (stap 7): Gmail as the person asking. Reads are search, message, thread; writes are a draft
+   * and a send, both behind the approvals gate (stap 5), and a send to anybody outside the internal
+   * domains becomes a draft inside gmail-rest.ts. One Google OAuth client per deployment, pasted by an
+   * administrator like Drive's; the same client may serve both when it carries both scopes.
+   */
+  {
+    key: "gmail",
+    title: "Gmail",
+    vendor: "Google",
+    summary:
+      "Your own mailbox: search and read as you, drafts in your name, sending only inside the organisation.",
+    host: "https://gmail.googleapis.com",
+    path: "/gmail/v1",
+    transport: "gmail-rest",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+      tokenUrl: "https://oauth2.googleapis.com/token",
+      revokeUrl: "https://oauth2.googleapis.com/revoke",
+      scopes: Object.freeze([
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.send",
+      ]),
+      authorizationParams: Object.freeze({
+        access_type: "offline",
+        prompt: "consent",
+      }),
+    },
+    writeTools: Object.freeze(["create_draft", "send_message"]),
+    docsUrl: "https://developers.google.com/workspace/gmail/api/guides",
+  },
+  /*
+   * NOTOS (stap 7): a Shopify shop as the person asking, read-only. Per shop: the host is chosen at
+   * connect time and the OAuth URLs carry `{host}` for it (see authForInstance). Needs a Shopify app
+   * (client id and secret from the Partner dashboard) pasted by an administrator; the client
+   * credentials flow NOTOS uses for a client's own shop is a different thing and stays in NOTOS.
+   */
+  {
+    key: "shopify",
+    title: "Shopify",
+    vendor: "Shopify",
+    summary:
+      "A Shopify shop you have access to: shop, products and orders, read as you.",
+    host: null,
+    hostPattern: "^https://[a-z0-9-]+\\.myshopify\\.com$",
+    path: "/admin/api/2026-07/graphql.json",
+    transport: "shopify-rest",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "{host}/admin/oauth/authorize",
+      tokenUrl: "{host}/admin/oauth/access_token",
+      revokeUrl: "{host}/admin/oauth/access_token",
+      scopes: Object.freeze(["read_orders", "read_products", "read_customers"]),
+    },
+    writeTools: Object.freeze([]),
+    docsUrl: "https://shopify.dev/docs/apps/build/authentication-authorization",
+  },
+  /*
+   * NOTOS (stap 7): Webflow's official remote MCP with OAuth and dynamic client registration
+   * (discovery at https://mcp.webflow.com/.well-known/oauth-authorization-server, checked 5 Sep 2026),
+   * so it is an MCP entry like Notion. Its tool list is only visible after connecting, hence the
+   * name pattern for writes: anything that creates, updates, deletes, publishes or uploads waits
+   * for a person.
+   */
+  {
+    key: "webflow",
+    title: "Webflow",
+    vendor: "Webflow",
+    summary:
+      "Your Webflow sites: pages, CMS collections and items, read as you; changes wait for a person.",
+    host: "https://mcp.webflow.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://mcp.webflow.com/oauth/authorize",
+      tokenUrl: "https://mcp.webflow.com/oauth/token",
+      revokeUrl: "https://mcp.webflow.com/oauth/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://mcp.webflow.com/oauth/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy)/i,
+    docsUrl: "https://developers.webflow.com/mcp/reference/overview",
+  },
   {
     key: "routines",
     title: "Routines",
@@ -429,7 +523,10 @@ export function classifyTool(
   // can say a tool of theirs only reads. Everything it offers is a write.
   if (!entry) return "write";
   if (!advertised) return "write";
-  return entry.writeTools.includes(toolName) ? "write" : "read";
+  if (entry.writeTools.includes(toolName)) return "write";
+  // NOTOS (stap 7): see writeToolPattern.
+  if (entry.writeToolPattern?.test(toolName)) return "write";
+  return "read";
 }
 
 /**
@@ -590,4 +687,36 @@ export function customUrlRefusal(raw: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * NOTOS (stap 7): the OAuth endpoints of a per-instance vendor, for one instance.
+ *
+ * A Shopify shop authorises at its own host, so the catalogue writes `{host}` and this fills it
+ * from the server row's URL. A vendor with a fixed host comes back unchanged.
+ */
+export type UserOAuthAuth = Extract<CatalogueAuth, { kind: "user-oauth" }>;
+
+export function authForInstance(
+  auth: UserOAuthAuth,
+  entry: Pick<CatalogueEntry, "host">,
+  serverUrl: string,
+): UserOAuthAuth {
+  if (entry.host !== null) return auth;
+  let origin = "";
+  try {
+    origin = new URL(serverUrl).origin;
+  } catch {
+    return auth;
+  }
+  const fill = (value: string) => value.replace("{host}", origin);
+  return {
+    ...auth,
+    authorizationUrl: fill(auth.authorizationUrl),
+    tokenUrl: fill(auth.tokenUrl),
+    revokeUrl: fill(auth.revokeUrl),
+    ...(auth.registrationUrl
+      ? { registrationUrl: fill(auth.registrationUrl) }
+      : {}),
+  };
 }

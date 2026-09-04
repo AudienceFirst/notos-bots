@@ -1,3 +1,5 @@
+import * as gmailRest from "./gmail-rest";
+import * as shopifyRest from "./shopify-rest";
 import * as builtinRoutines from "./builtin-routines";
 import type { CatalogueEntry } from "./catalogue";
 import * as driveRest from "./google-drive-rest";
@@ -79,12 +81,20 @@ export type VendorTransport = {
  * A closed union rather than a string, so adding one is a change to this file and to the registry
  * below together. An entry naming a transport that does not exist should not typecheck.
  */
-export type TransportKind = "mcp" | "google-drive-rest" | "builtin-routines";
+export type TransportKind =
+  | "mcp"
+  | "google-drive-rest"
+  | "builtin-routines"
+  // NOTOS (stap 7)
+  | "gmail-rest"
+  | "shopify-rest";
 
 const TRANSPORTS: Record<TransportKind, VendorTransport> = {
   mcp,
   "google-drive-rest": driveRest,
   "builtin-routines": builtinRoutines,
+  "gmail-rest": gmailRest,
+  "shopify-rest": shopifyRest,
 };
 
 /**

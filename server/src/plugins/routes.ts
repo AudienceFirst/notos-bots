@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type { BotAccessCheck } from "../agents/profile-policy";
 import type { AppVariables } from "../auth/guards";
 import { requireAdmin } from "../auth/guards";
-import { CATALOGUE, catalogueEntry } from "./catalogue";
+import { authForInstance, CATALOGUE, catalogueEntry } from "./catalogue";
 import {
   authorizationUrlFor,
   challengeFor,
@@ -106,6 +106,10 @@ export function createPluginRoutes(
   },
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
+  // NOTOS (stap 7): the URL a per-instance server (a Shopify shop) was added with, for its OAuth URLs.
+  const serverUrlOf = async (serverId: string): Promise<string> =>
+    (await store.listServers()).find((server) => server.id === serverId)?.url ??
+    "";
 
   const actorEmail = (context: { var: AppVariables }) =>
     context.var.actor?.email ?? "unknown";
@@ -441,7 +445,7 @@ export function createPluginRoutes(
     const verifier = createVerifier();
     return context.json({
       authorizationUrl: authorizationUrlFor({
-        auth: entry.auth,
+        auth: authForInstance(entry.auth, entry, await serverUrlOf(serverId)),
         clientId: client.clientId,
         redirectUri: redirectUriFor(connect.publicUrl),
         state: await sealConnectState(
@@ -505,7 +509,11 @@ export function createPluginRoutes(
     if (!client) return context.redirect(failed);
 
     const grant = await redeemAuthorizationCode({
-      tokenUrl: entry.auth.tokenUrl,
+      tokenUrl: authForInstance(
+        entry.auth,
+        entry,
+        await serverUrlOf(state.serverId),
+      ).tokenUrl,
       clientId: client.clientId,
       clientSecret: client.clientSecret,
       code,

@@ -1,4 +1,5 @@
 import type { ApprovalStore } from "../notos/approvals";
+import { authForInstance } from "./catalogue";
 import { hashArgs } from "../notos/approvals";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { type AuditStore, recordAuditEvent } from "../audit";
@@ -788,7 +789,8 @@ export function createPluginStore(options: PluginStoreOptions) {
 
     // Held before the critical section, because narrowing does not survive into a closure and this
     // is where the entry is known to be a `user-oauth` one.
-    const { tokenUrl } = entry.auth;
+    // NOTOS (stap 7): a per-instance vendor (Shopify) has its token endpoint at the shop's own host.
+    const { tokenUrl } = authForInstance(entry.auth, entry, row.url);
     const { title } = entry;
     /*
      * Where to register again, for a vendor that issues its own clients — and undefined for one an

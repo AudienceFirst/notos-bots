@@ -3,7 +3,11 @@ import { eq } from "drizzle-orm";
 import type { Database } from "../../db/client";
 import { agents } from "../../db/schema/core";
 import { mcpServers, mcpTools, pluginGrants } from "../../db/schema/plugins";
-import { FRIDA_HOST, FRIDA_TOOLS } from "../../plugins/catalogue";
+import {
+  FRIDA_HOST,
+  FRIDA_TOOLS,
+  resolveServerUrl,
+} from "../../plugins/catalogue";
 
 export const FRIDA_SERVER_ID = "frida";
 const GRANTED_BY = "workspace-sync";
@@ -19,6 +23,21 @@ const GRANTED_BY = "workspace-sync";
  * The tool names come from the catalogue's list plus whatever FRIDA advertised at the last discovery,
  * so a tool FRIDA adds is granted on the next sync once one person has connected.
  */
+/**
+ * NOTOS (stap 7): the read tools every Bot holds by default, per connector. Gmail and Drive reads
+ * come along with FRIDA; Shopify and Webflow start with nothing until an administrator grants them.
+ */
+const DEFAULT_READ_TOOLS: Readonly<Record<string, readonly string[]>> =
+  Object.freeze({
+    gmail: Object.freeze(["search_messages", "get_message", "get_thread"]),
+    "google-drive": Object.freeze([
+      "search_files",
+      "list_recent_files",
+      "get_file_metadata",
+      "read_file_content",
+    ]),
+  });
+
 export async function grantFridaTools(
   database: Database,
   workspaceId: string,
@@ -33,6 +52,21 @@ export async function grantFridaTools(
       addedBy: GRANTED_BY,
     })
     .onConflictDoNothing();
+  // The Gmail row too, so the connector exists; its OAuth client is an administrator's to paste.
+  for (const key of Object.keys(DEFAULT_READ_TOOLS)) {
+    const resolved = resolveServerUrl(key);
+    if (!resolved) continue;
+    await database
+      .insert(mcpServers)
+      .values({
+        id: key,
+        title: resolved.entry.title,
+        vendor: resolved.entry.vendor,
+        url: resolved.url,
+        addedBy: GRANTED_BY,
+      })
+      .onConflictDoNothing();
+  }
 
   const advertised = await database
     .select({ name: mcpTools.name })
@@ -49,10 +83,16 @@ export async function grantFridaTools(
     .where(eq(agents.workspaceId, workspaceId));
   if (bots.length === 0) return 0;
 
+  const refs = [
+    ...[...names].map((name) => `${FRIDA_SERVER_ID}/${name}`),
+    ...Object.entries(DEFAULT_READ_TOOLS).flatMap(([key, tools]) =>
+      tools.map((name) => `${key}/${name}`),
+    ),
+  ];
   const rows = bots.flatMap((bot) =>
-    [...names].map((name) => ({
+    refs.map((ref) => ({
       kind: "mcp",
-      ref: `${FRIDA_SERVER_ID}/${name}`,
+      ref,
       agentId: bot.id,
       grantedBy: GRANTED_BY,
     })),

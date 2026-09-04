@@ -75,9 +75,17 @@ function RouteComponent() {
    * so listing it here would offer a choice you do not have. And a vendor nobody has enabled cannot
    * be connected at all, because there is no OAuth client to consent against.
    */
-  const yours = (plugins.data?.catalogue ?? []).filter(
-    (entry) => entry.auth === "user-oauth" && added.has(entry.key),
-  );
+  // NOTOS (stap 7): the order people meet them in: FRIDA, Gmail, Drive, then the shop and the site.
+  const ORDER = ["frida", "gmail", "google-drive", "shopify", "webflow"];
+  const rank = (key: string) => {
+    const at = ORDER.indexOf(key);
+    return at === -1 ? ORDER.length : at;
+  };
+  const yours = (plugins.data?.catalogue ?? [])
+    .filter((entry) => entry.auth === "user-oauth" && added.has(entry.key))
+    .sort(
+      (a, b) => rank(a.key) - rank(b.key) || a.title.localeCompare(b.title),
+    );
 
   return (
     <PageShell
