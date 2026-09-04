@@ -241,6 +241,10 @@ describe("every curated entry is asked which credential it takes", () => {
             key: entry.key,
             credentialId: deploymentCredentialId,
             by: "admin@example.com",
+            // NOTOS (stap 7): a per-instance vendor (Shopify) needs its host to resolve at all.
+            ...(entry.host === null
+              ? { instanceHost: "https://example.myshopify.com" }
+              : {}),
           }),
         ).rejects.toBeInstanceOf(CustomServerRefusedError);
         continue;

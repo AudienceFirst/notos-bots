@@ -18,7 +18,8 @@ describe("OpenBot workspace", () => {
       readFileSync(join(repositoryRoot, "package.json"), "utf8"),
     ) as { workspaces: string[] };
 
-    expect(rootManifest.workspaces).toEqual(["app", "server", "worker"]);
+    // NOTOS (stap 9): the worker is gone; the sweep is an endpoint of the server.
+    expect(rootManifest.workspaces).toEqual(["app", "server"]);
 
     for (const packageName of rootManifest.workspaces) {
       expect(existsSync(join(repositoryRoot, packageName))).toBe(true);

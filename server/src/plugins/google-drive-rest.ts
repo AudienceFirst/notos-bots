@@ -399,16 +399,28 @@ export async function callTool(
     return typeof value === "string" && value.trim() !== "" ? value : null;
   };
 
-  // NOTOS (stap 8): the workspace's folders, or nothing.
+  /*
+   * NOTOS (stap 8): the workspace's folders. Absent (a deployment without workspaces, upstream's
+   * tests) means all of the person's Drive as before; present and empty means no folder is set,
+   * which is a sentence rather than a search.
+   */
+  const scoped = connection.driveRootIds !== undefined;
   const roots = connection.driveRootIds ?? [];
-  if (roots.length === 0) return failure(NO_FOLDER);
-  const tree = await folderTree(connection, roots);
+  if (scoped && roots.length === 0) return failure(NO_FOLDER);
+  const tree = scoped
+    ? await folderTree(connection, roots)
+    : { ok: true as const, ids: [] as string[] };
   if (!tree.ok) return failure(tree.message);
   const inside = new Set(tree.ids);
+  const within = (parents: string[] | undefined) =>
+    !scoped || (parents ?? []).some((parent) => inside.has(parent));
+  const scope = scoped
+    ? ` and ${parentsClause(tree.ids)} and trashed = false`
+    : "";
 
   if (toolName === "list_folder") {
     const folderId = stringArg("folderId") ?? roots[0];
-    if (!folderId || !inside.has(folderId)) return failure(OUTSIDE);
+    if (!folderId || (scoped && !inside.has(folderId))) return failure(OUTSIDE);
     const result = await request(connection, "/files", {
       pageSize: String(PAGE_SIZE * 2),
       fields: `files(${FILE_FIELDS})`,
@@ -432,11 +444,9 @@ export async function callTool(
       // Drive's own ordering for "recent". Search leaves it to relevance.
       // NOTOS (stap 8): always inside the workspace's folder tree.
       ...(query
-        ? {
-            q: `(${driveQuery(query)}) and ${parentsClause(tree.ids)} and trashed = false`,
-          }
+        ? { q: scoped ? `(${driveQuery(query)})${scope}` : driveQuery(query) }
         : {
-            q: `${parentsClause(tree.ids)} and trashed = false`,
+            ...(scoped ? { q: scope.replace(/^ and /, "") } : {}),
             orderBy: "modifiedTime desc",
           }),
     });
@@ -459,9 +469,7 @@ export async function callTool(
     if (!result.ok) return failure(result.message);
 
     const file = (await result.response.json()) as DriveFile;
-    if (!(file.parents ?? []).some((parent) => inside.has(parent))) {
-      return failure(OUTSIDE);
-    }
+    if (!within(file.parents)) return failure(OUTSIDE);
     const owner = file.owners?.[0]?.emailAddress;
     return asResult(
       [
@@ -490,9 +498,7 @@ export async function callTool(
     );
     if (!metadata.ok) return failure(metadata.message);
     const file = (await metadata.response.json()) as DriveFile;
-    if (!(file.parents ?? []).some((parent) => inside.has(parent))) {
-      return failure(OUTSIDE);
-    }
+    if (!within(file.parents)) return failure(OUTSIDE);
 
     const exportAs = file.mimeType ? EXPORTABLE[file.mimeType] : undefined;
 

@@ -445,7 +445,11 @@ export function createPluginRoutes(
     const verifier = createVerifier();
     return context.json({
       authorizationUrl: authorizationUrlFor({
-        auth: authForInstance(entry.auth, entry, await serverUrlOf(serverId)),
+        auth: authForInstance(
+          entry.auth,
+          entry,
+          entry.host === null ? await serverUrlOf(serverId) : "",
+        ),
         clientId: client.clientId,
         redirectUri: redirectUriFor(connect.publicUrl),
         state: await sealConnectState(
@@ -512,7 +516,7 @@ export function createPluginRoutes(
       tokenUrl: authForInstance(
         entry.auth,
         entry,
-        await serverUrlOf(state.serverId),
+        entry.host === null ? await serverUrlOf(state.serverId) : "",
       ).tokenUrl,
       clientId: client.clientId,
       clientSecret: client.clientSecret,

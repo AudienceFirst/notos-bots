@@ -357,7 +357,7 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
   },
   /*
    * NOTOS (stap 7): a Shopify shop as the person asking, read-only. Per shop: the host is chosen at
-   * connect time and the OAuth URLs carry `{host}` for it (see authForInstance). Needs a Shopify app
+   * connect time and the OAuth URLs carry `{shop}` for it (see authForInstance). Needs a Shopify app
    * (client id and secret from the Partner dashboard) pasted by an administrator; the client
    * credentials flow NOTOS uses for a client's own shop is a different thing and stays in NOTOS.
    */
@@ -373,9 +373,9 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
     transport: "shopify-rest",
     auth: {
       kind: "user-oauth",
-      authorizationUrl: "{host}/admin/oauth/authorize",
-      tokenUrl: "{host}/admin/oauth/access_token",
-      revokeUrl: "{host}/admin/oauth/access_token",
+      authorizationUrl: "https://{shop}.myshopify.com/admin/oauth/authorize",
+      tokenUrl: "https://{shop}.myshopify.com/admin/oauth/access_token",
+      revokeUrl: "https://{shop}.myshopify.com/admin/oauth/access_token",
       scopes: Object.freeze(["read_orders", "read_products", "read_customers"]),
     },
     writeTools: Object.freeze([]),
@@ -692,7 +692,7 @@ export function customUrlRefusal(raw: string): string | null {
 /**
  * NOTOS (stap 7): the OAuth endpoints of a per-instance vendor, for one instance.
  *
- * A Shopify shop authorises at its own host, so the catalogue writes `{host}` and this fills it
+ * A Shopify shop authorises at its own host, so the catalogue writes `{shop}` and this fills it
  * from the server row's URL. A vendor with a fixed host comes back unchanged.
  */
 export type UserOAuthAuth = Extract<CatalogueAuth, { kind: "user-oauth" }>;
@@ -703,13 +703,16 @@ export function authForInstance(
   serverUrl: string,
 ): UserOAuthAuth {
   if (entry.host !== null) return auth;
-  let origin = "";
+  let hostname = "";
   try {
-    origin = new URL(serverUrl).origin;
+    hostname = new URL(serverUrl).hostname;
   } catch {
     return auth;
   }
-  const fill = (value: string) => value.replace("{host}", origin);
+  // The shop is the first label of its myshopify host; the URLs stay https in the catalogue.
+  const shop = hostname.split(".")[0] ?? "";
+  if (!shop) return auth;
+  const fill = (value: string) => value.replace("{shop}", shop);
   return {
     ...auth,
     authorizationUrl: fill(auth.authorizationUrl),
