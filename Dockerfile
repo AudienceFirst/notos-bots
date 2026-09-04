@@ -42,7 +42,6 @@ COPY package.json bun.lock ./
 COPY tsconfig.base.json bunfig.toml ./
 COPY app/package.json app/package.json
 COPY server/package.json server/package.json
-COPY worker/package.json worker/package.json
 RUN bun install --frozen-lockfile
 
 # The lockfile travels with the manifest, because `--frozen-lockfile` with no lockfile in the context
@@ -57,10 +56,9 @@ RUN cd agent-computer && bun install --frozen-lockfile
 # biome and the test tooling are a gigabyte that nothing in a running container imports.
 RUN mkdir -p /prod && cp package.json bun.lock /prod/ \
   && cp -r app/package.json /prod/app-package.json \
-  && cd /prod && mkdir -p app server worker \
+  && cd /prod && mkdir -p app server \
   && cp /src/app/package.json app/package.json \
   && cp /src/server/package.json server/package.json \
-  && cp /src/worker/package.json worker/package.json \
   && bun install --frozen-lockfile --production
 
 

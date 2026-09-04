@@ -45,6 +45,47 @@ export function createRoutineRoutes(
     return context.json({ routines: routines.map(routineDto) });
   });
 
+  // NOTOS (stap 9): a routine from the page, not only from a conversation with a Bot.
+  routes.post("/", requireUser, async (context) => {
+    const body = (await context.req.json().catch(() => null)) as {
+      agentId?: unknown;
+      channelId?: unknown;
+      instruction?: unknown;
+      cron?: unknown;
+      timezone?: unknown;
+    } | null;
+    const agentId = typeof body?.agentId === "string" ? body.agentId : "";
+    const instruction =
+      typeof body?.instruction === "string" ? body.instruction : "";
+    const cron = typeof body?.cron === "string" ? body.cron.trim() : "";
+    if (!agentId || !instruction.trim() || !cron) {
+      return context.json(
+        { error: "A Bot, an instruction and a schedule are required." },
+        400,
+      );
+    }
+    try {
+      const routine = await routineStore.create({
+        ownerUserId: context.var.actor.id,
+        agentId,
+        instruction,
+        cron,
+        ...(typeof body?.channelId === "string" && body.channelId
+          ? { channelId: body.channelId }
+          : {}),
+        ...(typeof body?.timezone === "string" && body.timezone
+          ? { timezone: body.timezone }
+          : {}),
+      });
+      return context.json({ routine }, 201);
+    } catch (error) {
+      if (error instanceof RoutineRefusedError) {
+        return context.json({ error: error.message }, 400);
+      }
+      throw error;
+    }
+  });
+
   routes.put("/:id/enabled", requireUser, async (context) => {
     const body = await context.req.json().catch(() => null);
     const enabled = (body as { enabled?: unknown } | null)?.enabled;

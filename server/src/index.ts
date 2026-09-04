@@ -34,6 +34,8 @@ import { createComponentStore } from "./components/store";
 import { createComputerGateway } from "./computer/gateway";
 import { createApprovalStore } from "./notos/approvals";
 import { createWorkspacePolicyStore } from "./notos/policy";
+import { createSweepCallerVerifier } from "./notos/routines/sweep-route";
+import { dispatchClaimedRoutines, offerDueRoutines } from "./routines/sweep";
 import { driveRootsOf } from "./notos/workspaces";
 import { createPageFrameStore } from "./computer/page-frames";
 import { startPolicyListener } from "./computer/policy-listener";
@@ -794,17 +796,63 @@ const buildAgentFor = async ({
   return agent;
 };
 
+// NOTOS (stap 9): one TurnRunner for routines and for a turn started from outside; the same
+// runner, store and lock the runtime uses (see notos/runner).
+const runTurn = createTurnRunner({
+  threads: threadStore,
+  lock: threadLock,
+  runner: threadRunner,
+  buildAgentFor,
+});
 const routineRunner = createRoutineRunner({
   routineStore,
   channelStore,
-  // NOTOS: the same runner, store and lock the runtime uses; see notos/runner.
-  runTurn: createTurnRunner({
-    threads: threadStore,
-    lock: threadLock,
-    runner: threadRunner,
-    buildAgentFor,
-  }),
+  runTurn,
 });
+
+/*
+ * NOTOS (stap 9): the sweep upstream's worker ran in a loop, as one call. Dispatch is in-process:
+ * the runner lives here. Cloud Scheduler calls it every minute with an identity token of one of
+ * this deployment's own service accounts; the worker secret still works for a local call.
+ */
+const sweepQueue = createWorkQueue(database);
+const sweepOwner = `routines/${process.env.HOSTNAME ?? randomUUID().slice(0, 8)}`;
+const routineSweep = {
+  run: async () => {
+    const options = {
+      routineStore,
+      queue: sweepQueue,
+      dispatch: (routineRunId: string) => routineRunner.run(routineRunId),
+      owner: sweepOwner,
+    };
+    const offered = await offerDueRoutines(options);
+    const dispatched = await dispatchClaimedRoutines(options);
+    return {
+      considered: dispatched.considered,
+      offered: offered.offered.length,
+      dispatched: dispatched.fired.length,
+      fired: dispatched.fired,
+    };
+  },
+  verifyCaller: createSweepCallerVerifier({
+    ...(config.workerSharedSecret
+      ? { sharedSecret: config.workerSharedSecret }
+      : {}),
+    audiences: [
+      ...(config.publicUrl ? [config.publicUrl] : []),
+      ...(process.env.SWEEP_AUDIENCE ? [process.env.SWEEP_AUDIENCE] : []),
+    ],
+    serviceAccounts: (
+      process.env.SWEEP_SERVICE_ACCOUNTS ??
+      "notos-worker@mge-zuid.iam.gserviceaccount.com,notos-bots@mge-zuid.iam.gserviceaccount.com"
+    )
+      .split(",")
+      .map((address) => address.trim())
+      .filter(Boolean),
+  }),
+};
+const botVisible = async (actor: AgentActor, botId: string) =>
+  (await loadAgentsForActor(actor)).some((agent) => agent.id === botId);
 
 /**
  * The runtime, and the two things beside it a hop needs.
@@ -1186,6 +1234,10 @@ const app = createApp(
   workspaceStore,
   // NOTOS: where a person says yes or no to a Bot's write (stap 5).
   approvalStore,
+  // NOTOS (stap 9): the sweep for Cloud Scheduler, and one turn from outside.
+  routineSweep,
+  runTurn,
+  botVisible,
 );
 
 /**

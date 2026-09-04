@@ -39,3 +39,24 @@ export function deleteRoutineMutationOptions(queryClient: QueryClient) {
     onSuccess: () => invalidateRoutines(queryClient),
   });
 }
+
+/** NOTOS (stap 9): a routine from the page. The server validates the schedule and the channel. */
+export function createRoutineMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (input: {
+      agentId: string;
+      channelId?: string;
+      instruction: string;
+      cron: string;
+      timezone: string;
+    }) => {
+      await client("/api/routines", {
+        method: "POST",
+        body: input,
+        fallback: "The routine could not be created",
+      });
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: routineKeys.all }),
+  });
+}

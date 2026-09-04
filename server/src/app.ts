@@ -1,4 +1,12 @@
+import type { AgentActor } from "./agents/profile-types";
 import type { ApprovalStore } from "./notos/approvals";
+import { createRunsRoutes } from "./notos/routines/runs-route";
+import {
+  createSweepRoutes,
+  type SweepCallerVerifier,
+  type SweepReport,
+} from "./notos/routines/sweep-route";
+import type { TurnRunner } from "./routines/runner";
 import { driveFolderIdFrom, driveRootsOf } from "./notos/workspaces";
 import { createApprovalRoutes } from "./notos/approvals/routes";
 // NOTOS: thread-historie/-status uit de eigen tabel (stap 0); sessieguard op de Supabase-JWT, /api/auth eruit (stap 1).
@@ -227,6 +235,15 @@ export function createApp(
   workspaceStore?: WorkspaceStore,
   /** NOTOS (stap 5): where a person says yes or no to a Bot's write. */
   approvalStore?: ApprovalStore,
+  /** NOTOS (stap 9): one sweep per call, for Cloud Scheduler; null when routines are off. */
+  routineSweep?: {
+    run: () => Promise<SweepReport>;
+    verifyCaller: SweepCallerVerifier;
+  },
+  /** NOTOS (stap 9): one turn of a Bot from outside, as the caller; the door for n8n and NOTOS. */
+  runTurn?: TurnRunner,
+  /** NOTOS (stap 9): whether the actor may talk to this Bot in this workspace. */
+  botVisible?: (actor: AgentActor, botId: string) => Promise<boolean>,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
@@ -1132,6 +1149,35 @@ export function createApp(
     // NOTOS (stap 5): the card in the transcript reads and answers here; the gateway trusts the row.
     mountScoped("/approvals", (guard) =>
       createApprovalRoutes(approvalStore, guard, auditStore),
+    );
+  }
+
+  if (channelStore && runTurn && botVisible) {
+    // NOTOS (stap 9): POST /api/w/:workspace/bots/:bot/runs starts one turn as the caller.
+    mountScoped("/bots", (guard) =>
+      createRunsRoutes({ channelStore, runTurn, guard, botVisible }),
+    );
+  }
+
+  if (routineSweep) {
+    // NOTOS (stap 9): Cloud Scheduler ticks here every minute; locally the worker secret works too.
+    app.route(
+      "/",
+      createSweepRoutes({
+        run: routineSweep.run,
+        verifyCaller: routineSweep.verifyCaller,
+        ...(auditStore
+          ? {
+              audit: async (event) => {
+                await recordAuditEvent(auditStore, {
+                  eventType: event.eventType,
+                  targetType: "worker",
+                  payload: event.payload,
+                });
+              },
+            }
+          : {}),
+      }),
     );
   }
 

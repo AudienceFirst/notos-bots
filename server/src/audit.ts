@@ -392,6 +392,7 @@ export const auditEventTypes = [
   "approval.requested",
   "approval.granted",
   "approval.denied",
+  "routines.sweep",
 ] as const;
 
 export type AuditEventType = (typeof auditEventTypes)[number];
