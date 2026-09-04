@@ -56,7 +56,9 @@ export type WorkspaceStore = {
   mayRead(actor: ActorLike, workspaceId: string | null): Promise<boolean>;
   updateSettings(
     id: string,
-    settings: Partial<Pick<Workspace, "vertexLocation" | "defaultModel">>,
+    settings: Partial<
+      Pick<Workspace, "vertexLocation" | "defaultModel" | "driveRootIds">
+    >,
   ): Promise<void>;
 };
 
@@ -203,8 +205,31 @@ export function createWorkspaceStore(database: Database): WorkspaceStore {
           ...(settings.defaultModel
             ? { defaultModel: settings.defaultModel }
             : {}),
+          // NOTOS (stap 8): { roots: [...] }; an empty list is a deliberate "no folder".
+          ...(settings.driveRootIds
+            ? { driveRootIds: settings.driveRootIds }
+            : {}),
         })
         .where(eq(deploymentPackages.id, id));
     },
   };
+}
+
+/** NOTOS (stap 8): the folder ids out of the jsonb, whatever shape an older row has. */
+export function driveRootsOf(
+  value: Record<string, unknown> | null | undefined,
+): string[] {
+  const roots = value?.roots;
+  if (!Array.isArray(roots)) return [];
+  return roots.filter(
+    (id): id is string => typeof id === "string" && /^[\w-]{10,}$/.test(id),
+  );
+}
+
+/** A Drive folder link or a bare id, to the id; null when it is neither. */
+export function driveFolderIdFrom(input: string): string | null {
+  const trimmed = input.trim();
+  const fromLink = trimmed.match(/\/folders\/([\w-]{10,})/);
+  if (fromLink?.[1]) return fromLink[1];
+  return /^[\w-]{10,}$/.test(trimmed) ? trimmed : null;
 }

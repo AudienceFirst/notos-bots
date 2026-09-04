@@ -85,6 +85,21 @@ const TOOLS: readonly McpTool[] = Object.freeze([
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "list_folder",
+    description:
+      "List what is in one folder of the client's Drive folder: files and subfolders, newest first. Without a folder id, the client folder itself.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        folderId: {
+          type: "string",
+          description:
+            "The folder's Drive id; leave out for the root of the client folder.",
+        },
+      },
+    },
+  },
+  {
     name: "get_file_metadata",
     description:
       "Get the name, type, size, owner, last modified time and link for one file, by its id.",
@@ -110,7 +125,12 @@ const TOOLS: readonly McpTool[] = Object.freeze([
   },
 ]);
 
-type Connection = { url: string; token?: string };
+type Connection = {
+  url: string;
+  token?: string;
+  /** NOTOS (stap 8): the workspace's folders; every read stays inside them. */
+  driveRootIds?: readonly string[];
+};
 
 /**
  * No credential is needed to know what this adapter can do, because the answer is in this file.
@@ -224,6 +244,7 @@ type DriveFile = {
   webViewLink?: string;
   size?: string;
   owners?: { emailAddress?: string }[];
+  parents?: string[];
 };
 
 /**
@@ -312,6 +333,62 @@ const failure = (message: string): McpCallResult => ({
  * because a tool name that reaches this point and is not in {@link TOOLS} means the stored tool list
  * and this code have diverged, which is a bug to surface rather than to absorb.
  */
+/*
+ * NOTOS (stap 8): a Bot in a client's workspace reads that client's Drive folder and nothing else,
+ * with the rights of the person asking. Drive has no "search under this folder" for a whole tree,
+ * so the folder tree is walked once and kept for a quarter of an hour, and every search carries a
+ * `parents` clause over it; a file is readable only when one of its parents is in the tree. No
+ * folder configured means no results, with a sentence that says where to set one.
+ */
+const TREE_TTL_MS = 15 * 60 * 1000;
+const TREE_MAX_FOLDERS = 400;
+const NO_FOLDER =
+  "This workspace has no Drive folder yet, so there is nothing to search. An administrator sets the client's folder in Admin › Workspaces.";
+const OUTSIDE =
+  "alleen de klantenmap is doorzoekbaar: this file is outside this workspace's Drive folder.";
+const treeCache = new Map<string, { ids: string[]; until: number }>();
+
+async function folderTree(
+  connection: Connection,
+  roots: readonly string[],
+): Promise<{ ok: true; ids: string[] } | { ok: false; message: string }> {
+  const key = [...roots].sort().join(",");
+  const hit = treeCache.get(key);
+  if (hit && hit.until > Date.now()) return { ok: true, ids: hit.ids };
+  const ids: string[] = [];
+  const queue = [...roots];
+  const seen = new Set<string>();
+  while (queue.length > 0 && ids.length < TREE_MAX_FOLDERS) {
+    const id = queue.shift() as string;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+    const result = await request(connection, "/files", {
+      pageSize: "200",
+      fields: "files(id)",
+      q: `'${id.replace(/'/g, "\\'")}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+    });
+    if (!result.ok) return result;
+    const body = (await result.response.json()) as {
+      files?: { id?: string }[];
+    };
+    for (const folder of body.files ?? []) {
+      if (folder.id && !seen.has(folder.id)) queue.push(folder.id);
+    }
+  }
+  treeCache.set(key, { ids, until: Date.now() + TREE_TTL_MS });
+  return { ok: true, ids };
+}
+
+/** Exported for the test: the clause that keeps a search inside the tree. */
+export function parentsClause(folderIds: readonly string[]): string {
+  return `(${folderIds.map((id) => `'${id.replace(/'/g, "\\'")}' in parents`).join(" or ")})`;
+}
+
+export function forgetTrees() {
+  treeCache.clear();
+}
+
 export async function callTool(
   connection: Connection,
   toolName: string,
@@ -321,6 +398,27 @@ export async function callTool(
     const value = args[key];
     return typeof value === "string" && value.trim() !== "" ? value : null;
   };
+
+  // NOTOS (stap 8): the workspace's folders, or nothing.
+  const roots = connection.driveRootIds ?? [];
+  if (roots.length === 0) return failure(NO_FOLDER);
+  const tree = await folderTree(connection, roots);
+  if (!tree.ok) return failure(tree.message);
+  const inside = new Set(tree.ids);
+
+  if (toolName === "list_folder") {
+    const folderId = stringArg("folderId") ?? roots[0];
+    if (!folderId || !inside.has(folderId)) return failure(OUTSIDE);
+    const result = await request(connection, "/files", {
+      pageSize: String(PAGE_SIZE * 2),
+      fields: `files(${FILE_FIELDS})`,
+      orderBy: "folder,modifiedTime desc",
+      q: `'${folderId.replace(/'/g, "\\'")}' in parents and trashed = false`,
+    });
+    if (!result.ok) return failure(result.message);
+    const body = (await result.response.json()) as { files?: DriveFile[] };
+    return asResult((body.files ?? []).map(fileLine).join("\n"));
+  }
 
   if (toolName === "search_files" || toolName === "list_recent_files") {
     const query = stringArg("query");
@@ -332,7 +430,15 @@ export async function callTool(
       pageSize: String(PAGE_SIZE),
       fields: `files(${FILE_FIELDS})`,
       // Drive's own ordering for "recent". Search leaves it to relevance.
-      ...(query ? { q: driveQuery(query) } : { orderBy: "modifiedTime desc" }),
+      // NOTOS (stap 8): always inside the workspace's folder tree.
+      ...(query
+        ? {
+            q: `(${driveQuery(query)}) and ${parentsClause(tree.ids)} and trashed = false`,
+          }
+        : {
+            q: `${parentsClause(tree.ids)} and trashed = false`,
+            orderBy: "modifiedTime desc",
+          }),
     });
     if (!result.ok) return failure(result.message);
 
@@ -348,11 +454,14 @@ export async function callTool(
     const result = await request(
       connection,
       `/files/${encodeURIComponent(fileId)}`,
-      { fields: FILE_FIELDS },
+      { fields: `${FILE_FIELDS},parents` },
     );
     if (!result.ok) return failure(result.message);
 
     const file = (await result.response.json()) as DriveFile;
+    if (!(file.parents ?? []).some((parent) => inside.has(parent))) {
+      return failure(OUTSIDE);
+    }
     const owner = file.owners?.[0]?.emailAddress;
     return asResult(
       [
@@ -377,10 +486,13 @@ export async function callTool(
     const metadata = await request(
       connection,
       `/files/${encodeURIComponent(fileId)}`,
-      { fields: "id,name,mimeType" },
+      { fields: "id,name,mimeType,parents" },
     );
     if (!metadata.ok) return failure(metadata.message);
     const file = (await metadata.response.json()) as DriveFile;
+    if (!(file.parents ?? []).some((parent) => inside.has(parent))) {
+      return failure(OUTSIDE);
+    }
 
     const exportAs = file.mimeType ? EXPORTABLE[file.mimeType] : undefined;
 

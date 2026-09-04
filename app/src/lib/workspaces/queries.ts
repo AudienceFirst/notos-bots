@@ -13,6 +13,8 @@ export type AdminWorkspace = {
   kind: string;
   vertexLocation: string;
   defaultModel: string;
+  /** NOTOS (stap 8): the client's Drive folder ids. */
+  driveRoots: string[];
 };
 
 /** De twee keuzes die deze deployment kent; zie server/src/app.ts. */
@@ -61,6 +63,24 @@ export function setWorkspaceModelMutationOptions(queryClient: QueryClient) {
             defaultModel: input.defaultModel,
           },
           fallback: "Could not change the model",
+        },
+      );
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.all }),
+  });
+}
+
+/** NOTOS (stap 8): the client's Drive folder(s), as links or ids; an empty list clears them. */
+export function setWorkspaceDriveMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (input: { id: string; folders: string[] }) => {
+      await client(
+        `/api/admin/workspaces/${encodeURIComponent(input.id)}/drive`,
+        {
+          method: "PUT",
+          body: { folders: input.folders },
+          fallback: "Could not change the Drive folder",
         },
       );
     },

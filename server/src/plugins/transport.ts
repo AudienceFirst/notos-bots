@@ -53,6 +53,8 @@ export type VendorTransport = {
     actorId?: string;
     /** The Bot the run belongs to. A routine runs as its Bot, which is never a name a model supplies. */
     botId?: string;
+    /** NOTOS (stap 8): the Drive folders this Bot's workspace is limited to; empty means none set. */
+    driveRootIds?: readonly string[];
   }): Promise<McpTool[]>;
   callTool(
     connection: {
@@ -69,6 +71,8 @@ export type VendorTransport = {
       actorId?: string;
       /** The Bot the run belongs to. A routine runs as its Bot, which is never a name a model supplies. */
       botId?: string;
+      /** NOTOS (stap 8): the Drive folders this Bot's workspace is limited to; empty means none set. */
+      driveRootIds?: readonly string[];
     },
     toolName: string,
     args: Record<string, unknown>,

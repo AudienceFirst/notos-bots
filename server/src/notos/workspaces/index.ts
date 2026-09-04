@@ -19,3 +19,5 @@ export {
   prefixed,
 } from "./packages";
 export { createWorkspaceSync, type SyncReport } from "./sync";
+// NOTOS (stap 8)
+export { driveFolderIdFrom, driveRootsOf } from "./store";

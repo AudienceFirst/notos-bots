@@ -34,6 +34,7 @@ import { createComponentStore } from "./components/store";
 import { createComputerGateway } from "./computer/gateway";
 import { createApprovalStore } from "./notos/approvals";
 import { createWorkspacePolicyStore } from "./notos/policy";
+import { driveRootsOf } from "./notos/workspaces";
 import { createPageFrameStore } from "./computer/page-frames";
 import { startPolicyListener } from "./computer/policy-listener";
 import {
@@ -421,6 +422,12 @@ const pluginStore = createPluginStore({
     workspacePolicy.policyFor(await workspaceIdOf(botId)),
   approvals: approvalStore,
   workspaceOf: workspaceIdOf,
+  driveRootsOf: async (botId) => {
+    const workspaceId = await workspaceIdOf(botId);
+    if (!workspaceId) return [];
+    const workspace = await workspaceStore.byId(workspaceId);
+    return driveRootsOf(workspace?.driveRootIds);
+  },
   /*
    * Where a vendor sends people back, for a vendor whose client this deployment registers itself.
    *

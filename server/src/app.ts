@@ -1,4 +1,5 @@
 import type { ApprovalStore } from "./notos/approvals";
+import { driveFolderIdFrom, driveRootsOf } from "./notos/workspaces";
 import { createApprovalRoutes } from "./notos/approvals/routes";
 // NOTOS: thread-historie/-status uit de eigen tabel (stap 0); sessieguard op de Supabase-JWT, /api/auth eruit (stap 1).
 import type { Context, Hono as HonoApp, MiddlewareHandler } from "hono";
@@ -768,6 +769,8 @@ export function createApp(
         kind: workspace.kind,
         vertexLocation: workspace.vertexLocation,
         defaultModel: workspace.defaultModel,
+        // NOTOS (stap 8)
+        driveRoots: driveRootsOf(workspace.driveRootIds),
       })),
     });
   });
@@ -819,6 +822,58 @@ export function createApp(
       }).catch(() => undefined);
     }
     return context.json({ ok: true });
+  });
+
+  /*
+   * NOTOS (stap 8): the client's Drive folder(s) for a workspace, as links or ids. An empty list is
+   * a deliberate "no folder": the Bots then say so instead of searching all of Drive. Until NOTOS
+   * carries the folder on the client, this is where it is set.
+   */
+  app.put("/api/admin/workspaces/:id/drive", requireUser, async (context) => {
+    const denied = requireAdmin(context);
+    if (denied) return denied;
+    if (!workspaceStore) {
+      return context.json({ error: "Workspaces are not configured." }, 503);
+    }
+    if (context.var.actor.isInternal !== true) {
+      return context.json({ error: "geen toegang tot deze workspace" }, 403);
+    }
+    const body = (await context.req.json().catch(() => null)) as {
+      folders?: unknown;
+    } | null;
+    if (!Array.isArray(body?.folders)) {
+      return context.json(
+        { error: "folders must be a list of Drive folder links or ids." },
+        400,
+      );
+    }
+    const roots: string[] = [];
+    for (const item of body.folders) {
+      if (typeof item !== "string" || item.trim() === "") continue;
+      const id = driveFolderIdFrom(item);
+      if (!id) {
+        return context.json(
+          { error: `${item} is not a Drive folder link or id.` },
+          400,
+        );
+      }
+      if (!roots.includes(id)) roots.push(id);
+    }
+    const workspace = await workspaceStore.byId(context.req.param("id"));
+    if (!workspace) return context.json({ error: "No such workspace." }, 404);
+    await workspaceStore.updateSettings(workspace.id, {
+      driveRootIds: { roots },
+    });
+    if (auditStore) {
+      await recordAuditEvent(auditStore, {
+        actorUserId: context.var.actor.id,
+        eventType: "configuration.changed",
+        targetType: "workspace",
+        targetId: workspace.id,
+        payload: { setting: "workspace.drive", roots },
+      }).catch(() => undefined);
+    }
+    return context.json({ ok: true, roots });
   });
 
   app.get("/api/admin/package", requireUser, async (context) => {

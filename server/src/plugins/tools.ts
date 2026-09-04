@@ -114,6 +114,14 @@ export function grantedToolGuidance(
       ([system, names]) => `- ${system}: ${names.join(", ")}`,
     ),
     // NOTOS (stap 6): the same rule mge-platform's chat gives about FRIDA.
+    // NOTOS (stap 8): the client's Drive folder is this workspace's context.
+    ...(bySystem.has("google-drive")
+      ? [
+          "google-drive is the client's own folder on Drive, the context of this workspace: brand, plans,",
+          "reports, briefings. Look there first before you assume anything about the client. Only that",
+          "folder is searchable, with the rights of the person asking.",
+        ]
+      : []),
     ...(bySystem.has("frida")
       ? [
           "frida is ZUID's own operations system, read as the person asking. Use it for the current state of an",

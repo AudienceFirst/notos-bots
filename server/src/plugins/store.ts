@@ -535,6 +535,8 @@ export type PluginStoreOptions = {
   approvals?: ApprovalStore;
   /** NOTOS: the workspace a Bot belongs to, for the approvals row. Null is a Bot from before them. */
   workspaceOf?: (botId: string) => Promise<string | null>;
+  /** NOTOS (stap 8): the Drive folder ids a Bot's workspace is limited to. */
+  driveRootsOf?: (botId: string) => Promise<readonly string[]>;
   /**
    * Speaking MCP to the vendor. Defaults to the real client.
    *
@@ -3052,6 +3054,10 @@ export function createPluginStore(options: PluginStoreOptions) {
             token,
             actorId: input.actorId,
             botId: input.botId,
+            // NOTOS (stap 8): only Drive reads it; the others ignore it.
+            ...(serverId === "google-drive" && options.driveRootsOf
+              ? { driveRootIds: await options.driveRootsOf(input.botId) }
+              : {}),
           },
           toolName,
           args,

@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 // NOTOS: per workspace het model en waar het draait (bouwplan stap 3).
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -17,6 +19,7 @@ import {
 import {
   adminWorkspacesQueryOptions,
   MODEL_CHOICES,
+  setWorkspaceDriveMutationOptions,
   setWorkspaceModelMutationOptions,
 } from "@/lib/workspaces/queries";
 import { queryClient } from "@/query-client";
@@ -28,6 +31,7 @@ export const Route = createFileRoute("/_authed/admin/workspaces")({
 function WorkspacesPage() {
   const workspaces = useQuery(adminWorkspacesQueryOptions());
   const setModel = useMutation(setWorkspaceModelMutationOptions(queryClient));
+  const setDrive = useMutation(setWorkspaceDriveMutationOptions(queryClient));
   const rows = workspaces.data?.workspaces ?? null;
   const problem = workspaces.error
     ? "The workspaces could not be loaded."
@@ -101,6 +105,13 @@ function WorkspacesPage() {
                         </option>
                       ))}
                     </select>
+                    <DriveFolderField
+                      disabled={setDrive.isPending}
+                      roots={workspace.driveRoots ?? []}
+                      onSave={(folders) =>
+                        setDrive.mutate({ id: workspace.id, folders })
+                      }
+                    />
                   </ItemActions>
                 </Item>
               );
@@ -109,5 +120,77 @@ function WorkspacesPage() {
         )}
       </PageSection>
     </PageShell>
+  );
+}
+
+/**
+ * NOTOS (stap 8): the client's Drive folder(s), as links or ids, one per line or comma separated.
+ * Saved as a whole: an empty box means no folder, and the Bots then say so instead of searching
+ * all of Drive.
+ */
+function DriveFolderField({
+  roots,
+  disabled,
+  onSave,
+}: {
+  roots: string[];
+  disabled: boolean;
+  onSave: (folders: string[]) => void;
+}) {
+  const [value, setValue] = useState(roots.join("\n"));
+  const [editing, setEditing] = useState(false);
+  if (!editing) {
+    return (
+      <button
+        className="text-muted-foreground text-xs underline-offset-2 hover:underline"
+        onClick={() => setEditing(true)}
+        type="button"
+      >
+        {roots.length === 0
+          ? "No Drive folder"
+          : `Drive: ${roots.length} folder${roots.length === 1 ? "" : "s"}`}
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex flex-col gap-1"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave(
+          value
+            .split(/[\n,]/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+        );
+        setEditing(false);
+      }}
+    >
+      <textarea
+        aria-label="Drive folder links"
+        className="w-64 rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
+        disabled={disabled}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder="https://drive.google.com/drive/folders/…"
+        rows={2}
+        value={value}
+      />
+      <div className="flex gap-2">
+        <Button disabled={disabled} size="sm" type="submit">
+          Save
+        </Button>
+        <Button
+          onClick={() => {
+            setValue(roots.join("\n"));
+            setEditing(false);
+          }}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
