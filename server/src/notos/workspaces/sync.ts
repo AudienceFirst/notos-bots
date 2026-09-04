@@ -1,3 +1,4 @@
+import { grantFridaTools } from "./frida-grants";
 /**
  * Workspaces bijhouden vanuit NOTOS: bij boot en elk uur.
  *
@@ -41,6 +42,8 @@ export function createWorkspaceSync(options: {
           database,
           await loadWorkspacePackage(packagesRoot, workspace, model),
         );
+        // NOTOS (stap 6): every Bot may read FRIDA as the person asking.
+        await grantFridaTools(database, workspace.id);
         report.synced.push(workspace.slug);
       } catch (error) {
         report.failed.push({

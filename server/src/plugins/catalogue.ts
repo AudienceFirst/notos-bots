@@ -150,6 +150,21 @@ export type CatalogueEntry = {
  * own future runs is a capability worth that same deliberate grant, even though there is no vendor on
  * the other end of it.
  */
+/** NOTOS (stap 6): where FRIDA lives, and which tools its MCP advertised on 5 September 2026. */
+export const FRIDA_HOST = "https://frida.zuid.ai";
+const FRIDA_AUTH_SERVER = "https://grzydenpjgcydxiujyeg.supabase.co/auth/v1";
+export const FRIDA_TOOLS: readonly string[] = Object.freeze([
+  "whoami",
+  "list_mijn_taken",
+  "list_mijn_uren",
+  "get_opdracht",
+  "list_taken_opdracht",
+  "get_klant",
+  "get_facturatie_status",
+  "list_meetings",
+  "get_meeting_notes",
+]);
+
 export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
   {
     key: "google-drive",
@@ -265,6 +280,41 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
       "notion-update-view",
     ]),
     docsUrl: "https://developers.notion.com/guides/mcp/build-mcp-client",
+  },
+  /*
+   * NOTOS (stap 6): FRIDA, ZUID's own operations system, as the person asking.
+   *
+   * FRIDA's MCP sits behind Supabase Auth acting as an OAuth 2.1 server: the resource metadata at
+   * https://frida.zuid.ai/.well-known/oauth-protected-resource names the authorization server, and
+   * its discovery document offers dynamic client registration, so this entry follows Notion's shape.
+   * The authorization server URL is public metadata (any client reads it from that document), not
+   * the secret `frida-notos-oauth` that mge-platform's nightly copy uses; that one stays where it is.
+   * `offline_access` is what makes Supabase hand out a refresh token, and it rotates on every refresh,
+   * which the store already handles in place under a row lock. No revocation endpoint is published,
+   * so disconnecting deletes the credential and leaves the grant at FRIDA to expire.
+   * `resource` names the MCP for the token audience (RFC 8707).
+   */
+  {
+    key: "frida",
+    title: "FRIDA",
+    vendor: "ZUID",
+    summary:
+      "Your own FRIDA account: assignments, tasks, hours and meetings as you see them, nobody else's.",
+    host: FRIDA_HOST,
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: `${FRIDA_AUTH_SERVER}/oauth/authorize`,
+      tokenUrl: `${FRIDA_AUTH_SERVER}/oauth/token`,
+      revokeUrl: `${FRIDA_AUTH_SERVER}/oauth/token`,
+      scopes: Object.freeze(["openid", "email", "offline_access"]),
+      clientRegistration: "dynamic",
+      registrationUrl: `${FRIDA_AUTH_SERVER}/oauth/clients/register`,
+      authorizationParams: Object.freeze({ resource: `${FRIDA_HOST}/mcp` }),
+    },
+    // FRIDA's MCP has no write tools ("Er zijn geen schrijf-tools" in its instructions).
+    writeTools: Object.freeze([]),
+    docsUrl: "https://frida.zuid.ai/.well-known/oauth-protected-resource",
   },
   {
     key: "routines",

@@ -220,14 +220,26 @@ export function authorizationHeader(token: string): string {
  * The `finally` closes the transport whatever happened, because a thrown error is the case where a
  * leaked connection is most likely and least noticed.
  */
+const ZUID_AI_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 NOTOS-bots";
+
 async function withClient<T>(
   connection: Connection,
   use: (client: Client) => Promise<T>,
 ): Promise<T> {
-  const transport = new StreamableHTTPClientTransport(new URL(connection.url), {
-    requestInit: connection.token
-      ? { headers: { Authorization: authorizationHeader(connection.token) } }
-      : undefined,
+  const url = new URL(connection.url);
+  /*
+   * NOTOS (stap 6): Cloudflare in front of *.zuid.ai answers error 1010 to a client without a
+   * browser-like user agent (mge-platform/src/frida/tokens.py learnt this first). Sent only there.
+   */
+  const headers: Record<string, string> = {};
+  if (url.hostname.endsWith("zuid.ai"))
+    headers["User-Agent"] = ZUID_AI_USER_AGENT;
+  if (connection.token) {
+    headers.Authorization = authorizationHeader(connection.token);
+  }
+  const transport = new StreamableHTTPClientTransport(url, {
+    requestInit: Object.keys(headers).length > 0 ? { headers } : undefined,
   });
   const client = new Client({ name: "openbot", version: "1.0.0" });
 

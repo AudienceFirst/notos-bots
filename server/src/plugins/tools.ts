@@ -113,6 +113,14 @@ export function grantedToolGuidance(
     ...[...bySystem.entries()].map(
       ([system, names]) => `- ${system}: ${names.join(", ")}`,
     ),
+    // NOTOS (stap 6): the same rule mge-platform's chat gives about FRIDA.
+    ...(bySystem.has("frida")
+      ? [
+          "frida is ZUID's own operations system, read as the person asking. Use it for the current state of an",
+          "assignment, task, hours or meeting. For counts or trends across many assignments, the BigQuery copy",
+          "mge-zuid.raw_frida is the faster source when you hold a tool for it.",
+        ]
+      : []),
     ...(tools.length > 0
       ? [
           "Use them for anything about those systems. Do NOT browse to one of their websites instead: your",
