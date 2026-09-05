@@ -399,6 +399,18 @@ terug en de Bot loopt door (max 8 rondes); een beslissing wacht op `respond` uit
 Activiteitsberichten (generative UI, MCP-apps) hebben geen renderer: beide staan uit. Acceptatie:
 `grep -rn "@copilotkit" app/src app/package.json` geeft nul regels; geen banner in de DOM.
 
+## Verbindingsbudget op Supabase (5 september 2026)
+
+De session-pooler geeft de rol `notos_bots` 15 clients, en LISTEN dwingt session-modus af
+(`runner/bus.ts`, `work/queue.ts`, `computer/policy-listener.ts`, `channels/events.ts`: vier
+vaste verbindingen). Gemeten in rust: 14 backends open, want `createDatabase` kreeg geen `max`
+(Bun-standaard 10). Sinds commit 30b51b0: `DATABASE_POOL_MAX` wordt echt doorgegeven (staging 3),
+idle verbindingen sluiten na 30 s, `--max-instances 2`. Bij een deploy draaien oud en nieuw even
+samen; past het niet, dan sluit je vooraf de idle backends van de oude revisie via de Management
+API (`select pg_terminate_backend(pid) from pg_stat_activity where usename = 'notos_bots' and state = 'idle'`),
+de oude revisie maakt ze op verzoek weer aan. `scripts/notos/deploy-staging.sh` bouwt niet:
+eerst `gcloud builds submit --config cloudbuild.yaml --project mge-zuid .`, dan het script.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
