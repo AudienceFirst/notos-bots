@@ -63,6 +63,7 @@ import {
   createCredentialStore,
 } from "./credentials";
 import { createDatabase } from "./db/client";
+import { createListenClient } from "./db/listen";
 import { agents, intelligenceChannelMappings } from "./db/schema";
 import {
   createActorResolver,
@@ -193,7 +194,9 @@ const threadRunner = new PostgresAgentRunner({
   threads: threadStore,
   lock: threadLock,
 });
-const threadBus = await startThreadBus(config.databaseUrl, database);
+// NOTOS: one LISTEN connection for every topic (bus, work, policy, channel activity).
+const listenClient = createListenClient(config.databaseUrl);
+const threadBus = await startThreadBus(listenClient, database);
 threadRunner.attachBus(threadBus);
 await initializeDevActorUser(database, config.singleUser);
 // The vault, built before the agent store because a customer's agent may sit behind a key and that
@@ -285,7 +288,7 @@ const componentStore = createComponentStore(database);
 // Its own connection is held for the life of the process; announced activity from any instance
 // arrives here and is fanned out to connected members.
 const channelActivityListener = await startChannelActivityListener(
-  config.databaseUrl,
+  listenClient,
   channelEvents,
 );
 const roleRepository = createRoleRepository(database);
@@ -378,10 +381,7 @@ const policySource = await policyStore.load();
  * enforcing what it read at boot, so a new deny rule stops roughly one action in N while the screen
  * and the audit row both report success. See policy-listener.ts.
  */
-const policyListener = await startPolicyListener(
-  config.databaseUrl,
-  policyStore,
-);
+const policyListener = await startPolicyListener(listenClient, policyStore);
 
 /*
  * Record which boundary this process started with.
@@ -1142,12 +1142,9 @@ if (config.handoff.maxDepth > 0 && config.handoff.maxPerRun > 0) {
    * claiming a different batch, and this replica's concurrent agent runs would grow with the
    * backlog rather than stopping at the limit it was asked for.
    */
-  workOfferedListener = await startWorkOfferedListener(
-    config.databaseUrl,
-    (kind) => {
-      if (kind === HANDOFF_KIND) void kick();
-    },
-  );
+  workOfferedListener = await startWorkOfferedListener(listenClient, (kind) => {
+    if (kind === HANDOFF_KIND) void kick();
+  });
   repeatAfterEach(kick, 2_000);
 }
 

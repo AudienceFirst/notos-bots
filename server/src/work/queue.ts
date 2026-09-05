@@ -16,7 +16,7 @@
  * from under the first. Both then ran it. Every time this file names a moment it names it in SQL.
  */
 import { and, eq, gte, isNull, like, lt, or, sql } from "drizzle-orm";
-import postgres from "postgres";
+import { type ListenClient, listenClientFor } from "../db/listen";
 import type { Database } from "../db/client";
 import { workItems } from "../db/schema";
 
@@ -42,10 +42,10 @@ export type WorkOfferedListener = { stop: () => Promise<void> };
  * the pool, it would be a connection the rest of the server never gets back.
  */
 export async function startWorkOfferedListener(
-  databaseUrl: string,
+  databaseUrl: string | ListenClient,
   onOffered: (kind: string) => void,
 ): Promise<WorkOfferedListener> {
-  const connection = postgres(databaseUrl, { max: 1 });
+  const { connection, owned } = listenClientFor(databaseUrl);
 
   await connection.listen(WORK_OFFERED_TOPIC, (payload) => {
     try {
@@ -58,7 +58,7 @@ export async function startWorkOfferedListener(
 
   return {
     stop: async () => {
-      await connection.end();
+      if (owned) await connection.end();
     },
   };
 }

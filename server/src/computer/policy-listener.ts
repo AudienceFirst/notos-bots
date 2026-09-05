@@ -14,16 +14,16 @@
  * pool it would be a connection the rest of the server never gets back. Same shape, and the same
  * reason, as the channel activity listener.
  */
-import postgres from "postgres";
+import { type ListenClient, listenClientFor } from "../db/listen";
 import { ACTION_POLICY_TOPIC, type PolicyStore } from "./policy-store";
 
 export type PolicyListener = { stop: () => Promise<void> };
 
 export async function startPolicyListener(
-  databaseUrl: string,
+  databaseUrl: string | ListenClient,
   store: PolicyStore,
 ): Promise<PolicyListener> {
-  const connection = postgres(databaseUrl, { max: 1 });
+  const { connection, owned } = listenClientFor(databaseUrl);
 
   /*
    * The payload is ignored on purpose. It says the boundary moved, not what it moved to: a rule list
@@ -58,7 +58,7 @@ export async function startPolicyListener(
 
   return {
     stop: async () => {
-      await connection.end();
+      if (owned) await connection.end();
     },
   };
 }

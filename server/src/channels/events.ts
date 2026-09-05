@@ -1,4 +1,4 @@
-import postgres from "postgres";
+import { type ListenClient, listenClientFor } from "../db/listen";
 
 /**
  * Live channel activity, from whoever ran an agent to everybody else in the channel.
@@ -123,10 +123,10 @@ export type ChannelActivityListener = { stop: () => Promise<void> };
  * pool, it would be a connection the rest of the server never gets back.
  */
 export async function startChannelActivityListener(
-  databaseUrl: string,
+  databaseUrl: string | ListenClient,
   hub: ChannelEventHub,
 ): Promise<ChannelActivityListener> {
-  const connection = postgres(databaseUrl, { max: 1 });
+  const { connection, owned } = listenClientFor(databaseUrl);
 
   /*
    * `onlisten` fires on every establish, reconnects included — the same hook `policy-listener.ts`
@@ -161,7 +161,7 @@ export async function startChannelActivityListener(
 
   return {
     stop: async () => {
-      await connection.end();
+      if (owned) await connection.end();
     },
   };
 }

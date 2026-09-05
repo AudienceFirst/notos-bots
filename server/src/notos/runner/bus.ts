@@ -9,7 +9,7 @@
  * Eigen verbinding, net als `work/queue.ts`: `LISTEN` houdt er één vast voor de duur van het proces.
  */
 import { sql } from "drizzle-orm";
-import postgres from "postgres";
+import { type ListenClient, listenClientFor } from "../../db/listen";
 import type { Database } from "../../db/client";
 
 export const THREAD_TOPIC = "notos_thread";
@@ -28,11 +28,11 @@ export type ThreadBus = {
 };
 
 export async function startThreadBus(
-  databaseUrl: string,
+  databaseUrl: string | ListenClient,
   database: Pick<Database, "execute">,
 ): Promise<ThreadBus> {
   const listeners = new Set<(signal: ThreadSignal) => void>();
-  const connection = postgres(databaseUrl, { max: 1 });
+  const { connection, owned } = listenClientFor(databaseUrl);
 
   await connection.listen(THREAD_TOPIC, (payload) => {
     let signal: ThreadSignal;
@@ -65,7 +65,7 @@ export async function startThreadBus(
     },
     async stop() {
       listeners.clear();
-      await connection.end();
+      if (owned) await connection.end();
     },
   };
 }
