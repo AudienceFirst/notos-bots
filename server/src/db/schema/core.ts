@@ -240,6 +240,8 @@ export const deploymentPackages = pgTable("deployment_packages", {
   driveRootIds: jsonb("drive_root_ids").notNull().default({}),
   /** False once NOTOS reports the client inactive. Nothing is deleted. */
   enabled: boolean("enabled").notNull().default(true),
+  /** NOTOS: set for a personal space ("Mijn ruimte"): the Supabase user id of its only member. */
+  personalOwnerId: text("personal_owner_id"),
 });
 
 export const agents = pgTable("agents", {
@@ -254,6 +256,11 @@ export const agents = pgTable("agents", {
   workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
     onDelete: "set null",
   }),
+  /**
+   * NOTOS: `campaign` for a Bot that works inside a campaign (SEA, Meta, LinkedIn, …), `workspace`
+   * for one that stays outside them (Webflow, Shopify, HubSpot, Legal). From the package's `scope`.
+   */
+  scope: text("scope").notNull().default("workspace"),
   override: jsonb("override"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -284,6 +291,8 @@ export const channels = pgTable(
     workspaceId: uuid("workspace_id").references(() => deploymentPackages.id, {
       onDelete: "set null",
     }),
+    /** NOTOS: the campaign this channel belongs to; null for a workspace-level channel. No FK across files: campaigns.ts references this file. */
+    campaignId: uuid("campaign_id"),
     override: jsonb("override"),
     /**
      * The last thing said in this channel, denormalised so a roster is one indexed read.

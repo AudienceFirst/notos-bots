@@ -118,6 +118,8 @@ export type DeploymentConfig = {
   /** The port the API listens on. Named `PORT` or `SERVER_PORT`; see `serverPort`. */
   port: number;
   databaseUrl: string;
+  /** NOTOS: connections per instance; Supabase's session pooler allows 15 for the whole role. */
+  databasePoolMax: number;
   keyEncryptionKey: string;
   /**
    * The Bot in the box, when this deployment has one.
@@ -808,6 +810,8 @@ export function loadConfig(
   return {
     port: serverPort(environment),
     databaseUrl: required(environment, "DATABASE_URL"),
+    databasePoolMax:
+      Number(optional(environment, "DATABASE_POOL_MAX") ?? "10") || 10,
     keyEncryptionKey: keyEncryptionKey(environment),
     ...(managedAgent ? { managedAgent } : {}),
     agentEndpointAllowedHosts: agentEndpointAllowedHosts(environment),

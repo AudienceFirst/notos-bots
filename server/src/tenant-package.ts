@@ -140,6 +140,8 @@ type TenantAgent = {
   name: string;
   title: string;
   roleDescription: string;
+  /** NOTOS: `campaign` or `workspace`; where the Bot works. */
+  scope: "campaign" | "workspace";
   avatarSeed?: string;
   type: "built_in" | "remote_ag_ui";
   configuration: Record<string, unknown>;
@@ -372,6 +374,8 @@ export function validateTenantPackage(files: PackageFiles): TenantPackage {
             agent.avatar_seed === undefined
               ? undefined
               : requiredString(agent.avatar_seed, "agent.avatar_seed"),
+          // NOTOS: campaign Bots live inside a campaign of the workspace; the rest stay outside.
+          scope: agent.scope === "campaign" ? "campaign" : "workspace",
           type,
           configuration:
             type === "built_in"
@@ -638,6 +642,7 @@ export async function synchronizeTenantPackage(
           packageId: deploymentPackage.id,
           // NOTOS: the package is the workspace (stap 2).
           workspaceId: deploymentPackage.id,
+          scope: agent.scope,
         })
         .onConflictDoUpdate({
           target: agentTable.id,
@@ -648,6 +653,7 @@ export async function synchronizeTenantPackage(
             configuration: agent.configuration,
             packageId: deploymentPackage.id,
             workspaceId: deploymentPackage.id,
+            scope: agent.scope,
             updatedAt,
           },
         })

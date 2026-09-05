@@ -28,6 +28,7 @@ export default defineConfig({
     // NOTOS: gesprekken in eigen Postgres (stap 0).
     "./src/db/schema/threads.ts",
     "./src/db/schema/approvals.ts",
+    "./src/db/schema/campaigns.ts",
   ],
   out: "./drizzle",
   // NOTOS: in het NOTOS-Supabase-project wonen wij in een eigen schema (stap 4); `check` en
