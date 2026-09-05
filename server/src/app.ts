@@ -5,6 +5,12 @@ import type { CampaignStore } from "./notos/campaigns/store";
 import { createRunsRoutes } from "./notos/routines/runs-route";
 import type { MemberStore } from "./notos/workspaces/members";
 import {
+  isModelProvider,
+  KEYED_PROVIDERS,
+  ModelKeyRefusedError,
+  type ModelKeyStore,
+} from "./notos/model";
+import {
   createSweepRoutes,
   type SweepCallerVerifier,
   type SweepReport,
@@ -251,6 +257,8 @@ export function createApp(
   campaignStore?: CampaignStore,
   /** NOTOS: members an administrator adds to a workspace, with a role. */
   memberStore?: MemberStore,
+  /** NOTOS: API keys for keyed model providers, per deployment, workspace or person. */
+  modelKeyStore?: ModelKeyStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
@@ -800,6 +808,7 @@ export function createApp(
           notosClientId: workspace.slug,
           displayName: workspace.displayName,
           kind: workspace.kind,
+          modelProvider: workspace.modelProvider,
           vertexLocation: workspace.vertexLocation,
           defaultModel: workspace.defaultModel,
           // NOTOS (stap 8)
@@ -817,16 +826,23 @@ export function createApp(
       return context.json({ error: "geen toegang tot deze workspace" }, 403);
     }
     const body = (await context.req.json().catch(() => null)) as {
+      provider?: unknown;
       vertexLocation?: unknown;
       defaultModel?: unknown;
     } | null;
+    // NOTOS: a keyed provider (Anthropic, OpenAI, OpenRouter, Google AI Studio) or Vertex.
+    const provider = isModelProvider(body?.provider) ? body.provider : "vertex";
     const location =
       typeof body?.vertexLocation === "string"
         ? body.vertexLocation.trim()
         : "";
     const model =
       typeof body?.defaultModel === "string" ? body.defaultModel.trim() : "";
-    if (!["europe-west4", "global"].includes(location) || !model) {
+    if (
+      (provider === "vertex" &&
+        !["europe-west4", "global"].includes(location)) ||
+      !model
+    ) {
       return context.json(
         {
           error:
@@ -838,7 +854,8 @@ export function createApp(
     const workspace = await workspaceStore.byId(context.req.param("id"));
     if (!workspace) return context.json({ error: "No such workspace." }, 404);
     await workspaceStore.updateSettings(workspace.id, {
-      vertexLocation: location,
+      modelProvider: provider,
+      ...(provider === "vertex" ? { vertexLocation: location } : {}),
       defaultModel: model,
     });
     if (auditStore) {
@@ -1173,6 +1190,151 @@ export function createApp(
     mountScoped("/campaigns", (guard) =>
       createCampaignRoutes(campaignStore, guard, auditStore),
     );
+  }
+
+  if (modelKeyStore) {
+    /*
+     * NOTOS: API keys for keyed model providers. A deployment key is an administrator's and serves
+     * every workspace without its own; a personal key is the person's, for their personal space.
+     * A key is never listed back: only its provider, label and last four characters.
+     */
+    const keyRoutes = (
+      prefix: string,
+      scope: "deployment" | "personal",
+      allowed: (
+        context: Context<{ Variables: AppVariables }>,
+      ) => Response | null,
+      scopeId: (context: Context<{ Variables: AppVariables }>) => string,
+    ) => {
+      app.get(prefix, requireUser, async (context) => {
+        const denied = allowed(context);
+        if (denied) return denied;
+        return context.json({
+          providers: KEYED_PROVIDERS,
+          keys: await modelKeyStore.list(scope, scopeId(context)),
+        });
+      });
+      app.put(`${prefix}/:provider`, requireUser, async (context) => {
+        const denied = allowed(context);
+        if (denied) return denied;
+        const body = (await context.req.json().catch(() => null)) as {
+          key?: unknown;
+          label?: unknown;
+        } | null;
+        if (typeof body?.key !== "string") {
+          return context.json({ error: "A key is required." }, 400);
+        }
+        try {
+          const summary = await modelKeyStore.set({
+            scope,
+            scopeId: scopeId(context),
+            provider: context.req.param("provider"),
+            key: body.key,
+            ...(typeof body.label === "string" ? { label: body.label } : {}),
+            by: context.var.actor.id,
+          });
+          if (auditStore) {
+            await recordAuditEvent(auditStore, {
+              actorUserId: context.var.actor.id,
+              eventType: "configuration.changed",
+              targetType: "model-key",
+              targetId: `${scope}:${summary.provider}`,
+              payload: { setting: "model-key.set", provider: summary.provider },
+            }).catch(() => undefined);
+          }
+          return context.json({ key: summary });
+        } catch (error) {
+          if (error instanceof ModelKeyRefusedError) {
+            return context.json({ error: error.message }, 400);
+          }
+          throw error;
+        }
+      });
+      app.delete(`${prefix}/:provider`, requireUser, async (context) => {
+        const denied = allowed(context);
+        if (denied) return denied;
+        const removed = await modelKeyStore.remove(
+          scope,
+          scopeId(context),
+          context.req.param("provider"),
+        );
+        if (removed && auditStore) {
+          await recordAuditEvent(auditStore, {
+            actorUserId: context.var.actor.id,
+            eventType: "configuration.changed",
+            targetType: "model-key",
+            targetId: `${scope}:${context.req.param("provider")}`,
+            payload: {
+              setting: "model-key.removed",
+              provider: context.req.param("provider"),
+            },
+          }).catch(() => undefined);
+        }
+        return context.json({ ok: removed });
+      });
+    };
+    keyRoutes(
+      "/api/admin/model-keys",
+      "deployment",
+      (context) => requireAdmin(context) ?? null,
+      () => "",
+    );
+    keyRoutes(
+      "/api/me/model-keys",
+      "personal",
+      () => null,
+      (context) => context.var.actor.id,
+    );
+  }
+
+  if (workspaceStore) {
+    // NOTOS: the model of a person's own space: provider and model name, set by the person.
+    app.get("/api/me/personal-model", requireUser, async (context) => {
+      const space = await workspaceStore.ensurePersonal({
+        id: context.var.actor.id,
+      });
+      return context.json({
+        provider: space.modelProvider,
+        vertexLocation: space.vertexLocation,
+        defaultModel: space.defaultModel,
+      });
+    });
+    app.put("/api/me/personal-model", requireUser, async (context) => {
+      const body = (await context.req.json().catch(() => null)) as {
+        provider?: unknown;
+        vertexLocation?: unknown;
+        defaultModel?: unknown;
+      } | null;
+      const provider = isModelProvider(body?.provider)
+        ? body.provider
+        : "vertex";
+      const location =
+        typeof body?.vertexLocation === "string"
+          ? body.vertexLocation.trim()
+          : "europe-west4";
+      const model =
+        typeof body?.defaultModel === "string" ? body.defaultModel.trim() : "";
+      if (
+        (provider === "vertex" &&
+          !["europe-west4", "global"].includes(location)) ||
+        !model
+      ) {
+        return context.json({ error: "Name a model." }, 400);
+      }
+      const space = await workspaceStore.ensurePersonal({
+        id: context.var.actor.id,
+      });
+      await workspaceStore.updateSettings(space.id, {
+        modelProvider: provider,
+        ...(provider === "vertex" ? { vertexLocation: location } : {}),
+        defaultModel: model,
+      });
+      return context.json({
+        provider,
+        vertexLocation: location,
+        defaultModel: model,
+      });
+    });
   }
 
   if (memberStore && workspaceStore) {

@@ -29,6 +29,7 @@ export default defineConfig({
     "./src/db/schema/threads.ts",
     "./src/db/schema/approvals.ts",
     "./src/db/schema/campaigns.ts",
+    "./src/db/schema/model-keys.ts",
   ],
   out: "./drizzle",
   // NOTOS: in het NOTOS-Supabase-project wonen wij in een eigen schema (stap 4); `check` en

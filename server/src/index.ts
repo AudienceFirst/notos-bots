@@ -71,7 +71,7 @@ import {
   type NotosIdentity,
   RevokedError,
 } from "./notos/auth";
-import { createVertexModels } from "./notos/model";
+import { createModelKeyStore, createModels } from "./notos/model";
 import {
   createThreadLock,
   createThreadStore,
@@ -218,11 +218,23 @@ const deploymentModel = {
   defaultLocation: config.model.defaultLocation,
 };
 // NOTOS: Gemini on Vertex AI through ADC; the one factory every Bot, the router and the skill choice use (stap 3).
-const modelFor = createVertexModels({
-  project: config.model.project,
-  location: config.model.defaultLocation,
-  name: config.model.defaultModel,
+// NOTOS (5 September 2026): API keys for Anthropic, OpenAI, OpenRouter and Google AI Studio, per
+// deployment, workspace or person; read into memory at boot and refreshed every minute.
+const modelKeys = createModelKeyStore(database, config.keyEncryptionKey);
+await modelKeys.warm().catch((error) => {
+  console.warn(
+    `model keys could not be read: ${error instanceof Error ? error.message : String(error)}`,
+  );
 });
+modelKeys.startRefresh(60_000);
+const modelFor = createModels(
+  {
+    project: config.model.project,
+    location: config.model.defaultLocation,
+    name: config.model.defaultModel,
+  },
+  (provider, scope) => modelKeys.resolve(provider, scope),
+);
 const workspaceStore = createWorkspaceStore(database);
 // NOTOS: campaigns inside a workspace (their brief reaches every run in them) and the members an
 // administrator adds on top of what NOTOS says.
@@ -1254,6 +1266,8 @@ const app = createApp(
   // NOTOS: campaigns and workspace members.
   campaignStore,
   memberStore,
+  // NOTOS: API keys for keyed model providers.
+  modelKeys,
 );
 
 /**

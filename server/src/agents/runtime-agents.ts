@@ -88,6 +88,10 @@ function selectActiveAgents(database: Database, actor: AgentActor) {
       model: {
         location: deploymentPackages.vertexLocation,
         name: deploymentPackages.defaultModel,
+        // NOTOS: which provider, and whose key may be used for it (5 September 2026).
+        provider: deploymentPackages.modelProvider,
+        workspaceId: deploymentPackages.id,
+        personalOwnerId: deploymentPackages.personalOwnerId,
       },
     })
     .from(agents)

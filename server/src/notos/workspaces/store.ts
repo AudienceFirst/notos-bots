@@ -20,6 +20,7 @@ export type Workspace = {
   displayName: string;
   kind: string;
   currency: string;
+  modelProvider: string;
   vertexLocation: string;
   defaultModel: string;
   driveRootIds: Record<string, unknown>;
@@ -64,7 +65,10 @@ export type WorkspaceStore = {
   updateSettings(
     id: string,
     settings: Partial<
-      Pick<Workspace, "vertexLocation" | "defaultModel" | "driveRootIds">
+      Pick<
+        Workspace,
+        "modelProvider" | "vertexLocation" | "defaultModel" | "driveRootIds"
+      >
     >,
   ): Promise<void>;
 };
@@ -84,6 +88,7 @@ const toWorkspace = (
   displayName: row.displayName ?? row.tenantId,
   kind: row.kind,
   currency: row.currency,
+  modelProvider: row.modelProvider,
   vertexLocation: row.vertexLocation,
   defaultModel: row.defaultModel,
   driveRootIds: row.driveRootIds as Record<string, unknown>,
@@ -245,6 +250,9 @@ export function createWorkspaceStore(database: Database): WorkspaceStore {
       await database
         .update(deploymentPackages)
         .set({
+          ...(settings.modelProvider
+            ? { modelProvider: settings.modelProvider }
+            : {}),
           ...(settings.vertexLocation
             ? { vertexLocation: settings.vertexLocation }
             : {}),

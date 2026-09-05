@@ -233,6 +233,8 @@ export const deploymentPackages = pgTable("deployment_packages", {
   /** `real`, `demo` or `onboarding`, as NOTOS reports it. A demo workspace never touches a real source. */
   kind: text("kind").notNull().default("real"),
   currency: text("currency").notNull().default("EUR"),
+  /** `vertex` (Gemini on the server's own credentials) or a keyed provider: `anthropic`, `openai`, `openrouter`, `google-ai`. */
+  modelProvider: text("model_provider").notNull().default("vertex"),
   /** Vertex AI location for this workspace's model. `global` leaves the EU and is a deliberate choice. */
   vertexLocation: text("vertex_location").notNull().default("europe-west4"),
   defaultModel: text("default_model").notNull().default("gemini-2.5-pro"),

@@ -2,6 +2,7 @@ import {
   IconArrowLeft,
   IconLayoutGrid,
   IconPlug,
+  IconSparkles,
   IconSettings,
 } from "@tabler/icons-react";
 import { Link, type LinkOptions } from "@tanstack/react-router";
@@ -46,6 +47,12 @@ const ITEMS: {
     title: "Connected accounts",
     icon: IconPlug,
     linkOptions: { to: "/settings/connected-accounts" },
+  },
+  {
+    /* NOTOS: the model of your personal space, and your own keys for it (5 September 2026). */
+    title: "Models",
+    icon: IconSparkles,
+    linkOptions: { to: "/settings/models" },
   },
   {
     /* The same mark Admin gives UI Components. It is the same subject seen from the other side. */

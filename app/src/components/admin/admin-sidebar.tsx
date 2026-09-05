@@ -7,6 +7,7 @@ import {
   IconLayoutGrid,
   IconListDetails,
   IconPuzzle,
+  IconSparkles,
   IconShieldCheck,
   IconUsers,
 } from "@tabler/icons-react";
@@ -69,6 +70,12 @@ const GROUPS: {
         title: "Plugins",
         icon: IconPuzzle,
         linkOptions: { to: "/admin/plugins" },
+      },
+      {
+        // NOTOS: API keys for the keyed model providers (5 September 2026).
+        title: "Models",
+        icon: IconSparkles,
+        linkOptions: { to: "/admin/models" },
       },
       {
         title: "Skills",

@@ -16,7 +16,7 @@ import type { AgentActor } from "./agents/profile-types";
 import type { AgentFetch, StallGuard } from "./channels/stall-guard";
 import type { DeploymentConfig } from "./config";
 import type { LanguageModel } from "ai";
-import type { ModelFactory } from "./notos/model";
+import { isModelProvider, type ModelFactory } from "./notos/model";
 import type { PostgresAgentRunner } from "./notos/runner";
 import type { SelectableSkill, Selection } from "./plugins/selection";
 import {
@@ -49,7 +49,13 @@ type RegisteredBuiltInAgent = {
   type: "built_in";
   systemPrompt: string;
   /** NOTOS: the workspace's model choice (stap 3). Absent means the deployment default. */
-  model?: { location: string; name: string };
+  model?: {
+    location: string;
+    name: string;
+    provider?: string;
+    workspaceId?: string | null;
+    personalOwnerId?: string | null;
+  };
 };
 
 type RegisteredRemoteAgent = {
@@ -136,7 +142,13 @@ type RuntimeAgentRow = {
   title: string;
   roleDescription: string;
   /** NOTOS: from the workspace row, when the loader joined it (stap 3). */
-  model?: { location: string; name: string } | null;
+  model?: {
+    location: string;
+    name: string;
+    provider?: string;
+    workspaceId?: string | null;
+    personalOwnerId?: string | null;
+  } | null;
 };
 
 export function registeredAgentFromRow(
@@ -201,8 +213,14 @@ export function builtInAgentConfiguration(
   let languageModel: LanguageModel;
   try {
     languageModel = modelFor({
+      // NOTOS: the workspace's provider; a keyed one looks for a key in the workspace's scope.
+      provider: isModelProvider(agent.model?.provider)
+        ? agent.model.provider
+        : "vertex",
       location: agent.model?.location ?? model.defaultLocation,
       name: agent.model?.name ?? model.defaultModel,
+      workspaceId: agent.model?.workspaceId ?? null,
+      personalOwnerId: agent.model?.personalOwnerId ?? null,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

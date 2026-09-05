@@ -21,11 +21,13 @@ import { Route as AuthedAdminBoundariesRouteImport } from './routes/_authed/admi
 import { Route as AuthedAdminComputersRouteImport } from './routes/_authed/admin/computers'
 import { Route as AuthedAdminCredentialsRouteImport } from './routes/_authed/admin/credentials'
 import { Route as AuthedAdminIdentityProvidersRouteImport } from './routes/_authed/admin/identity-providers'
+import { Route as AuthedAdminModelsRouteImport } from './routes/_authed/admin/models'
 import { Route as AuthedAdminPeopleRouteImport } from './routes/_authed/admin/people'
 import { Route as AuthedAdminPlaygroundRouteImport } from './routes/_authed/admin/playground'
 import { Route as AuthedAdminSkillsRouteImport } from './routes/_authed/admin/skills'
 import { Route as AuthedAdminWorkspacesRouteImport } from './routes/_authed/admin/workspaces'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
+import { Route as AuthedSettingsModelsRouteImport } from './routes/_authed/settings/models'
 import { Route as AuthedWWorkspaceRouteImport } from './routes/_authed/w/$workspace'
 import { Route as AuthedAdminComponentsIndexRouteImport } from './routes/_authed/admin/components/index'
 import { Route as AuthedAdminComponentsNameRouteImport } from './routes/_authed/admin/components/$name'
@@ -107,6 +109,11 @@ const AuthedAdminIdentityProvidersRoute =
     path: '/identity-providers',
     getParentRoute: () => AuthedAdminRouteRoute,
   } as any)
+const AuthedAdminModelsRoute = AuthedAdminModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
+  getParentRoute: () => AuthedAdminRouteRoute,
+} as any)
 const AuthedAdminPeopleRoute = AuthedAdminPeopleRouteImport.update({
   id: '/people',
   path: '/people',
@@ -130,6 +137,11 @@ const AuthedAdminWorkspacesRoute = AuthedAdminWorkspacesRouteImport.update({
 const AuthedSettingsIndexRoute = AuthedSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthedSettingsRouteRoute,
+} as any)
+const AuthedSettingsModelsRoute = AuthedSettingsModelsRouteImport.update({
+  id: '/models',
+  path: '/models',
   getParentRoute: () => AuthedSettingsRouteRoute,
 } as any)
 const AuthedWWorkspaceRoute = AuthedWWorkspaceRouteImport.update({
@@ -258,10 +270,12 @@ export interface FileRoutesByFullPath {
   '/admin/computers': typeof AuthedAdminComputersRoute
   '/admin/credentials': typeof AuthedAdminCredentialsRoute
   '/admin/identity-providers': typeof AuthedAdminIdentityProvidersRoute
+  '/admin/models': typeof AuthedAdminModelsRoute
   '/admin/people': typeof AuthedAdminPeopleRoute
   '/admin/playground': typeof AuthedAdminPlaygroundRoute
   '/admin/skills': typeof AuthedAdminSkillsRoute
   '/admin/workspaces': typeof AuthedAdminWorkspacesRoute
+  '/settings/models': typeof AuthedSettingsModelsRoute
   '/w/$workspace': typeof AuthedWWorkspaceRouteWithChildren
   '/admin/': typeof AuthedAdminIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
@@ -293,10 +307,12 @@ export interface FileRoutesByTo {
   '/admin/computers': typeof AuthedAdminComputersRoute
   '/admin/credentials': typeof AuthedAdminCredentialsRoute
   '/admin/identity-providers': typeof AuthedAdminIdentityProvidersRoute
+  '/admin/models': typeof AuthedAdminModelsRoute
   '/admin/people': typeof AuthedAdminPeopleRoute
   '/admin/playground': typeof AuthedAdminPlaygroundRoute
   '/admin/skills': typeof AuthedAdminSkillsRoute
   '/admin/workspaces': typeof AuthedAdminWorkspacesRoute
+  '/settings/models': typeof AuthedSettingsModelsRoute
   '/w/$workspace': typeof AuthedWWorkspaceAppIndexRoute
   '/admin': typeof AuthedAdminIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
@@ -331,10 +347,12 @@ export interface FileRoutesById {
   '/_authed/admin/computers': typeof AuthedAdminComputersRoute
   '/_authed/admin/credentials': typeof AuthedAdminCredentialsRoute
   '/_authed/admin/identity-providers': typeof AuthedAdminIdentityProvidersRoute
+  '/_authed/admin/models': typeof AuthedAdminModelsRoute
   '/_authed/admin/people': typeof AuthedAdminPeopleRoute
   '/_authed/admin/playground': typeof AuthedAdminPlaygroundRoute
   '/_authed/admin/skills': typeof AuthedAdminSkillsRoute
   '/_authed/admin/workspaces': typeof AuthedAdminWorkspacesRoute
+  '/_authed/settings/models': typeof AuthedSettingsModelsRoute
   '/_authed/w/$workspace': typeof AuthedWWorkspaceRouteWithChildren
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
@@ -371,10 +389,12 @@ export interface FileRouteTypes {
     | '/admin/computers'
     | '/admin/credentials'
     | '/admin/identity-providers'
+    | '/admin/models'
     | '/admin/people'
     | '/admin/playground'
     | '/admin/skills'
     | '/admin/workspaces'
+    | '/settings/models'
     | '/w/$workspace'
     | '/admin/'
     | '/settings/'
@@ -406,10 +426,12 @@ export interface FileRouteTypes {
     | '/admin/computers'
     | '/admin/credentials'
     | '/admin/identity-providers'
+    | '/admin/models'
     | '/admin/people'
     | '/admin/playground'
     | '/admin/skills'
     | '/admin/workspaces'
+    | '/settings/models'
     | '/w/$workspace'
     | '/admin'
     | '/settings'
@@ -443,10 +465,12 @@ export interface FileRouteTypes {
     | '/_authed/admin/computers'
     | '/_authed/admin/credentials'
     | '/_authed/admin/identity-providers'
+    | '/_authed/admin/models'
     | '/_authed/admin/people'
     | '/_authed/admin/playground'
     | '/_authed/admin/skills'
     | '/_authed/admin/workspaces'
+    | '/_authed/settings/models'
     | '/_authed/w/$workspace'
     | '/_authed/admin/'
     | '/_authed/settings/'
@@ -562,6 +586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminIdentityProvidersRouteImport
       parentRoute: typeof AuthedAdminRouteRoute
     }
+    '/_authed/admin/models': {
+      id: '/_authed/admin/models'
+      path: '/models'
+      fullPath: '/admin/models'
+      preLoaderRoute: typeof AuthedAdminModelsRouteImport
+      parentRoute: typeof AuthedAdminRouteRoute
+    }
     '/_authed/admin/people': {
       id: '/_authed/admin/people'
       path: '/people'
@@ -595,6 +626,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthedSettingsIndexRouteImport
+      parentRoute: typeof AuthedSettingsRouteRoute
+    }
+    '/_authed/settings/models': {
+      id: '/_authed/settings/models'
+      path: '/models'
+      fullPath: '/settings/models'
+      preLoaderRoute: typeof AuthedSettingsModelsRouteImport
       parentRoute: typeof AuthedSettingsRouteRoute
     }
     '/_authed/w/$workspace': {
@@ -746,6 +784,7 @@ interface AuthedAdminRouteRouteChildren {
   AuthedAdminComputersRoute: typeof AuthedAdminComputersRoute
   AuthedAdminCredentialsRoute: typeof AuthedAdminCredentialsRoute
   AuthedAdminIdentityProvidersRoute: typeof AuthedAdminIdentityProvidersRoute
+  AuthedAdminModelsRoute: typeof AuthedAdminModelsRoute
   AuthedAdminPeopleRoute: typeof AuthedAdminPeopleRoute
   AuthedAdminPlaygroundRoute: typeof AuthedAdminPlaygroundRoute
   AuthedAdminSkillsRoute: typeof AuthedAdminSkillsRoute
@@ -764,6 +803,7 @@ const AuthedAdminRouteRouteChildren: AuthedAdminRouteRouteChildren = {
   AuthedAdminComputersRoute: AuthedAdminComputersRoute,
   AuthedAdminCredentialsRoute: AuthedAdminCredentialsRoute,
   AuthedAdminIdentityProvidersRoute: AuthedAdminIdentityProvidersRoute,
+  AuthedAdminModelsRoute: AuthedAdminModelsRoute,
   AuthedAdminPeopleRoute: AuthedAdminPeopleRoute,
   AuthedAdminPlaygroundRoute: AuthedAdminPlaygroundRoute,
   AuthedAdminSkillsRoute: AuthedAdminSkillsRoute,
@@ -780,6 +820,7 @@ const AuthedAdminRouteRouteWithChildren =
   AuthedAdminRouteRoute._addFileChildren(AuthedAdminRouteRouteChildren)
 
 interface AuthedSettingsRouteRouteChildren {
+  AuthedSettingsModelsRoute: typeof AuthedSettingsModelsRoute
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
   AuthedSettingsComponentsGalleryNameRoute: typeof AuthedSettingsComponentsGalleryNameRoute
   AuthedSettingsConnectedAccountsKeyRoute: typeof AuthedSettingsConnectedAccountsKeyRoute
@@ -788,6 +829,7 @@ interface AuthedSettingsRouteRouteChildren {
 }
 
 const AuthedSettingsRouteRouteChildren: AuthedSettingsRouteRouteChildren = {
+  AuthedSettingsModelsRoute: AuthedSettingsModelsRoute,
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
   AuthedSettingsComponentsGalleryNameRoute:
     AuthedSettingsComponentsGalleryNameRoute,

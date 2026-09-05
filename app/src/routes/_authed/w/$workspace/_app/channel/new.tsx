@@ -91,9 +91,13 @@ function RouteComponent() {
           itemToStringValue={(item: AgentProfile) => item.id}
           onValueChange={(next) => {
             // Recipient changes are not separate navigation history entries.
+            // NOTOS: keep the campaign from the URL; choosing a coworker does not leave the room.
             void navigate({
               replace: true,
-              search: next ? { agent: next.id } : {},
+              search: {
+                ...(next ? { agent: next.id } : {}),
+                ...(campaign ? { campaign } : {}),
+              },
             });
           }}
           value={chosen ?? null}

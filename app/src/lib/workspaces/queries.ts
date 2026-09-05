@@ -11,6 +11,8 @@ export type AdminWorkspace = {
   notosClientId: string;
   displayName: string;
   kind: string;
+  /** `vertex`, `anthropic`, `openai`, `openrouter` or `google-ai`. */
+  modelProvider: string;
   vertexLocation: string;
   defaultModel: string;
   /** NOTOS (stap 8): the client's Drive folder ids. */
@@ -18,18 +20,50 @@ export type AdminWorkspace = {
 };
 
 /** De twee keuzes die deze deployment kent; zie server/src/app.ts. */
-export const MODEL_CHOICES = [
+export const MODEL_CHOICES: readonly {
+  provider: "vertex" | "anthropic" | "openai" | "openrouter" | "google-ai";
+  vertexLocation: string;
+  defaultModel: string;
+  label: string;
+}[] = [
   {
+    provider: "vertex",
     vertexLocation: "europe-west4",
     defaultModel: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro in europe-west4 (stays in the EU)",
+    label: "Gemini 2.5 Pro on Vertex, europe-west4 (stays in the EU, no key)",
   },
   {
+    provider: "vertex",
     vertexLocation: "global",
     defaultModel: "gemini-3.1-pro-preview",
-    label: "Gemini 3.1 Pro Preview on global (leaves the EU)",
+    label: "Gemini 3.1 Pro Preview on Vertex, global (leaves the EU, no key)",
   },
-] as const;
+  // NOTOS (5 September 2026): keyed providers. The key comes from Admin › Models or Settings › Models.
+  {
+    provider: "anthropic",
+    vertexLocation: "-",
+    defaultModel: "claude-sonnet-5",
+    label: "Claude Sonnet 5 (Anthropic key)",
+  },
+  {
+    provider: "anthropic",
+    vertexLocation: "-",
+    defaultModel: "claude-opus-5",
+    label: "Claude Opus 5 (Anthropic key)",
+  },
+  {
+    provider: "openai",
+    vertexLocation: "-",
+    defaultModel: "gpt-5",
+    label: "GPT-5 (OpenAI key)",
+  },
+  {
+    provider: "google-ai",
+    vertexLocation: "-",
+    defaultModel: "gemini-2.5-pro",
+    label: "Gemini 2.5 Pro via Google AI Studio (Google AI key)",
+  },
+];
 
 export const workspaceKeys = {
   all: ["admin", "workspaces"] as const,
@@ -51,6 +85,7 @@ export function setWorkspaceModelMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
     mutationFn: async (input: {
       id: string;
+      provider: string;
       vertexLocation: string;
       defaultModel: string;
     }) => {
@@ -59,6 +94,7 @@ export function setWorkspaceModelMutationOptions(queryClient: QueryClient) {
         {
           method: "PUT",
           body: {
+            provider: input.provider,
             vertexLocation: input.vertexLocation,
             defaultModel: input.defaultModel,
           },

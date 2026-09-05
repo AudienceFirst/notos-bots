@@ -63,8 +63,10 @@ function WorkspacesPage() {
             {rows.map((workspace) => {
               const chosen = MODEL_CHOICES.find(
                 (choice) =>
-                  choice.vertexLocation === workspace.vertexLocation &&
-                  choice.defaultModel === workspace.defaultModel,
+                  choice.provider === workspace.modelProvider &&
+                  choice.defaultModel === workspace.defaultModel &&
+                  (choice.provider !== "vertex" ||
+                    choice.vertexLocation === workspace.vertexLocation),
               );
               return (
                 <Item key={workspace.id}>
@@ -76,26 +78,29 @@ function WorkspacesPage() {
                     <ItemDescription>
                       {workspace.notosClientId}
                       {!chosen
-                        ? ` · ${workspace.defaultModel} on ${workspace.vertexLocation} (own setting)`
+                        ? ` · ${workspace.defaultModel} on ${workspace.modelProvider === "vertex" ? workspace.vertexLocation : workspace.modelProvider} (own setting)`
                         : ""}
                     </ItemDescription>
                   </ItemContent>
-                  <ItemActions>
+                  {/* Stacked: model, Drive folder and members each get a full line of their own. */}
+                  <ItemActions className="w-[340px] shrink-0 flex-col items-stretch gap-2">
                     <select
                       aria-label={`Model for ${workspace.displayName}`}
                       className="text-sm bg-transparent border rounded-md px-2 py-1"
                       disabled={setModel.isPending}
                       value={
                         chosen
-                          ? `${chosen.vertexLocation}|${chosen.defaultModel}`
+                          ? `${chosen.provider}|${chosen.vertexLocation}|${chosen.defaultModel}`
                           : ""
                       }
                       onChange={(event) => {
-                        const [vertexLocation, defaultModel] =
+                        const [provider, vertexLocation, defaultModel] =
                           event.target.value.split("|");
-                        if (!vertexLocation || !defaultModel) return;
+                        if (!provider || !vertexLocation || !defaultModel)
+                          return;
                         setModel.mutate({
                           id: workspace.id,
+                          provider,
                           vertexLocation,
                           defaultModel,
                         });
@@ -104,8 +109,8 @@ function WorkspacesPage() {
                       {!chosen ? <option value="">Own setting</option> : null}
                       {MODEL_CHOICES.map((choice) => (
                         <option
-                          key={choice.defaultModel}
-                          value={`${choice.vertexLocation}|${choice.defaultModel}`}
+                          key={`${choice.provider}|${choice.defaultModel}`}
+                          value={`${choice.provider}|${choice.vertexLocation}|${choice.defaultModel}`}
                         >
                           {choice.label}
                         </option>
