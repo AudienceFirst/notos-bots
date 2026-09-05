@@ -25,18 +25,22 @@ export const MODEL_CHOICES: readonly {
   vertexLocation: string;
   defaultModel: string;
   label: string;
+  /** For a small button: the model name and, for Vertex, where it runs. */
+  short: string;
 }[] = [
   {
     provider: "vertex",
     vertexLocation: "europe-west4",
     defaultModel: "gemini-2.5-pro",
     label: "Gemini 2.5 Pro on Vertex, europe-west4 (stays in the EU, no key)",
+    short: "Gemini 2.5 Pro (EU)",
   },
   {
     provider: "vertex",
     vertexLocation: "global",
     defaultModel: "gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro Preview on Vertex, global (leaves the EU, no key)",
+    short: "Gemini 3.1 Pro Preview (global)",
   },
   // NOTOS (5 September 2026): keyed providers. The key comes from Admin › Models or Settings › Models.
   {
@@ -44,24 +48,28 @@ export const MODEL_CHOICES: readonly {
     vertexLocation: "-",
     defaultModel: "claude-sonnet-5",
     label: "Claude Sonnet 5 (Anthropic key)",
+    short: "Claude Sonnet 5",
   },
   {
     provider: "anthropic",
     vertexLocation: "-",
     defaultModel: "claude-opus-5",
     label: "Claude Opus 5 (Anthropic key)",
+    short: "Claude Opus 5",
   },
   {
     provider: "openai",
     vertexLocation: "-",
     defaultModel: "gpt-5",
     label: "GPT-5 (OpenAI key)",
+    short: "GPT-5",
   },
   {
     provider: "google-ai",
     vertexLocation: "-",
     defaultModel: "gemini-2.5-pro",
     label: "Gemini 2.5 Pro via Google AI Studio (Google AI key)",
+    short: "Gemini 2.5 Pro (AI Studio)",
   },
 ];
 

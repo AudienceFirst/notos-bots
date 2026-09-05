@@ -79,6 +79,24 @@ export async function setChannelBusy(variables: {
   });
 }
 
+/** NOTOS: the model this channel runs on; null goes back to the workspace's. */
+export function setChannelModelMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (variables: {
+      channelId: string;
+      model: { provider: string; location: string; name: string } | null;
+    }) => {
+      await client(`/api/channels/${variables.channelId}/model`, {
+        method: "PUT",
+        body: { model: variables.model },
+        fallback: "Could not change the model for this channel",
+      });
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: channelKeys.all }),
+  });
+}
+
 /** Pin or unpin a channel for this member. A marker, not a reorder, so no optimistic sort. */
 export function setChannelPinnedMutationOptions(queryClient: QueryClient) {
   return mutationOptions({

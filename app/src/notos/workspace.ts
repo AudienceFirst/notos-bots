@@ -18,7 +18,7 @@ export function currentWorkspace(): string | null {
 
 /** De API-paden die bij een workspace horen. Alles daarbuiten (plugins, admin, me) is deployment-breed. */
 const SCOPED =
-  /^\/api\/(channels|routines|agents|route|threads|components|approvals|campaigns)(\/|$|\?)/;
+  /^\/api\/(channels|routines|agents|route|threads|components|approvals|campaigns|models)(\/|$|\?)/;
 
 export function apiPath(path: string): string {
   const slug = current;

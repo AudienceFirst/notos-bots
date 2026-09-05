@@ -45,6 +45,10 @@ export const threads = pgTable("threads", {
   updatedAt: updatedAt(),
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  /** NOTOS: the model chosen for this thread (the /bot page, which has no channel); null = the workspace's. */
+  modelProvider: text("model_provider"),
+  modelName: text("model_name"),
+  modelLocation: text("model_location"),
 });
 
 /**

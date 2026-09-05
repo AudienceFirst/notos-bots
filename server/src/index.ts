@@ -57,6 +57,7 @@ import {
   resolveRuntimeAgents,
   type ToolSelection,
   setRunContextProvider,
+  setRunModelProvider,
 } from "./copilot";
 import {
   createCredentialAdminService,
@@ -72,7 +73,11 @@ import {
   type NotosIdentity,
   RevokedError,
 } from "./notos/auth";
-import { createModelKeyStore, createModels } from "./notos/model";
+import {
+  createModelKeyStore,
+  createModels,
+  isModelProvider,
+} from "./notos/model";
 import {
   createThreadLock,
   createThreadStore,
@@ -275,6 +280,18 @@ const channelStore = createChannelStore(
   agentProfileStore,
   threadIdentity,
 );
+// NOTOS: the model a conversation chose, per thread: its channel's, or the thread's own (/bot page).
+setRunModelProvider(async (threadId) => {
+  if (!threadId) return null;
+  const fromChannel = await channelStore.modelForThread(threadId);
+  const chosen = fromChannel ?? (await threadStore.modelFor(threadId));
+  if (!chosen || !isModelProvider(chosen.provider)) return null;
+  return {
+    provider: chosen.provider,
+    location: chosen.location,
+    name: chosen.name,
+  };
+});
 const channelEvents = createChannelEventHub();
 /**
  * Which components each Bot may answer with.

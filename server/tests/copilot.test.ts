@@ -11,6 +11,7 @@ import {
   registeredAgentFromRow,
   resolveRuntimeAgents,
   standingRoleMessage,
+  defaultModelChoice,
 } from "../src/copilot";
 import { grantedToolGuidance } from "../src/plugins/tools";
 
@@ -1076,5 +1077,111 @@ describe("a chat turn is not sent a conversation the model API refuses", () => {
 
     expect(seen[0]?.messages).toHaveLength(3);
     expect(seen[0]?.messages?.[1]).not.toHaveProperty("toolCalls");
+  });
+});
+
+describe("NOTOS: a conversation's own model", () => {
+  test("the default is the workspace's choice, or the deployment's", () => {
+    expect(
+      defaultModelChoice(
+        {
+          id: "a",
+          name: "A",
+          type: "built_in",
+          systemPrompt: "Be helpful.",
+        },
+        VERTEX,
+      ),
+    ).toEqual({
+      provider: "vertex",
+      location: "europe-west4",
+      name: "gemini-2.5-pro",
+    });
+    expect(
+      defaultModelChoice(
+        {
+          id: "a",
+          name: "A",
+          type: "built_in",
+          systemPrompt: "Be helpful.",
+          model: {
+            location: "-",
+            name: "claude-sonnet-5",
+            provider: "anthropic",
+            workspaceId: "w1",
+            personalOwnerId: null,
+          },
+        },
+        VERTEX,
+      ),
+    ).toEqual({
+      provider: "anthropic",
+      location: "-",
+      name: "claude-sonnet-5",
+    });
+  });
+
+  test("an override wins over the workspace's model, and keeps the key scope", () => {
+    const asked: unknown[] = [];
+    builtInAgentConfiguration(
+      {
+        id: "a",
+        name: "A",
+        type: "built_in",
+        systemPrompt: "Be helpful.",
+        model: {
+          location: "europe-west4",
+          name: "gemini-2.5-pro",
+          provider: "vertex",
+          workspaceId: "w1",
+          personalOwnerId: "u1",
+        },
+      },
+      VERTEX,
+      (choice?: unknown) => {
+        asked.push(choice);
+        return FAKE_MODEL;
+      },
+      [],
+      undefined,
+      [],
+      { provider: "openai", location: "", name: "gpt-5" },
+    );
+    expect(asked).toEqual([
+      {
+        provider: "openai",
+        location: "",
+        name: "gpt-5",
+        workspaceId: "w1",
+        personalOwnerId: "u1",
+      },
+    ]);
+  });
+
+  test("a keyed model without a key fails the run with the provider named", async () => {
+    const configuration = builtInAgentConfiguration(
+      { id: "a", name: "A", type: "built_in", systemPrompt: "Be helpful." },
+      VERTEX,
+      () => {
+        throw new Error("No API key for OpenAI.");
+      },
+      [],
+      undefined,
+      [],
+      { provider: "openai", location: "", name: "gpt-5" },
+    );
+    expect(configuration.type).toBe("custom");
+    if (configuration.type !== "custom") return;
+    let message = "";
+    try {
+      for await (const _ of configuration.factory()) {
+        // never yields
+      }
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain("No API key for OpenAI.");
+    expect(message).toContain("Choose another model");
+    expect(message).not.toContain("GOOGLE_VERTEX_PROJECT");
   });
 });

@@ -35,6 +35,7 @@ import {
 } from "./events";
 import { upgradeWebSocket } from "./socket";
 import type { ThreadIdentity } from "./thread-identity";
+import { isModelProvider } from "../notos/model";
 
 export type AgentChannel = {
   id: string;
@@ -44,7 +45,25 @@ export type AgentChannel = {
   active: boolean;
   /** NOTOS: the campaign this channel lives in; null outside campaigns. */
   campaignId: string | null;
+  /** NOTOS: the model this channel runs on, chosen in the conversation; null = the workspace's. */
+  model: ChannelModel | null;
 };
+
+export type ChannelModel = { provider: string; location: string; name: string };
+
+/** The three model columns as one value, or null when none of them is set. */
+function modelOf(row: {
+  modelProvider: string | null;
+  modelName: string | null;
+  modelLocation: string | null;
+}): ChannelModel | null {
+  if (!row.modelProvider || !row.modelName) return null;
+  return {
+    provider: row.modelProvider,
+    name: row.modelName,
+    location: row.modelLocation ?? "",
+  };
+}
 
 /** A channel plus the last thing said in it, which is what a roster renders. */
 export type ChannelSummary = AgentChannel & {
@@ -178,6 +197,14 @@ export type ChannelStore = {
   ): Promise<void>;
   /** Stamp the caller's own membership as read now. Throws ChannelNotFoundError for a non-member. */
   markRead(actor: AgentActor, channelId: string): Promise<void>;
+  /** NOTOS: the model this channel runs on, for every member; null = back to the workspace's. */
+  setModel(
+    actor: AgentActor,
+    channelId: string,
+    model: ChannelModel | null,
+  ): Promise<void>;
+  /** NOTOS: the channel model behind a thread, for the run; null when unset or no channel. */
+  modelForThread(threadId: string): Promise<ChannelModel | null>;
   /**
    * Hide the channel for every member. Soft: the row and the thread survive, every read filters.
    * Throws ChannelNotFoundError for a non-member and ChannelPackageOwnedError for a channel the
@@ -319,7 +346,15 @@ export function createChannelStore(
       threadId,
     });
 
-    return { id, name, agentIds, threadId, active: true, campaignId };
+    return {
+      id,
+      name,
+      agentIds,
+      threadId,
+      active: true,
+      campaignId,
+      model: null,
+    };
   };
 
   const store: ChannelStore = {
@@ -410,6 +445,9 @@ export function createChannelStore(
           agentId: channelAgents.agentId,
           threadId: intelligenceChannelMappings.threadId,
           campaignId: channels.campaignId,
+          modelProvider: channels.modelProvider,
+          modelName: channels.modelName,
+          modelLocation: channels.modelLocation,
           deletedAt: agentProfiles.deletedAt,
         })
         .from(channels)
@@ -451,6 +489,7 @@ export function createChannelStore(
         threadId: first.threadId,
         active: rows.every((row) => row.deletedAt === null),
         campaignId: first.campaignId ?? null,
+        model: modelOf(first),
       };
     },
 
@@ -517,6 +556,9 @@ export function createChannelStore(
           agentId: channelAgents.agentId,
           threadId: intelligenceChannelMappings.threadId,
           campaignId: channels.campaignId,
+          modelProvider: channels.modelProvider,
+          modelName: channels.modelName,
+          modelLocation: channels.modelLocation,
           deletedAt: agentProfiles.deletedAt,
           lastMessage: channels.lastMessage,
           lastMessageAt: channels.lastMessageAt,
@@ -577,6 +619,7 @@ export function createChannelStore(
           threadId: row.threadId,
           active: row.deletedAt === null,
           campaignId: row.campaignId ?? null,
+          model: modelOf(row),
           lastMessage: row.lastMessage,
           lastMessageAt: row.lastMessageAt,
           lastMessageAgentId: row.lastMessageAgentId,
@@ -640,6 +683,53 @@ export function createChannelStore(
         },
         { isolationLevel: "read committed" },
       );
+    },
+
+    async setModel(actor, channelId, model) {
+      const updated = await database
+        .update(channels)
+        .set({
+          modelProvider: model?.provider ?? null,
+          modelName: model?.name ?? null,
+          modelLocation: model?.location ?? null,
+        })
+        .where(
+          and(
+            eq(channels.id, channelId),
+            isNull(channels.deletedAt),
+            inWorkspace(actor),
+            exists(
+              database
+                .select({ one: sql`1` })
+                .from(channelMemberships)
+                .where(
+                  and(
+                    eq(channelMemberships.channelId, channels.id),
+                    eq(channelMemberships.userId, actor.id),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .returning({ id: channels.id });
+      if (updated.length === 0) throw new ChannelNotFoundError(channelId);
+    },
+
+    async modelForThread(threadId) {
+      const [row] = await database
+        .select({
+          modelProvider: channels.modelProvider,
+          modelName: channels.modelName,
+          modelLocation: channels.modelLocation,
+        })
+        .from(intelligenceChannelMappings)
+        .innerJoin(
+          channels,
+          eq(channels.id, intelligenceChannelMappings.channelId),
+        )
+        .where(eq(intelligenceChannelMappings.threadId, threadId))
+        .limit(1);
+      return row ? modelOf(row) : null;
     },
 
     async markRead(actor, channelId) {
@@ -1007,6 +1097,8 @@ export function createChannelRoutes(
   events?: ChannelEventHub,
   /** Where a channel's removal is written. Absent in tests that do not care about the trail. */
   auditStore?: AuditStore,
+  /** NOTOS: whether a keyed provider can run for this actor's workspace; absent = accept any. */
+  modelAvailable?: (actor: AgentActor, provider: string) => Promise<boolean>,
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
 
@@ -1177,6 +1269,73 @@ export function createChannelRoutes(
     }
   });
 
+  /*
+   * NOTOS: the model this conversation runs on. Anybody in the channel may change it; the choice
+   * holds for the channel until somebody changes it again, and null goes back to the workspace's.
+   * A keyed provider is only accepted when a key is reachable here, so a choice never breaks a run.
+   */
+  routes.put("/:channelId/model", requireUser, async (context) => {
+    const body = await context.req.json().catch(() => null);
+    if (!isChannelInputObject(body)) {
+      return context.json({ error: "Model input must be a JSON object." }, 400);
+    }
+    const { model } = body as { model?: unknown };
+    let choice: ChannelModel | null = null;
+    if (model !== null && model !== undefined) {
+      if (!isChannelInputObject(model)) {
+        return context.json({ error: "Model must be an object or null." }, 400);
+      }
+      const given = model as {
+        provider?: unknown;
+        location?: unknown;
+        name?: unknown;
+      };
+      if (!isModelProvider(given.provider)) {
+        return context.json({ error: "That is not a model provider." }, 400);
+      }
+      const name = typeof given.name === "string" ? given.name.trim() : "";
+      if (!name) return context.json({ error: "Name a model." }, 400);
+      const location =
+        typeof given.location === "string" ? given.location.trim() : "";
+      if (
+        given.provider === "vertex" &&
+        !["europe-west4", "global"].includes(location)
+      ) {
+        return context.json(
+          { error: "A Vertex model runs in europe-west4 or global." },
+          400,
+        );
+      }
+      if (
+        modelAvailable &&
+        !(await modelAvailable(context.var.actor, given.provider))
+      ) {
+        return context.json(
+          {
+            error:
+              "No key for that provider is reachable here, so it cannot run.",
+          },
+          409,
+        );
+      }
+      choice = {
+        provider: given.provider,
+        name,
+        location: given.provider === "vertex" ? location : "",
+      };
+    }
+    try {
+      await store.setModel(
+        context.var.actor,
+        context.req.param("channelId"),
+        choice,
+      );
+      return context.json({ model: choice });
+    } catch (error) {
+      return mapStoreError(context, error);
+    }
+  });
+
   routes.put("/:channelId/read", requireUser, async (context) => {
     try {
       await store.markRead(context.var.actor, context.req.param("channelId"));
@@ -1223,6 +1382,7 @@ function channelDto(channel: AgentChannel): AgentChannel {
     threadId: channel.threadId,
     active: channel.active,
     campaignId: channel.campaignId ?? null,
+    model: channel.model ?? null,
   };
 }
 

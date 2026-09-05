@@ -58,6 +58,7 @@ function channel(overrides: Partial<AgentChannel> = {}): AgentChannel {
     threadId: "thread-1",
     active: true,
     campaignId: null,
+    model: null,
     ...overrides,
   };
 }
@@ -82,6 +83,12 @@ function fakeStore(
     },
     async markRead(receivedActor, id) {
       calls.push(["markRead", receivedActor, id]);
+    },
+    async setModel(receivedActor, id, model) {
+      calls.push(["setModel", receivedActor, id, model]);
+    },
+    async modelForThread() {
+      return null;
     },
     async softDelete(receivedActor, id) {
       calls.push(["softDelete", receivedActor, id]);
@@ -111,6 +118,140 @@ function appFor(
 async function json(response: Response) {
   return response.json();
 }
+
+/** NOTOS: the routes with a "can this provider run here" check, as app.ts wires them. */
+function appWithModelCheck(
+  store: ChannelStore,
+  available: (provider: string) => boolean,
+) {
+  const app = new Hono<{ Variables: AppVariables }>();
+  app.route(
+    "/",
+    createChannelRoutes(
+      store,
+      requireUser,
+      undefined,
+      undefined,
+      async (_actor, provider) => available(provider),
+    ),
+  );
+  return app;
+}
+
+describe("NOTOS: the model a channel runs on", () => {
+  const put = (app: Hono<{ Variables: AppVariables }>, body: unknown) =>
+    app.request("http://openbot.test/channel-1/model", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  test("a Vertex model is written for the channel, as given", async () => {
+    const store = fakeStore();
+    const response = await put(appFor(store), {
+      model: {
+        provider: "vertex",
+        location: "global",
+        name: "gemini-3.1-pro-preview",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(await json(response)).toEqual({
+      model: {
+        provider: "vertex",
+        location: "global",
+        name: "gemini-3.1-pro-preview",
+      },
+    });
+    expect(store.calls).toEqual([
+      [
+        "setModel",
+        actor,
+        "channel-1",
+        {
+          provider: "vertex",
+          location: "global",
+          name: "gemini-3.1-pro-preview",
+        },
+      ],
+    ]);
+  });
+
+  test("null goes back to the workspace's model", async () => {
+    const store = fakeStore();
+    const response = await put(appFor(store), { model: null });
+    expect(response.status).toBe(200);
+    expect(store.calls).toEqual([["setModel", actor, "channel-1", null]]);
+  });
+
+  test("a keyed provider without a reachable key is refused, and nothing is written", async () => {
+    const store = fakeStore();
+    const response = await put(
+      appWithModelCheck(store, (provider) => provider === "vertex"),
+      {
+        model: { provider: "anthropic", location: "", name: "claude-sonnet-5" },
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(store.calls).toEqual([]);
+  });
+
+  test("a keyed provider with a key is accepted without a location", async () => {
+    const store = fakeStore();
+    const response = await put(
+      appWithModelCheck(store, () => true),
+      {
+        model: { provider: "openai", location: "whatever", name: "gpt-5" },
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(store.calls).toEqual([
+      [
+        "setModel",
+        actor,
+        "channel-1",
+        { provider: "openai", location: "", name: "gpt-5" },
+      ],
+    ]);
+  });
+
+  test("an unknown provider, a nameless model and a Vertex model off-region are refused", async () => {
+    const store = fakeStore();
+    const app = appFor(store);
+    expect(
+      (await put(app, { model: { provider: "mistral", name: "x" } })).status,
+    ).toBe(400);
+    expect(
+      (
+        await put(app, {
+          model: { provider: "vertex", location: "global", name: " " },
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await put(app, {
+          model: {
+            provider: "vertex",
+            location: "us-central1",
+            name: "gemini-2.5-pro",
+          },
+        })
+      ).status,
+    ).toBe(400);
+    expect(store.calls).toEqual([]);
+  });
+
+  test("a non-member is told the channel does not exist", async () => {
+    const store = fakeStore({
+      setModel: async () => {
+        throw new ChannelNotFoundError("channel-1");
+      },
+    });
+    const response = await put(appFor(store), { model: null });
+    expect(response.status).toBe(404);
+  });
+});
 
 describe("channel input parser", () => {
   test.each([[null], [[]], ["input"], [42], [true]])(
@@ -226,6 +367,7 @@ describe("channel routes", () => {
         threadId: "thread-1",
         active: true,
         campaignId: null,
+        model: null,
       },
     });
     expect(fetched.status).toBe(200);
@@ -990,6 +1132,7 @@ describe("channel store integration", () => {
       threadId: created.threadId,
       active: true,
       campaignId: null,
+      model: null,
     });
     const persisted = await persistedChannel(created.id);
     expect(persisted.channelRow?.name).toBe("Zulu, Alpha");

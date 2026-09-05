@@ -19,6 +19,8 @@ export type ThreadRecord = {
   createdAt: Date;
   updatedAt: Date;
   lastRunAt: Date | null;
+  /** NOTOS: the model chosen for this thread; null = the workspace's. */
+  model: { provider: string; location: string; name: string } | null;
 };
 
 export type StoredEvent = { seq: number; runId: string; event: BaseEvent };
@@ -38,6 +40,9 @@ export type ThreadStore = {
   /** Bestaat de thread, en is hij niet verwijderd. */
   exists(threadId: string): Promise<boolean>;
   get(threadId: string): Promise<ThreadRecord | null>;
+  /** NOTOS: the thread's own model choice (the /bot page); null when unset. */
+  modelFor(threadId: string): Promise<ThreadRecord["model"]>;
+  setModel(threadId: string, model: ThreadRecord["model"]): Promise<void>;
   /** De berichten zoals de agent ze achterliet aan het eind van de laatste run. Leeg voor een onbekende thread. */
   messages(threadId: string): Promise<Message[]>;
   /** Alle bewaarde gebeurtenissen op volgorde, eventueel zonder die van één run (de run die nu lokaal loopt). */
@@ -70,6 +75,14 @@ const record = (row: typeof threads.$inferSelect): ThreadRecord => ({
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
   lastRunAt: row.lastRunAt,
+  model:
+    row.modelProvider && row.modelName
+      ? {
+          provider: row.modelProvider,
+          name: row.modelName,
+          location: row.modelLocation ?? "",
+        }
+      : null,
 });
 
 export function createThreadStore(database: Database): ThreadStore {
@@ -121,6 +134,36 @@ export function createThreadStore(database: Database): ThreadStore {
         .where(and(eq(threads.id, threadId), isNull(threads.deletedAt)))
         .limit(1);
       return row ? record(row) : null;
+    },
+
+    async modelFor(threadId) {
+      const [row] = await database
+        .select({
+          modelProvider: threads.modelProvider,
+          modelName: threads.modelName,
+          modelLocation: threads.modelLocation,
+        })
+        .from(threads)
+        .where(and(eq(threads.id, threadId), isNull(threads.deletedAt)))
+        .limit(1);
+      return row?.modelProvider && row.modelName
+        ? {
+            provider: row.modelProvider,
+            name: row.modelName,
+            location: row.modelLocation ?? "",
+          }
+        : null;
+    },
+
+    async setModel(threadId, model) {
+      await database
+        .update(threads)
+        .set({
+          modelProvider: model?.provider ?? null,
+          modelName: model?.name ?? null,
+          modelLocation: model?.location ?? null,
+        })
+        .where(and(eq(threads.id, threadId), isNull(threads.deletedAt)));
     },
 
     async messages(threadId) {

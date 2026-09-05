@@ -16,7 +16,11 @@ import type { AgentActor } from "./agents/profile-types";
 import type { AgentFetch, StallGuard } from "./channels/stall-guard";
 import type { DeploymentConfig } from "./config";
 import type { LanguageModel } from "ai";
-import { isModelProvider, type ModelFactory } from "./notos/model";
+import {
+  isModelProvider,
+  type ModelFactory,
+  type ModelProvider,
+} from "./notos/model";
 import type { PostgresAgentRunner } from "./notos/runner";
 import type { SelectableSkill, Selection } from "./plugins/selection";
 import {
@@ -201,35 +205,57 @@ function isHttpUrl(value: string) {
   }
 }
 
+/** NOTOS: a model chosen for one conversation (channel or thread), overriding the workspace's. */
+export type RunModelChoice = {
+  provider: ModelProvider;
+  location: string;
+  name: string;
+};
+
+/** The model an agent runs on by default: the workspace's choice, or the deployment's. */
+export function defaultModelChoice(
+  agent: RegisteredBuiltInAgent,
+  model: RuntimeModel,
+): RunModelChoice {
+  return {
+    provider: isModelProvider(agent.model?.provider)
+      ? agent.model.provider
+      : "vertex",
+    location: agent.model?.location ?? model.defaultLocation,
+    name: agent.model?.name ?? model.defaultModel,
+  };
+}
+
 export function builtInAgentConfiguration(
   agent: RegisteredBuiltInAgent,
   model: RuntimeModel,
-  /** NOTOS: the model comes from a factory (Vertex via ADC), not from a key (stap 3). */
   modelFor: ModelFactory,
   tools: GrantedTool[] = [],
   computerGuidance?: string,
   connectedVendors: readonly string[] = [],
+  /** NOTOS: the conversation's own model choice, when it has one (5 September 2026). */
+  override?: RunModelChoice,
 ): BuiltInAgentConfiguration {
   let languageModel: LanguageModel;
+  const choice = override ?? defaultModelChoice(agent, model);
   try {
     languageModel = modelFor({
-      // NOTOS: the workspace's provider; a keyed one looks for a key in the workspace's scope.
-      provider: isModelProvider(agent.model?.provider)
-        ? agent.model.provider
-        : "vertex",
-      location: agent.model?.location ?? model.defaultLocation,
-      name: agent.model?.name ?? model.defaultModel,
+      ...choice,
       workspaceId: agent.model?.workspaceId ?? null,
       personalOwnerId: agent.model?.personalOwnerId ?? null,
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    const hint =
+      choice.provider === "vertex"
+        ? " Check GOOGLE_VERTEX_PROJECT and the credentials this server runs with."
+        : " Choose another model for this conversation, or add a key.";
     return {
       type: "custom",
       // biome-ignore lint/correctness/useYield: this agent must fail when iteration starts.
       factory: async function* () {
         throw new Error(
-          `The model is not available for ${agent.name}: ${reason}. Check GOOGLE_VERTEX_PROJECT and the credentials this server runs with.`,
+          `The model is not available for ${agent.name}: ${reason}.${hint}`,
         );
       },
     };
@@ -428,7 +454,7 @@ async function buildAgent(
    * the message is known. The guidance it is given is generated from the tools passed here, which is
    * what keeps a narrowed run from being told it holds something it was not offered.
    */
-  const withTools = (tools: GrantedTool[]) =>
+  const withTools = (tools: GrantedTool[], override?: RunModelChoice) =>
     new BuiltInAgentWithSaneHistory(
       builtInAgentConfiguration(
         agent,
@@ -437,32 +463,33 @@ async function buildAgent(
         tools,
         computerGuidance,
         connectedVendors,
+        override,
       ),
     );
-
   const whole = withTools(granted);
-  if (!narrowing && !handoff) return whole;
-
+  // NOTOS: a conversation may run on its own model; that is known per run, so the agent is
+  // rebuilt per run once a run-model provider is set, like it already is for narrowing.
+  if (!narrowing && !handoff && !runModelFor) return whole;
+  const defaults = defaultModelChoice(agent, model);
   return new RunBuiltAgent(
     { agentId: agent.id, description: agent.name },
     whole,
     async (input) => {
       const offered = narrowing ? await offeredFor(input) : granted;
-      /*
-       * The tool for handing work to another Bot is made per run, not per request.
-       *
-       * It has to know which run is asking: how deep the chain already is, and which conversation an
-       * answer belongs in. Both live on the run rather than on the request, and both have to be this
-       * deployment's own statement rather than anything the model can edit. A request is earlier
-       * than a run and knows neither.
-       */
       const passing = (await handoff?.(agent.id, input)) ?? [];
       const tools = passing.length > 0 ? [...offered, ...passing] : offered;
-      // Nothing added and nothing narrowed means nothing to rebuild, and reusing the agent already
-      // built for this request keeps that path allocation-for-allocation what it was.
-      return tools.length === granted.length && passing.length === 0
+      const chosen = await runModelChoice(input.threadId);
+      const sameModel =
+        !chosen ||
+        (chosen.provider === defaults.provider &&
+          chosen.name === defaults.name &&
+          (chosen.provider !== "vertex" ||
+            chosen.location === defaults.location));
+      return sameModel &&
+        tools.length === granted.length &&
+        passing.length === 0
         ? whole
-        : withTools(tools);
+        : withTools(tools, sameModel ? undefined : (chosen ?? undefined));
     },
   );
 }
@@ -728,6 +755,39 @@ function remoteAgentWithStandingRole(
 let runContextFor:
   | ((threadId: string | undefined) => Promise<string | null>)
   | undefined;
+
+let runModelFor:
+  | ((threadId: string | undefined) => Promise<RunModelChoice | null>)
+  | undefined;
+
+/** NOTOS: who answers "which model did this conversation choose", per thread. */
+export function setRunModelProvider(
+  provider: (threadId: string | undefined) => Promise<RunModelChoice | null>,
+) {
+  runModelFor = provider;
+}
+
+async function runModelChoice(
+  threadId: string | undefined,
+): Promise<RunModelChoice | null> {
+  if (!runModelFor || !threadId) return null;
+  try {
+    const chosen = await runModelFor(threadId);
+    if (chosen) {
+      console.log(
+        JSON.stringify({
+          type: "run-model",
+          threadId,
+          provider: chosen.provider,
+          name: chosen.name,
+        }),
+      );
+    }
+    return chosen;
+  } catch {
+    return null;
+  }
+}
 
 export function setRunContextProvider(
   provider: (threadId: string | undefined) => Promise<string | null>,

@@ -295,6 +295,14 @@ export const channels = pgTable(
     }),
     /** NOTOS: the campaign this channel belongs to; null for a workspace-level channel. No FK across files: campaigns.ts references this file. */
     campaignId: uuid("campaign_id"),
+    /**
+     * NOTOS: the model this channel runs on, chosen in the conversation (5 September 2026). Null
+     * means the workspace's model. `model_provider` is `vertex`, `anthropic`, `openai`, `openrouter`
+     * or `google-ai`; `model_location` only matters for Vertex.
+     */
+    modelProvider: text("model_provider"),
+    modelName: text("model_name"),
+    modelLocation: text("model_location"),
     override: jsonb("override"),
     /**
      * The last thing said in this channel, denormalised so a roster is one indexed read.

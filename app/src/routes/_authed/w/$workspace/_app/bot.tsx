@@ -1,5 +1,5 @@
 import { IconPlus } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { BotThreadChat } from "@/components/channels/bot-thread-chat";
 import { SidebarToggleBar } from "@/components/layout/sidebar-toggle";
@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { useActiveBot } from "@/lib/copilot/active-bot";
 import { useBotThread } from "@/lib/copilot/bot-thread";
+import { ModelPicker } from "@/components/models/model-picker";
+import {
+  setThreadModelMutationOptions,
+  threadModelQueryOptions,
+} from "@/lib/model-keys/queries";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/bot")({
   component: RouteComponent,
@@ -65,6 +70,13 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
    * mints another fresh thread on demand for the New chat control below.
    */
   const { threadId, history, startNew } = useBotThread(agentId);
+  // NOTOS: the model this chat runs on lives on its thread (5 September 2026).
+  const queryClient = useQueryClient();
+  const threadModel = useQuery({
+    ...threadModelQueryOptions(threadId ?? ""),
+    enabled: Boolean(threadId),
+  });
+  const setModel = useMutation(setThreadModelMutationOptions(queryClient));
   /*
    * A turn that ends without an answer has to be said out loud here, because the packaged chat says
    * nothing. It reports a failed run to an `onError` prop and otherwise carries on as though the
@@ -91,10 +103,19 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
            * whatever conversation is currently on screen, and a click with that consequence
            * deserves a word, not just a glyph.
            */}
-          <Button onClick={startNew} size="sm" variant="ghost">
-            <IconPlus />
-            New chat
-          </Button>
+          <div className="flex items-center gap-1">
+            {threadId ? (
+              <ModelPicker
+                onChange={(model) => setModel.mutate({ threadId, model })}
+                pending={setModel.isPending}
+                value={threadModel.data?.model ?? null}
+              />
+            ) : null}
+            <Button onClick={startNew} size="sm" variant="ghost">
+              <IconPlus />
+              New chat
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           Ask it to open a page and watch it work.

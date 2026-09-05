@@ -1,5 +1,6 @@
 // NOTOS: /mint maakt de rij in `threads` aan; de statuscheck leest dezelfde tabel (stap 0).
 import type { MiddlewareHandler } from "hono";
+import { isModelProvider } from "../notos/model";
 import { Hono } from "hono";
 import type { AppVariables } from "../auth/guards";
 import type { ThreadIdentity } from "./thread-identity";
@@ -61,7 +62,21 @@ export function createThreadRoutes(
       ownerUserId?: string;
       workspaceId?: string;
     }): Promise<void>;
+    /** NOTOS: the /bot page's thread carries its own model choice. */
+    get?(threadId: string): Promise<{
+      ownerUserId: string | null;
+      model: { provider: string; location: string; name: string } | null;
+    } | null>;
+    setModel?(
+      threadId: string,
+      model: { provider: string; location: string; name: string } | null,
+    ): Promise<void>;
   },
+  /** NOTOS: whether a keyed provider can run for this actor; absent = accept any. */
+  modelAvailable?: (
+    actor: AppVariables["actor"],
+    provider: string,
+  ) => Promise<boolean>,
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
 
@@ -93,7 +108,11 @@ export function createThreadRoutes(
 
       try {
         const status = await readThread(threadId, context.var.actor.id);
-        return context.json({ known: status === "known" });
+        const thread = await threads?.get?.(threadId).catch(() => null);
+        return context.json({
+          known: status === "known",
+          model: thread?.model ?? null,
+        });
       } catch {
         // The reader throws for everything short of a clean known/unknown answer, and what it threw
         // may name an upstream host or otherwise be unfit for a browser to see, so only its kind is
@@ -111,5 +130,65 @@ export function createThreadRoutes(
     });
   }
 
+  if (threads?.setModel && threads.get) {
+    const read = threads.get;
+    const write = threads.setModel;
+    routes.put("/:threadId/model", requireUser, async (context) => {
+      const threadId = context.req.param("threadId");
+      if (!PLAUSIBLE_THREAD_ID.test(threadId)) {
+        return context.json({ error: "Not a thread id." }, 400);
+      }
+      const thread = await read(threadId);
+      if (!thread || thread.ownerUserId !== context.var.actor.id) {
+        return context.json({ error: "Not your thread." }, 404);
+      }
+      const body = (await context.req.json().catch(() => null)) as {
+        model?: unknown;
+      } | null;
+      const given = body?.model as
+        | { provider?: unknown; location?: unknown; name?: unknown }
+        | null
+        | undefined;
+      let choice: { provider: string; location: string; name: string } | null =
+        null;
+      if (given) {
+        if (!isModelProvider(given.provider)) {
+          return context.json({ error: "That is not a model provider." }, 400);
+        }
+        const name = typeof given.name === "string" ? given.name.trim() : "";
+        if (!name) return context.json({ error: "Name a model." }, 400);
+        const location =
+          typeof given.location === "string" ? given.location.trim() : "";
+        if (
+          given.provider === "vertex" &&
+          !["europe-west4", "global"].includes(location)
+        ) {
+          return context.json(
+            { error: "A Vertex model runs in europe-west4 or global." },
+            400,
+          );
+        }
+        if (
+          modelAvailable &&
+          !(await modelAvailable(context.var.actor, given.provider))
+        ) {
+          return context.json(
+            {
+              error:
+                "No key for that provider is reachable here, so it cannot run.",
+            },
+            409,
+          );
+        }
+        choice = {
+          provider: given.provider,
+          name,
+          location: given.provider === "vertex" ? location : "",
+        };
+      }
+      await write(threadId, choice);
+      return context.json({ model: choice });
+    });
+  }
   return routes;
 }

@@ -16,6 +16,8 @@ export type AgentChannel = {
   active: boolean;
   /** NOTOS: the campaign this channel lives in, or null at workspace level. */
   campaignId: string | null;
+  /** NOTOS: the model this channel runs on, chosen in the conversation; null = the workspace's. */
+  model: { provider: string; location: string; name: string } | null;
 };
 
 /** A channel plus the last thing said in it, which is what the roster renders. */

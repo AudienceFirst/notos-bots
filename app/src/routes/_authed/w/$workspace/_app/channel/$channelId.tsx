@@ -20,7 +20,11 @@ import { useNeedsYou } from "@/components/computer/needs-you";
 import { DetailPanel } from "@/components/layout/detail-panel";
 import { SidebarToggle } from "@/components/layout/sidebar-toggle";
 import { Button } from "@/components/ui/button";
-import { markChannelReadMutationOptions } from "@/lib/channels/mutations";
+import { ModelPicker } from "@/components/models/model-picker";
+import {
+  markChannelReadMutationOptions,
+  setChannelModelMutationOptions,
+} from "@/lib/channels/mutations";
 import {
   type AgentChannel,
   channelListQueryOptions,
@@ -99,6 +103,7 @@ function RouteComponent() {
 
   const queryClient = useQueryClient();
   const markRead = useMutation(markChannelReadMutationOptions(queryClient));
+  const setModel = useMutation(setChannelModelMutationOptions(queryClient));
   /*
    * This channel's roster summary, read out of the same infinite query the sidebar renders.
    * The detail query deliberately knows nothing about activity; the roster is where the socket
@@ -223,7 +228,16 @@ function RouteComponent() {
               {channel.data?.name ?? "Channel"}
             </motion.span>
           </div>
-          <div className="flex flex-row gap-1.5">
+          <div className="flex flex-row items-center gap-1.5">
+            {/* NOTOS: the model this conversation runs on (5 September 2026). */}
+            {channel.data ? (
+              <ModelPicker
+                disabled={!channel.data.active}
+                onChange={(model) => setModel.mutate({ channelId, model })}
+                pending={setModel.isPending}
+                value={channel.data.model ?? null}
+              />
+            ) : null}
             {/* NOTOS: no computers in this deployment, so no screen to watch and no button for it. */}
             {capabilities.data?.computers === true ? (
               <Button

@@ -113,6 +113,63 @@ export function removeModelKeyMutationOptions(
   });
 }
 
+/** NOTOS: a model chosen for one conversation (channel or thread). */
+export type ConversationModel = {
+  provider: string;
+  location: string;
+  name: string;
+};
+
+export type AvailableModels = {
+  /** Which providers can run here: Vertex always, keyed ones only with a reachable key. */
+  providers: Record<string, boolean>;
+  workspaceDefault: ConversationModel | null;
+};
+
+export function availableModelsQueryOptions() {
+  return queryOptions({
+    queryKey: ["models", "available"] as const,
+    queryFn: async () =>
+      (await (
+        await client("/api/models/available", {
+          fallback: "The models could not be loaded.",
+        })
+      ).json()) as AvailableModels,
+    staleTime: 60_000,
+  });
+}
+
+export function threadModelQueryOptions(threadId: string) {
+  return queryOptions({
+    queryKey: ["threads", threadId, "model"] as const,
+    queryFn: async () =>
+      (await (
+        await client(`/api/threads/${encodeURIComponent(threadId)}`, {
+          fallback: "The thread could not be read.",
+        })
+      ).json()) as { known: boolean; model: ConversationModel | null },
+  });
+}
+
+export function setThreadModelMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (input: {
+      threadId: string;
+      model: ConversationModel | null;
+    }) => {
+      await client(`/api/threads/${encodeURIComponent(input.threadId)}/model`, {
+        method: "PUT",
+        body: { model: input.model },
+        fallback: "Could not change the model for this chat",
+      });
+    },
+    onSuccess: (_result, input) =>
+      queryClient.invalidateQueries({
+        queryKey: ["threads", input.threadId, "model"],
+      }),
+  });
+}
+
 export type PersonalModel = {
   provider: ModelProvider;
   vertexLocation: string;

@@ -11,6 +11,10 @@ import {
   type ModelKeyStore,
 } from "./notos/model";
 import {
+  createModelAvailability,
+  createModelRoutes,
+} from "./notos/model/routes";
+import {
   createSweepRoutes,
   type SweepCallerVerifier,
   type SweepReport,
@@ -261,6 +265,11 @@ export function createApp(
   modelKeyStore?: ModelKeyStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
+  // NOTOS: whether a keyed provider can run for an actor; undefined accepts any (tests).
+  const modelAvailable =
+    modelKeyStore && workspaceStore
+      ? createModelAvailability(modelKeyStore, workspaceStore)
+      : undefined;
 
   app.get("/health", (context) => context.json({ status: "ok" }));
   // Projected, never the raw config: this endpoint is reachable by anyone. Add fields explicitly.
@@ -1168,7 +1177,13 @@ export function createApp(
 
   if (channelStore) {
     mountScoped("/channels", (guard) =>
-      createChannelRoutes(channelStore, guard, channelEvents, auditStore),
+      createChannelRoutes(
+        channelStore,
+        guard,
+        channelEvents,
+        auditStore,
+        modelAvailable,
+      ),
     );
   }
 
@@ -1187,6 +1202,12 @@ export function createApp(
 
   if (campaignStore) {
     // NOTOS: campaigns are rooms inside a workspace; the Bots in them read the brief per run.
+    // NOTOS: which models can run here, for the picker in a conversation.
+    if (modelKeyStore && workspaceStore) {
+      mountScoped("/models", (guard) =>
+        createModelRoutes(guard, modelKeyStore, workspaceStore),
+      );
+    }
     mountScoped("/campaigns", (guard) =>
       createCampaignRoutes(campaignStore, guard, auditStore),
     );
@@ -1618,6 +1639,7 @@ export function createApp(
         // NOTOS: the thread store answers whether a remembered thread is still there, and for whom.
         threads ? createThreadReader(threads) : undefined,
         threads,
+        modelAvailable,
       ),
     );
   }
