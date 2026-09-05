@@ -431,7 +431,13 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
       authorizationUrl: "https://mcp.hubspot.com/oauth/authorize/user",
       tokenUrl: "https://mcp.hubspot.com/oauth/v3/token",
       revokeUrl: "https://mcp.hubspot.com/oauth/v3/token",
-      scopes: Object.freeze([]),
+      // Read scopes for what the summary promises; names from developers.hubspot.com/docs/guides/apps/authentication/scopes.
+      scopes: Object.freeze([
+        "crm.objects.contacts.read",
+        "crm.objects.companies.read",
+        "crm.objects.deals.read",
+        "tickets",
+      ]),
     },
     writeTools: Object.freeze([]),
     writeToolPattern:
