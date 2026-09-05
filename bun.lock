@@ -66,6 +66,7 @@
         "@ai-sdk/anthropic": "3",
         "@ai-sdk/google": "3",
         "@ai-sdk/google-vertex": "3.0.164",
+        "@ai-sdk/openai": "3.0.99",
         "@copilotkit/runtime": "1.69.0",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "@openrouter/ai-sdk-provider": "2",
@@ -82,7 +83,6 @@
         "zod": "^4.4.3",
       },
       "devDependencies": {
-        "@ai-sdk/openai": "3.0.99",
         "@copilotkit/aimock": "1.39.0",
         "drizzle-kit": "^0.31.10",
         "eventsource": "3.0.7",
