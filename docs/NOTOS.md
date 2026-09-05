@@ -342,7 +342,9 @@ wijst. De ZUID-workspace heeft de map NOTOS als root.
 `worker/` is weg. `POST /internal/routines/sweep` doet één sweep (offer + dispatch, in-process door
 de routine-runner) en accepteert het worker-secret of een Google-ID-token van `notos-worker@` of
 `notos-bots@` met als audience `OPENBOT_PUBLIC_URL` of `SWEEP_AUDIENCE` (de Cloud Run-URL).
-`scripts/notos/sweep-scheduler.sh` maakt de Scheduler-job (elke minuut, `notos-worker@`).
+`scripts/notos/sweep-scheduler.sh` maakt de Scheduler-job (elke minuut, `notos-worker@`). Handmatig
+testen: `gcloud auth print-identity-token --impersonate-service-account=notos-worker@… --audiences=<Cloud Run-URL> --include-email`;
+zonder `--include-email` mist de e-mailclaim en weigert de server (not-a-known-service-account).
 `POST /api/w/:workspace/bots/:bot/runs { prompt, channelId? }` start één beurt als de aanroeper;
 dat is de deur voor n8n en NOTOS-knoppen (voorbeeld in `docs/routines.md`). De Routines-pagina
 maakt een routine aan met presets; `POST /api/w/:workspace/routines`.
