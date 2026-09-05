@@ -7,7 +7,7 @@
  * ZUID-adressen zien alles, een klantgast ziet wat `client_members` zegt. Seats worden hier nooit
  * geschreven.
  */
-import { and, eq, notInArray, sql } from "drizzle-orm";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import type { Database } from "../../db/client";
 import { deploymentPackages } from "../../db/schema";
 
@@ -24,6 +24,8 @@ export type Workspace = {
   defaultModel: string;
   driveRootIds: Record<string, unknown>;
   enabled: boolean;
+  /** NOTOS: set for a personal space; only this Supabase user id gets in, nobody else. */
+  personalOwnerId: string | null;
 };
 
 export type WorkspaceMembership = { workspace: Workspace; role: WorkspaceRole };
@@ -54,6 +56,11 @@ export type WorkspaceStore = {
   ): Promise<WorkspaceMembership | null>;
   /** Mag deze persoon iets lezen dat bij deze workspace-id hoort. */
   mayRead(actor: ActorLike, workspaceId: string | null): Promise<boolean>;
+  /** NOTOS: the person's own space, created on first sight. */
+  ensurePersonal(actor: {
+    id: string;
+    name?: string | null;
+  }): Promise<Workspace>;
   updateSettings(
     id: string,
     settings: Partial<
@@ -64,6 +71,7 @@ export type WorkspaceStore = {
 
 /** Wat de store van een actor nodig heeft: is het ZUID, en anders welke klanten met welke rol. */
 export type ActorLike = {
+  id?: string;
   isInternal?: boolean | undefined;
   memberships?: Partial<Record<string, WorkspaceRole>> | undefined;
 };
@@ -79,6 +87,7 @@ const toWorkspace = (
   vertexLocation: row.vertexLocation,
   defaultModel: row.defaultModel,
   driveRootIds: row.driveRootIds as Record<string, unknown>,
+  personalOwnerId: row.personalOwnerId ?? null,
   enabled: row.enabled,
 });
 
@@ -106,6 +115,10 @@ export function createWorkspaceStore(database: Database): WorkspaceStore {
     workspace: Workspace,
   ): WorkspaceRole | null => {
     if (!workspace.enabled) return null;
+    // A personal space is its owner's alone: not even an administrator sees it (Mitch, 5 sep 2026).
+    if (workspace.personalOwnerId) {
+      return actor.id === workspace.personalOwnerId ? "zuid" : null;
+    }
     if (actor.isInternal) return "zuid";
     return actor.memberships?.[workspace.slug] ?? null;
   };
@@ -160,6 +173,8 @@ export function createWorkspaceStore(database: Database): WorkspaceStore {
         .where(
           and(
             eq(deploymentPackages.enabled, true),
+            // NOTOS: a personal space is not a NOTOS client; the sync leaves it alone.
+            isNull(deploymentPackages.personalOwnerId),
             slugs.length > 0
               ? notInArray(deploymentPackages.tenantId, [...slugs])
               : sql`true`,
@@ -182,6 +197,37 @@ export function createWorkspaceStore(database: Database): WorkspaceStore {
       if (!workspace) return null;
       const role = roleFor(actor, workspace);
       return role ? { workspace, role } : null;
+    },
+
+    async ensurePersonal(actor) {
+      const slug = `me-${actor.id}`;
+      const [existing] = await database
+        .select()
+        .from(deploymentPackages)
+        .where(eq(deploymentPackages.personalOwnerId, actor.id))
+        .limit(1);
+      if (existing) return toWorkspace(existing);
+      const [row] = await database
+        .insert(deploymentPackages)
+        .values({
+          tenantId: slug,
+          sourcePath: "personal",
+          checksum: "personal",
+          notosClientId: slug,
+          displayName: "Mijn ruimte",
+          kind: "personal",
+          personalOwnerId: actor.id,
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (row) return toWorkspace(row);
+      const [again] = await database
+        .select()
+        .from(deploymentPackages)
+        .where(eq(deploymentPackages.personalOwnerId, actor.id))
+        .limit(1);
+      if (!again) throw new Error("The personal space could not be created.");
+      return toWorkspace(again);
     },
 
     async mayRead(actor, workspaceId) {

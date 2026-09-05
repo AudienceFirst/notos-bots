@@ -42,6 +42,8 @@ export type AgentChannel = {
   agentIds: string[];
   threadId: string;
   active: boolean;
+  /** NOTOS: the campaign this channel lives in; null outside campaigns. */
+  campaignId: string | null;
 };
 
 /** A channel plus the last thing said in it, which is what a roster renders. */
@@ -149,7 +151,11 @@ const ROSTER_ORDER = [
 type ChannelTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export type ChannelStore = {
-  create(actor: AgentActor, agentIds: string[]): Promise<AgentChannel>;
+  create(
+    actor: AgentActor,
+    agentIds: string[],
+    options?: { campaignId?: string | null },
+  ): Promise<AgentChannel>;
   /**
    * The one conversation this person has with this Bot alone, made if they have not had one yet.
    *
@@ -264,6 +270,7 @@ export function createChannelStore(
     transaction: ChannelTransaction,
     actor: AgentActor,
     agentIds: string[],
+    campaignId: string | null = null,
   ): Promise<AgentChannel> => {
     // Validated on this transaction, not through `profileStore.get`: the read has to share
     // the connection this transaction already holds, and has to hold the profile so an agent
@@ -297,6 +304,7 @@ export function createChannelStore(
       description: PRIVATE_AGENT_CHANNEL_DESCRIPTION,
       // NOTOS: the workspace of the request; absent only for a ZUID caller off the workspace routes.
       workspaceId: actor.workspace?.id ?? null,
+      campaignId,
     });
     await transaction.insert(channelMemberships).values({
       channelId: id,
@@ -311,13 +319,19 @@ export function createChannelStore(
       threadId,
     });
 
-    return { id, name, agentIds, threadId, active: true };
+    return { id, name, agentIds, threadId, active: true, campaignId };
   };
 
   const store: ChannelStore = {
-    create(actor, agentIds) {
+    create(actor, agentIds, options) {
       return database.transaction(
-        async (transaction) => makeChannel(transaction, actor, agentIds),
+        async (transaction) =>
+          makeChannel(
+            transaction,
+            actor,
+            agentIds,
+            options?.campaignId ?? null,
+          ),
         { isolationLevel: "read committed" },
       );
     },
@@ -395,6 +409,7 @@ export function createChannelStore(
           name: channels.name,
           agentId: channelAgents.agentId,
           threadId: intelligenceChannelMappings.threadId,
+          campaignId: channels.campaignId,
           deletedAt: agentProfiles.deletedAt,
         })
         .from(channels)
@@ -435,6 +450,7 @@ export function createChannelStore(
         agentIds: rows.map((row) => row.agentId),
         threadId: first.threadId,
         active: rows.every((row) => row.deletedAt === null),
+        campaignId: first.campaignId ?? null,
       };
     },
 
@@ -500,6 +516,7 @@ export function createChannelStore(
           name: channels.name,
           agentId: channelAgents.agentId,
           threadId: intelligenceChannelMappings.threadId,
+          campaignId: channels.campaignId,
           deletedAt: agentProfiles.deletedAt,
           lastMessage: channels.lastMessage,
           lastMessageAt: channels.lastMessageAt,
@@ -559,6 +576,7 @@ export function createChannelStore(
           agentIds: [row.agentId],
           threadId: row.threadId,
           active: row.deletedAt === null,
+          campaignId: row.campaignId ?? null,
           lastMessage: row.lastMessage,
           lastMessageAt: row.lastMessageAt,
           lastMessageAgentId: row.lastMessageAgentId,
@@ -890,10 +908,10 @@ export class ChannelPackageOwnedError extends Error {
 }
 
 type ChannelInputParseResult =
-  | { ok: true; value: { agentIds: string[] } }
+  | { ok: true; value: { agentIds: string[]; campaignId: string | null } }
   | { ok: false; error: string };
 
-type ChannelInputObject = { agentIds?: unknown };
+type ChannelInputObject = { agentIds?: unknown; campaignId?: unknown };
 
 export function parseChannelInput(input: unknown): ChannelInputParseResult {
   if (!isChannelInputObject(input)) {
@@ -916,7 +934,12 @@ export function parseChannelInput(input: unknown): ChannelInputParseResult {
     return { ok: false, error: "Agent IDs must be unique." };
   }
 
-  return { ok: true, value: { agentIds: agentIds.sort() } };
+  // NOTOS: the campaign a channel starts in, when the person picked one.
+  const campaignId =
+    typeof input.campaignId === "string" && input.campaignId.trim()
+      ? input.campaignId.trim()
+      : null;
+  return { ok: true, value: { agentIds: agentIds.sort(), campaignId } };
 }
 
 function isChannelInputObject(input: unknown): input is ChannelInputObject {
@@ -1066,6 +1089,7 @@ export function createChannelRoutes(
       const channel = await store.create(
         context.var.actor,
         parsed.value.agentIds,
+        { campaignId: parsed.value.campaignId },
       );
       return context.json({ channel: channelDto(channel) }, 201);
     } catch (error) {
@@ -1198,6 +1222,7 @@ function channelDto(channel: AgentChannel): AgentChannel {
     agentIds: channel.agentIds,
     threadId: channel.threadId,
     active: channel.active,
+    campaignId: channel.campaignId ?? null,
   };
 }
 

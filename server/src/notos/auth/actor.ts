@@ -41,6 +41,10 @@ export type ActorResolverOptions = {
   cacheMs?: number;
   /** Injecteerbaar voor tests. */
   fetch?: typeof fetch;
+  /** NOTOS: leden die een beheerder in Bots toevoegde (workspace_members), slug -> rol. */
+  extraMemberships?: (
+    email: string,
+  ) => Promise<Record<string, ClientRole | "zuid">>;
 };
 
 export type ActorResolver = {
@@ -214,7 +218,13 @@ export function createActorResolver(
         isInternal,
         ...(isInternal
           ? {}
-          : { memberships: await membershipsOf(identity, token) }),
+          : {
+              // NOTOS: what NOTOS says (client_members) plus what an administrator added in Bots.
+              memberships: {
+                ...(await membershipsOf(identity, token)),
+                ...((await options.extraMemberships?.(identity.email)) ?? {}),
+              },
+            }),
       };
       cache.set(cacheKey, { actor, until: Date.now() + cacheMs });
       if (cache.size > 5_000) {

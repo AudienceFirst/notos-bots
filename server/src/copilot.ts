@@ -574,6 +574,15 @@ function remoteAgentWithStandingRole(
     tools: GrantedTool[],
     input: RunAgentInput,
     next: AbstractAgent,
+  ) =>
+    defer(() => from(runContextMessages(input.threadId))).pipe(
+      switchMap((runContext) => runOnce(tools, input, next, runContext)),
+    );
+  const runOnce = (
+    tools: GrantedTool[],
+    input: RunAgentInput,
+    next: AbstractAgent,
+    runContext: { id: string; role: "system"; content: string }[],
   ) => {
     const holdingsMessage = holdingsMessageFor(tools);
     /*
@@ -592,6 +601,7 @@ function remoteAgentWithStandingRole(
       messages: [
         agent.standingMessage,
         ...(holdingsMessage ? [holdingsMessage] : []),
+        ...runContext,
         ...sanitizeSeededHistory(
           input.messages.filter(
             (message) =>
@@ -690,6 +700,41 @@ function remoteAgentWithStandingRole(
  * `interruptId` AFTER converting the messages, so a call that a resume is about to answer must
  * survive this pass or the appended result lands on nothing.
  */
+/**
+ * NOTOS: what a run is told about where it happens, beyond the Bot's standing role. Set once by the
+ * server (the campaign of the thread's channel); null when there is nothing to say. Kept out of the
+ * Bot's configuration because it differs per thread, not per Bot.
+ */
+let runContextFor:
+  | ((threadId: string | undefined) => Promise<string | null>)
+  | undefined;
+
+export function setRunContextProvider(
+  provider: (threadId: string | undefined) => Promise<string | null>,
+) {
+  runContextFor = provider;
+}
+
+async function runContextMessages(
+  threadId: string | undefined,
+): Promise<{ id: string; role: "system"; content: string }[]> {
+  if (!runContextFor) return [];
+  try {
+    const text = await runContextFor(threadId);
+    return text
+      ? [
+          {
+            id: `run-context:${threadId ?? "none"}`,
+            role: "system",
+            content: text,
+          },
+        ]
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 class BuiltInAgentWithSaneHistory extends BuiltInAgent {
   /**
    * The configuration, held a second time because the base class keeps its own copy private and
@@ -706,10 +751,13 @@ class BuiltInAgentWithSaneHistory extends BuiltInAgent {
     const answeredByResume = new Set(
       (input.resume ?? []).map((entry) => entry.interruptId),
     );
-    return super.run({
-      ...input,
-      messages: sanitizeSeededHistory(input.messages, answeredByResume),
-    });
+    const sanitized = sanitizeSeededHistory(input.messages, answeredByResume);
+    // NOTOS: the campaign this thread belongs to, as a system message at the top of every run.
+    return defer(() => from(runContextMessages(input.threadId))).pipe(
+      switchMap((extra) =>
+        super.run({ ...input, messages: [...extra, ...sanitized] }),
+      ),
+    );
   }
 
   /**

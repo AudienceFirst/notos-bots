@@ -1,6 +1,9 @@
 import type { AgentActor } from "./agents/profile-types";
 import type { ApprovalStore } from "./notos/approvals";
+import { createCampaignRoutes } from "./notos/campaigns/routes";
+import type { CampaignStore } from "./notos/campaigns/store";
 import { createRunsRoutes } from "./notos/routines/runs-route";
+import type { MemberStore } from "./notos/workspaces/members";
 import {
   createSweepRoutes,
   type SweepCallerVerifier,
@@ -244,6 +247,10 @@ export function createApp(
   runTurn?: TurnRunner,
   /** NOTOS (stap 9): whether the actor may talk to this Bot in this workspace. */
   botVisible?: (actor: AgentActor, botId: string) => Promise<boolean>,
+  /** NOTOS: campaigns as rooms inside a workspace. */
+  campaignStore?: CampaignStore,
+  /** NOTOS: members an administrator adds to a workspace, with a role. */
+  memberStore?: MemberStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
 
@@ -315,8 +322,14 @@ export function createApp(
     ? createDevRequireUser()
     : (identity?.requireUser ?? authenticationUnavailable);
 
-  app.get("/api/me", requireUser, async (context) =>
-    context.json({
+  app.get("/api/me", requireUser, async (context) => {
+    // NOTOS: everybody has a space of their own; made the first time they show up.
+    if (workspaceStore) {
+      await workspaceStore
+        .ensurePersonal({ id: context.var.actor.id })
+        .catch(() => undefined);
+    }
+    return context.json({
       user: {
         ...context.var.actor,
         /*
@@ -341,8 +354,8 @@ export function createApp(
             }),
           )
         : [],
-    }),
-  );
+    });
+  });
 
   /*
    * NOTOS: every route that belongs to a workspace is mounted under `/api/w/:workspace/...` behind
@@ -779,16 +792,19 @@ export function createApp(
       return context.json({ error: "Workspaces are not configured." }, 503);
     }
     return context.json({
-      workspaces: (await workspaceStore.list()).map((workspace) => ({
-        id: workspace.id,
-        notosClientId: workspace.slug,
-        displayName: workspace.displayName,
-        kind: workspace.kind,
-        vertexLocation: workspace.vertexLocation,
-        defaultModel: workspace.defaultModel,
-        // NOTOS (stap 8)
-        driveRoots: driveRootsOf(workspace.driveRootIds),
-      })),
+      // NOTOS: a personal space is nobody's business, not even an administrator's.
+      workspaces: (await workspaceStore.list())
+        .filter((workspace) => !workspace.personalOwnerId)
+        .map((workspace) => ({
+          id: workspace.id,
+          notosClientId: workspace.slug,
+          displayName: workspace.displayName,
+          kind: workspace.kind,
+          vertexLocation: workspace.vertexLocation,
+          defaultModel: workspace.defaultModel,
+          // NOTOS (stap 8)
+          driveRoots: driveRootsOf(workspace.driveRootIds),
+        })),
     });
   });
   app.put("/api/admin/workspaces/:id/model", requireUser, async (context) => {
@@ -1149,6 +1165,110 @@ export function createApp(
     // NOTOS (stap 5): the card in the transcript reads and answers here; the gateway trusts the row.
     mountScoped("/approvals", (guard) =>
       createApprovalRoutes(approvalStore, guard, auditStore),
+    );
+  }
+
+  if (campaignStore) {
+    // NOTOS: campaigns are rooms inside a workspace; the Bots in them read the brief per run.
+    mountScoped("/campaigns", (guard) =>
+      createCampaignRoutes(campaignStore, guard, auditStore),
+    );
+  }
+
+  if (memberStore && workspaceStore) {
+    // NOTOS: who is in a workspace, on top of NOTOS; administrators only.
+    app.get(
+      "/api/admin/workspaces/:id/members",
+      requireUser,
+      async (context) => {
+        const denied = requireAdmin(context);
+        if (denied) return denied;
+        const workspace = await workspaceStore.byId(context.req.param("id"));
+        if (!workspace)
+          return context.json({ error: "No such workspace." }, 404);
+        return context.json({ members: await memberStore.list(workspace.id) });
+      },
+    );
+    app.post(
+      "/api/admin/workspaces/:id/members",
+      requireUser,
+      async (context) => {
+        const denied = requireAdmin(context);
+        if (denied) return denied;
+        const workspace = await workspaceStore.byId(context.req.param("id"));
+        if (!workspace)
+          return context.json({ error: "No such workspace." }, 404);
+        const body = (await context.req.json().catch(() => null)) as {
+          email?: unknown;
+          role?: unknown;
+        } | null;
+        if (typeof body?.email !== "string" || typeof body?.role !== "string") {
+          return context.json(
+            { error: "An e-mail address and a role are required." },
+            400,
+          );
+        }
+        try {
+          const member = await memberStore.add({
+            workspaceId: workspace.id,
+            email: body.email,
+            role: body.role as "zuid" | "lead" | "specialist" | "viewer",
+            addedBy: context.var.actor.email,
+          });
+          if (auditStore) {
+            await recordAuditEvent(auditStore, {
+              actorUserId: context.var.actor.id,
+              eventType: "configuration.changed",
+              targetType: "workspace",
+              targetId: workspace.id,
+              payload: {
+                setting: "workspace.member",
+                email: member.email,
+                role: member.role,
+              },
+            }).catch(() => undefined);
+          }
+          return context.json({ member }, 201);
+        } catch (error) {
+          return context.json(
+            {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Could not add the member.",
+            },
+            400,
+          );
+        }
+      },
+    );
+    app.delete(
+      "/api/admin/workspaces/:id/members/:email",
+      requireUser,
+      async (context) => {
+        const denied = requireAdmin(context);
+        if (denied) return denied;
+        const workspace = await workspaceStore.byId(context.req.param("id"));
+        if (!workspace)
+          return context.json({ error: "No such workspace." }, 404);
+        const removed = await memberStore.remove(
+          workspace.id,
+          context.req.param("email"),
+        );
+        if (removed && auditStore) {
+          await recordAuditEvent(auditStore, {
+            actorUserId: context.var.actor.id,
+            eventType: "configuration.changed",
+            targetType: "workspace",
+            targetId: workspace.id,
+            payload: {
+              setting: "workspace.member_removed",
+              email: context.req.param("email"),
+            },
+          }).catch(() => undefined);
+        }
+        return context.json({ ok: removed });
+      },
     );
   }
 

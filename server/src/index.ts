@@ -37,6 +37,8 @@ import { createWorkspacePolicyStore } from "./notos/policy";
 import { createSweepCallerVerifier } from "./notos/routines/sweep-route";
 import { dispatchClaimedRoutines, offerDueRoutines } from "./routines/sweep";
 import { driveRootsOf } from "./notos/workspaces";
+import { campaignPrompt, createCampaignStore } from "./notos/campaigns/store";
+import { createMemberStore } from "./notos/workspaces/members";
 import { createPageFrameStore } from "./computer/page-frames";
 import { startPolicyListener } from "./computer/policy-listener";
 import {
@@ -54,6 +56,7 @@ import {
   mountCopilotRuntime,
   resolveRuntimeAgents,
   type ToolSelection,
+  setRunContextProvider,
 } from "./copilot";
 import {
   createCredentialAdminService,
@@ -221,6 +224,15 @@ const modelFor = createVertexModels({
   name: config.model.defaultModel,
 });
 const workspaceStore = createWorkspaceStore(database);
+// NOTOS: campaigns inside a workspace (their brief reaches every run in them) and the members an
+// administrator adds on top of what NOTOS says.
+const campaignStore = createCampaignStore(database);
+const memberStore = createMemberStore(database);
+setRunContextProvider(async (threadId) => {
+  if (!threadId) return null;
+  const campaign = await campaignStore.forThread(threadId);
+  return campaign ? campaignPrompt(campaign) : null;
+});
 const syncWorkspaces = createWorkspaceSync({
   database,
   store: workspaceStore,
@@ -313,6 +325,7 @@ const identityProviderStore = createIdentityProviderStore(database);
 const identity: NotosIdentity | undefined = config.auth
   ? createNotosIdentity(
       createActorResolver({
+        extraMemberships: (email) => memberStore.membershipsFor(email),
         verify: createSupabaseVerifier({
           issuer: config.auth.issuer,
           audience: config.auth.audience,
@@ -1238,6 +1251,9 @@ const app = createApp(
   routineSweep,
   runTurn,
   botVisible,
+  // NOTOS: campaigns and workspace members.
+  campaignStore,
+  memberStore,
 );
 
 /**

@@ -15,7 +15,8 @@ export type AuthenticatedActor = {
   /** NOTOS: whether the address is a ZUID one (INTERNAL_DOMAINS). Absent on the single-user actor. */
   isInternal?: boolean;
   /** NOTOS: for a client guest, the NOTOS clients they may enter and their role there (stap 2). */
-  memberships?: Record<string, "lead" | "specialist" | "viewer">;
+  // NOTOS: "zuid" too, for a person an administrator added to a workspace with ZUID-level access.
+  memberships?: Record<string, "zuid" | "lead" | "specialist" | "viewer">;
   /** NOTOS: set by `requireWorkspace` for a request under /api/w/:workspace (stap 2). */
   workspace?: ActorWorkspace;
 };
