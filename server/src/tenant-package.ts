@@ -375,7 +375,9 @@ export function validateTenantPackage(files: PackageFiles): TenantPackage {
               ? undefined
               : requiredString(agent.avatar_seed, "agent.avatar_seed"),
           // NOTOS: campaign Bots live inside a campaign of the workspace; the rest stay outside.
-          scope: agent.scope === "campaign" ? "campaign" : "workspace",
+          scope: (agent.scope === "campaign" ? "campaign" : "workspace") as
+            | "campaign"
+            | "workspace",
           type,
           configuration:
             type === "built_in"
