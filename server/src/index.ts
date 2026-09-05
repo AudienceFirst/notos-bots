@@ -176,7 +176,11 @@ const config = loadConfig();
 // Read with the rest of the configuration, where an empty variable is an absent one. See
 // `serverPort` in config.ts for what `process.env.PORT ?? …` did with `PORT=` instead.
 const port = config.port;
-const database = createDatabase(config.databaseUrl);
+// NOTOS: a bounded pool (DATABASE_POOL_MAX). Supabase's session pooler allows 15 clients per
+// role, and four LISTEN connections (bus, queue, policy, events) sit outside this pool.
+const database = createDatabase(config.databaseUrl, {
+  max: config.databasePoolMax,
+});
 /*
  * NOTOS: threads, their events and the run lock live in this database (stap 0). One runner for the
  * process: the runtime runs on it, a routine's headless turn drives it, and a hop between Bots runs

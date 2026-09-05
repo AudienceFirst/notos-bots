@@ -26,10 +26,15 @@ export function createDatabase(
       "createDatabase needs a connection string as its first argument. Pool options go second.",
     );
   }
+  /*
+   * NOTOS: idle connections close after 30 seconds. Supabase's session pooler counts every open
+   * client against a pool of 15 per role, and a pool that keeps its idle connections open holds
+   * that budget forever; with this, a quiet instance holds only its LISTEN connections.
+   */
   const client =
     options.max === undefined
-      ? new SQL(databaseUrl)
-      : new SQL(databaseUrl, { max: options.max });
+      ? new SQL(databaseUrl, { idleTimeout: 30 })
+      : new SQL(databaseUrl, { max: options.max, idleTimeout: 30 });
 
   return drizzle({ client, schema });
 }
