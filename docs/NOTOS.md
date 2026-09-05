@@ -411,6 +411,27 @@ API (`select pg_terminate_backend(pid) from pg_stat_activity where usename = 'no
 de oude revisie maakt ze op verzoek weer aan. `scripts/notos/deploy-staging.sh` bouwt niet:
 eerst `gcloud builds submit --config cloudbuild.yaml --project mge-zuid .`, dan het script.
 
+## Modelkeuze per gesprek (5 september 2026)
+
+In de kanaalheader en op de bot-pagina staat een kleine modelknop. De keuze blijft staan voor dat
+kanaal (`channels.model_provider/model_name/model_location`, migratie 0031) of die thread
+(`threads.*`, 0032) tot iemand wisselt; null = het model van de workspace. De lijst bevat alleen
+wat kan werken: Vertex altijd, Anthropic/OpenAI/OpenRouter/Google AI Studio alleen met een
+bereikbare key (`GET /api/w/:ws/models/available`, dezelfde check weigert een keuze zonder key met
+409). Iedereen in het kanaal mag wisselen. Per run zoekt `setRunModelProvider` (copilot.ts) het
+model van de thread op; de ingebouwde agent wordt dan met dat model herbouwd (`RunBuiltAgent`), de
+key-scope blijft die van de workspace, en het log krijgt `{"type":"run-model",…}`. Remote Bots
+houden hun eigen model.
+
+## Grok Bot-inhoud (5 september 2026)
+
+Grok Bot bewaart lokaal geen campagne-objecten; uit de gesprekken (20 aug t/m 4 sep) zijn twee
+ZUID-campagnes gereconstrueerd en als campagne in workspace `zuid` gezet (lokaal en staging,
+`created_by = grok-bot-import`): "Verover je markt (zomercampagne 2026)" en "Lead Dev vacature",
+elk met brief, betrokken Bots en de routines die daar draaiden (hier bewust niet aangezet). De
+Bot-prompts uit de Grok-roster verwezen naar 30 lokale paden; die staan nu als bestanden in Drive
+(map NOTOS › `4 · Bronnen voor Bots`) en de prompts verwijzen daarnaar.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
