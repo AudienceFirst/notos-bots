@@ -387,6 +387,18 @@ bouwt het model per (provider, naam, key-vingerafdruk); `notos/model/keys.ts` ho
 geheugen (boot + elke minuut) en zoekt persoon → workspace → deployment. Een abonnement (Claude
 Max, Gemini CLI) is geen key en werkt niet vanaf een server; beide pagina's zeggen dat.
 
+## Eigen AG-UI-laag in de app (stap 10, 5 september 2026)
+
+De browser praat rechtstreeks AG-UI met de runtime, zonder `@copilotkit/react-core`:
+`app/src/notos/agui/core.ts` (RuntimeAgent op `@ag-ui/client`, BotsCore met agents per (Bot, thread),
+toolregister en de tool-lus) en `app/src/notos/agui/react.tsx` (provider + hooks met de oude
+namen: `useAgent`, `useFrontendTool`, `useHumanInTheLoop`, `useRenderTool`, `useRenderToolCall`).
+Runtime-routes: `POST /api/copilotkit/agent/:id/run`, `/connect`, `/stop/:thread`. De tool-lus: na
+een run worden de tool-calls die de browser bezit uitgevoerd, het resultaat gaat als toolbericht
+terug en de Bot loopt door (max 8 rondes); een beslissing wacht op `respond` uit de kaart.
+Activiteitsberichten (generative UI, MCP-apps) hebben geen renderer: beide staan uit. Acceptatie:
+`grep -rn "@copilotkit" app/src app/package.json` geeft nul regels; geen banner in de DOM.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
