@@ -38,6 +38,8 @@ import { Route as AuthedSettingsConnectedAccountsKeyRouteImport } from './routes
 import { Route as AuthedWWorkspaceAppRouteImport } from './routes/_authed/w/$workspace/_app'
 import { Route as AuthedWWorkspaceAppIndexRouteImport } from './routes/_authed/w/$workspace/_app/index'
 import { Route as AuthedWWorkspaceAppBotRouteImport } from './routes/_authed/w/$workspace/_app/bot'
+import { Route as AuthedWWorkspaceAppCampaignsRouteImport } from './routes/_authed/w/$workspace/_app/campaigns'
+import { Route as AuthedWWorkspaceAppConnectorsRouteImport } from './routes/_authed/w/$workspace/_app/connectors'
 import { Route as AuthedWWorkspaceAppRoutinesRouteImport } from './routes/_authed/w/$workspace/_app/routines'
 import { Route as AuthedWWorkspaceAppSkillsRouteImport } from './routes/_authed/w/$workspace/_app/skills'
 import { Route as AuthedAdminPluginsKeyToolsToolRouteImport } from './routes/_authed/admin/plugins/$key_.tools.$tool'
@@ -196,6 +198,18 @@ const AuthedWWorkspaceAppBotRoute = AuthedWWorkspaceAppBotRouteImport.update({
   path: '/bot',
   getParentRoute: () => AuthedWWorkspaceAppRoute,
 } as any)
+const AuthedWWorkspaceAppCampaignsRoute =
+  AuthedWWorkspaceAppCampaignsRouteImport.update({
+    id: '/campaigns',
+    path: '/campaigns',
+    getParentRoute: () => AuthedWWorkspaceAppRoute,
+  } as any)
+const AuthedWWorkspaceAppConnectorsRoute =
+  AuthedWWorkspaceAppConnectorsRouteImport.update({
+    id: '/connectors',
+    path: '/connectors',
+    getParentRoute: () => AuthedWWorkspaceAppRoute,
+  } as any)
 const AuthedWWorkspaceAppRoutinesRoute =
   AuthedWWorkspaceAppRoutinesRouteImport.update({
     id: '/routines',
@@ -260,6 +274,8 @@ export interface FileRoutesByFullPath {
   '/settings/components-gallery/': typeof AuthedSettingsComponentsGalleryIndexRoute
   '/settings/connected-accounts/': typeof AuthedSettingsConnectedAccountsIndexRoute
   '/w/$workspace/bot': typeof AuthedWWorkspaceAppBotRoute
+  '/w/$workspace/campaigns': typeof AuthedWWorkspaceAppCampaignsRoute
+  '/w/$workspace/connectors': typeof AuthedWWorkspaceAppConnectorsRoute
   '/w/$workspace/routines': typeof AuthedWWorkspaceAppRoutinesRoute
   '/w/$workspace/skills': typeof AuthedWWorkspaceAppSkillsRoute
   '/w/$workspace/': typeof AuthedWWorkspaceAppIndexRoute
@@ -293,6 +309,8 @@ export interface FileRoutesByTo {
   '/settings/components-gallery': typeof AuthedSettingsComponentsGalleryIndexRoute
   '/settings/connected-accounts': typeof AuthedSettingsConnectedAccountsIndexRoute
   '/w/$workspace/bot': typeof AuthedWWorkspaceAppBotRoute
+  '/w/$workspace/campaigns': typeof AuthedWWorkspaceAppCampaignsRoute
+  '/w/$workspace/connectors': typeof AuthedWWorkspaceAppConnectorsRoute
   '/w/$workspace/routines': typeof AuthedWWorkspaceAppRoutinesRoute
   '/w/$workspace/skills': typeof AuthedWWorkspaceAppSkillsRoute
   '/admin/plugins/$key/tools/$tool': typeof AuthedAdminPluginsKeyToolsToolRoute
@@ -330,6 +348,8 @@ export interface FileRoutesById {
   '/_authed/settings/components-gallery/': typeof AuthedSettingsComponentsGalleryIndexRoute
   '/_authed/settings/connected-accounts/': typeof AuthedSettingsConnectedAccountsIndexRoute
   '/_authed/w/$workspace/_app/bot': typeof AuthedWWorkspaceAppBotRoute
+  '/_authed/w/$workspace/_app/campaigns': typeof AuthedWWorkspaceAppCampaignsRoute
+  '/_authed/w/$workspace/_app/connectors': typeof AuthedWWorkspaceAppConnectorsRoute
   '/_authed/w/$workspace/_app/routines': typeof AuthedWWorkspaceAppRoutinesRoute
   '/_authed/w/$workspace/_app/skills': typeof AuthedWWorkspaceAppSkillsRoute
   '/_authed/w/$workspace/_app/': typeof AuthedWWorkspaceAppIndexRoute
@@ -367,6 +387,8 @@ export interface FileRouteTypes {
     | '/settings/components-gallery/'
     | '/settings/connected-accounts/'
     | '/w/$workspace/bot'
+    | '/w/$workspace/campaigns'
+    | '/w/$workspace/connectors'
     | '/w/$workspace/routines'
     | '/w/$workspace/skills'
     | '/w/$workspace/'
@@ -400,6 +422,8 @@ export interface FileRouteTypes {
     | '/settings/components-gallery'
     | '/settings/connected-accounts'
     | '/w/$workspace/bot'
+    | '/w/$workspace/campaigns'
+    | '/w/$workspace/connectors'
     | '/w/$workspace/routines'
     | '/w/$workspace/skills'
     | '/admin/plugins/$key/tools/$tool'
@@ -436,6 +460,8 @@ export interface FileRouteTypes {
     | '/_authed/settings/components-gallery/'
     | '/_authed/settings/connected-accounts/'
     | '/_authed/w/$workspace/_app/bot'
+    | '/_authed/w/$workspace/_app/campaigns'
+    | '/_authed/w/$workspace/_app/connectors'
     | '/_authed/w/$workspace/_app/routines'
     | '/_authed/w/$workspace/_app/skills'
     | '/_authed/w/$workspace/_app/'
@@ -655,6 +681,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedWWorkspaceAppBotRouteImport
       parentRoute: typeof AuthedWWorkspaceAppRoute
     }
+    '/_authed/w/$workspace/_app/campaigns': {
+      id: '/_authed/w/$workspace/_app/campaigns'
+      path: '/campaigns'
+      fullPath: '/w/$workspace/campaigns'
+      preLoaderRoute: typeof AuthedWWorkspaceAppCampaignsRouteImport
+      parentRoute: typeof AuthedWWorkspaceAppRoute
+    }
+    '/_authed/w/$workspace/_app/connectors': {
+      id: '/_authed/w/$workspace/_app/connectors'
+      path: '/connectors'
+      fullPath: '/w/$workspace/connectors'
+      preLoaderRoute: typeof AuthedWWorkspaceAppConnectorsRouteImport
+      parentRoute: typeof AuthedWWorkspaceAppRoute
+    }
     '/_authed/w/$workspace/_app/routines': {
       id: '/_authed/w/$workspace/_app/routines'
       path: '/routines'
@@ -764,6 +804,8 @@ const AuthedSettingsRouteRouteWithChildren =
 
 interface AuthedWWorkspaceAppRouteChildren {
   AuthedWWorkspaceAppBotRoute: typeof AuthedWWorkspaceAppBotRoute
+  AuthedWWorkspaceAppCampaignsRoute: typeof AuthedWWorkspaceAppCampaignsRoute
+  AuthedWWorkspaceAppConnectorsRoute: typeof AuthedWWorkspaceAppConnectorsRoute
   AuthedWWorkspaceAppRoutinesRoute: typeof AuthedWWorkspaceAppRoutinesRoute
   AuthedWWorkspaceAppSkillsRoute: typeof AuthedWWorkspaceAppSkillsRoute
   AuthedWWorkspaceAppIndexRoute: typeof AuthedWWorkspaceAppIndexRoute
@@ -774,6 +816,8 @@ interface AuthedWWorkspaceAppRouteChildren {
 
 const AuthedWWorkspaceAppRouteChildren: AuthedWWorkspaceAppRouteChildren = {
   AuthedWWorkspaceAppBotRoute: AuthedWWorkspaceAppBotRoute,
+  AuthedWWorkspaceAppCampaignsRoute: AuthedWWorkspaceAppCampaignsRoute,
+  AuthedWWorkspaceAppConnectorsRoute: AuthedWWorkspaceAppConnectorsRoute,
   AuthedWWorkspaceAppRoutinesRoute: AuthedWWorkspaceAppRoutinesRoute,
   AuthedWWorkspaceAppSkillsRoute: AuthedWWorkspaceAppSkillsRoute,
   AuthedWWorkspaceAppIndexRoute: AuthedWWorkspaceAppIndexRoute,

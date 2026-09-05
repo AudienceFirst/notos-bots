@@ -121,17 +121,22 @@ describe("syncing workspaces from NOTOS", () => {
       .select({ id: agents.id, workspaceId: agents.workspaceId })
       .from(agents)
       .where(eq(agents.packageId, zoover?.id ?? ""));
-    expect(bots.map((bot) => bot.id).sort()).toEqual(
-      [
-        "media-manager",
-        "sea-specialist",
-        "meta-specialist",
-        "seo-specialist",
-        "copywriter",
-        "data-analytics",
-      ]
-        .map((id) => `${ZOOVER}--${id}`)
-        .sort(),
+    const ids = bots.map((bot) => bot.id);
+    // The default package carries the whole ZUID roster (22 Bots since 5 September 2026).
+    expect(ids).toHaveLength(22);
+    expect(ids).toEqual(
+      expect.arrayContaining(
+        [
+          "media-manager",
+          "sea-specialist",
+          "meta-specialist",
+          "seo-specialist",
+          "copywriter",
+          "data-analytics",
+          "webflow-expert",
+          "shopify-expert",
+        ].map((id) => `${ZOOVER}--${id}`),
+      ),
     );
     expect(bots.every((bot) => bot.workspaceId === zoover?.id)).toBe(true);
     expect((await store.bySlug(GONE))?.enabled).toBe(false);

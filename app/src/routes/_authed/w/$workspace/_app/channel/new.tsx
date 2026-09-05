@@ -21,6 +21,7 @@ import {
   agentQueryOptions,
 } from "@/lib/agents/queries";
 import { useStartChannel } from "@/lib/channels/start";
+import { campaignListQueryOptions } from "@/lib/campaigns/queries";
 import { useSkillCommands } from "@/lib/plugins/skill-commands";
 import { newId } from "@/lib/new-id";
 
@@ -29,14 +30,19 @@ import { newId } from "@/lib/new-id";
  * reloads preserve the pending recipient without creating an empty channel.
  */
 export const Route = createFileRoute("/_authed/w/$workspace/_app/channel/new")({
-  validateSearch: (search: Record<string, unknown>): { agent?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { agent?: string; campaign?: string } => ({
     ...(typeof search.agent === "string" ? { agent: search.agent } : {}),
+    ...(typeof search.campaign === "string"
+      ? { campaign: search.campaign }
+      : {}),
   }),
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { agent } = Route.useSearch();
+  const { agent, campaign } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { startChosen, pending } = useStartChannel();
   const { data: profiles } = useQuery(agentListQueryOptions());
@@ -61,6 +67,12 @@ function RouteComponent() {
     ? [{ id: chosen.id, name: chosen.name }]
     : [];
   const skillCommands = useSkillCommands(chosen?.id ?? "");
+  // NOTOS: a campaign Bot works inside a campaign; the URL may name one (from the Campaigns page),
+  // and the person can still pick another or none. Workspace Bots never get one.
+  const campaigns = useQuery(campaignListQueryOptions());
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const campaignId = picked === undefined ? (campaign ?? null) : picked;
+  const inCampaign = chosen?.scope === "campaign";
 
   return (
     <div className="flex h-full flex-col">
@@ -112,6 +124,24 @@ function RouteComponent() {
           </ComboboxContent>
         </Combobox>
       </div>
+      {inCampaign && (campaigns.data?.length ?? 0) > 0 ? (
+        <div className="h-10 border-b border-border flex flex-row px-3 items-center gap-2">
+          <span className="text-sm text-muted-foreground">In:</span>
+          <select
+            aria-label="Campaign"
+            className="bg-transparent text-sm outline-none cursor-pointer max-w-full truncate"
+            onChange={(event) => setPicked(event.target.value || null)}
+            value={campaignId ?? ""}
+          >
+            <option value="">No campaign (whole workspace)</option>
+            {campaigns.data?.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       <ConversationView
         // Choosing a coworker answers the "To:" field, so the message is what remains: the caret
         // lands in the composer the moment a recipient exists, whether picked here or in the URL.
@@ -137,7 +167,11 @@ function RouteComponent() {
           try {
             // Recorded, then started: a coworker picked here is as much a choice as an `@` on the
             // home screen, and the trail has to say so for both.
-            await startChosen(recipient.id, draft.text);
+            await startChosen(
+              recipient.id,
+              draft.text,
+              inCampaign ? campaignId : null,
+            );
           } catch (caught) {
             // Preserve the unsent draft when channel creation fails.
             setSent(null);

@@ -10,7 +10,7 @@ import { SidebarToggleBar } from "@/components/layout/sidebar-toggle";
 import { StaggerItem } from "@/components/layout/stagger";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { agentListQueryOptions } from "@/lib/agents/queries";
+import { type AgentProfile, agentListQueryOptions } from "@/lib/agents/queries";
 
 /**
  * Creating and inspecting a coworker are search-parameter states so the roster remains mounted and
@@ -46,6 +46,22 @@ function AgentsScreen() {
   const { data: agents } = useQuery(agentListQueryOptions());
   const mine = agents?.filter((a) => a.mine);
   const explore = agents?.filter((a) => !a.mine && a.visibility === "public");
+  // NOTOS: campaign Bots work inside a campaign; workspace Bots (site, shop, CRM, legal, security)
+  // serve the whole workspace. Two rows, so the split is visible where the Bots are chosen.
+  const campaignBots = explore?.filter((a) => a.scope === "campaign") ?? [];
+  const workspaceBots = explore?.filter((a) => a.scope === "workspace") ?? [];
+  const cards = (list: AgentProfile[], offset = 0) =>
+    list.map((agent, index) => (
+      <StaggerItem index={index + offset} key={agent.id}>
+        <Link
+          to="/w/$workspace/agents"
+          params={keepWorkspace}
+          search={{ agent: agent.id }}
+        >
+          <AgentCard agent={agent} />
+        </Link>
+      </StaggerItem>
+    ));
 
   // Creating wins if both are somehow set: it is the more recent intent.
   const showCreate = isCreating === true;
@@ -79,22 +95,26 @@ function AgentsScreen() {
               New agent
             </Button>
           </div>
-          <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
-            {!!explore?.length &&
-              explore.map((agent, index) => {
-                return (
-                  <StaggerItem index={index} key={agent.id}>
-                    <Link
-                      to="/w/$workspace/agents"
-                      params={keepWorkspace}
-                      search={{ agent: agent.id }}
-                    >
-                      <AgentCard agent={agent} />
-                    </Link>
-                  </StaggerItem>
-                );
-              })}
-          </div>
+          {campaignBots.length > 0 && (
+            <>
+              <p className="mt-4 text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Campaign Bots
+              </p>
+              <div className="mt-2 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
+                {cards(campaignBots)}
+              </div>
+            </>
+          )}
+          {workspaceBots.length > 0 && (
+            <>
+              <p className="mt-6 text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Workspace Bots
+              </p>
+              <div className="mt-2 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
+                {cards(workspaceBots, campaignBots.length)}
+              </div>
+            </>
+          )}
           {!explore?.length && (
             <Empty className="border border-dashed h-[180px]">
               <EmptyHeader>

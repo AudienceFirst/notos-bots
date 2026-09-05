@@ -559,6 +559,7 @@ function agentDto(actor: AgentActor, agent: AgentProfile) {
     visibility: agent.visibility,
     hidden: agent.hidden,
     systemOwned: agent.systemOwned,
+    scope: agent.scope,
     // Published so the edit form can show it. Safe to expose: it is an address the person supplied,
     // and any credential for it lives in the vault, never in this row.
     endpoint: agent.endpoint,

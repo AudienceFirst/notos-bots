@@ -13,10 +13,13 @@ import { type AgentChannel, type ChannelPage, channelKeys } from "./queries";
  */
 export function createChannelMutationOptions(queryClient: QueryClient) {
   return mutationOptions({
-    mutationFn: async (agentIds: string[]): Promise<AgentChannel> => {
+    mutationFn: async (
+      input: string[] | { agentIds: string[]; campaignId?: string | null },
+    ): Promise<AgentChannel> => {
+      const body = Array.isArray(input) ? { agentIds: input } : input;
       const response = await client("/api/channels", {
         method: "POST",
-        body: { agentIds },
+        body,
         fallback: "Could not start a channel",
       });
       return ((await response.json()) as { channel: AgentChannel }).channel;

@@ -109,6 +109,7 @@ export class ManagedAgentUnavailableError extends Error {
 const joinedProjection = {
   id: agents.id,
   name: agents.name,
+  scope: agents.scope,
   title: agentProfiles.title,
   roleDescription: agentProfiles.roleDescription,
   avatarSeed: agentProfiles.avatarSeed,
@@ -167,6 +168,7 @@ function mapProfile(
     visibility: row.visibility,
     ownerUserId: row.ownerUserId,
     systemOwned: row.packageId !== null,
+    scope: row.scope === "campaign" ? "campaign" : "workspace",
     hasCallbackToken: row.callbackTokenHash !== null,
     hidden: row.hiddenAt !== null,
     deletedAt: row.deletedAt,

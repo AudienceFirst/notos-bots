@@ -23,6 +23,8 @@ export type AgentProfile = {
   visibility: AgentVisibility;
   ownerUserId: string | null;
   systemOwned: boolean;
+  /** NOTOS: `campaign` Bots work inside a campaign; `workspace` Bots serve the whole workspace. */
+  scope: "campaign" | "workspace";
   hidden: boolean;
   deletedAt: Date | null;
   /** Where this coworker runs. Null for the Bot in the box. */

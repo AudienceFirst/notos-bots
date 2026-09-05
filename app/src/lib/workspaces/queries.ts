@@ -88,3 +88,73 @@ export function setWorkspaceDriveMutationOptions(queryClient: QueryClient) {
       queryClient.invalidateQueries({ queryKey: workspaceKeys.all }),
   });
 }
+
+/** NOTOS (5 September 2026): who is in a workspace on top of what NOTOS says, set by an administrator. */
+export type WorkspaceMember = {
+  workspaceId: string;
+  email: string;
+  role: "zuid" | "lead" | "specialist" | "viewer";
+  addedBy: string | null;
+  createdAt: string;
+};
+
+export const MEMBER_ROLE_LABELS: Record<WorkspaceMember["role"], string> = {
+  zuid: "ZUID (manages, approves)",
+  lead: "Lead (approves)",
+  specialist: "Specialist",
+  viewer: "Viewer",
+};
+
+export const memberKeys = {
+  of: (workspaceId: string) =>
+    ["admin", "workspaces", workspaceId, "members"] as const,
+};
+
+export function workspaceMembersQueryOptions(workspaceId: string) {
+  return queryOptions({
+    queryKey: memberKeys.of(workspaceId),
+    queryFn: async (): Promise<WorkspaceMember[]> =>
+      (
+        (await (
+          await client(
+            `/api/admin/workspaces/${encodeURIComponent(workspaceId)}/members`,
+            { fallback: "Could not load the members" },
+          )
+        ).json()) as { members: WorkspaceMember[] }
+      ).members,
+  });
+}
+
+export function addWorkspaceMemberMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (input: {
+      id: string;
+      email: string;
+      role: WorkspaceMember["role"];
+    }) => {
+      await client(
+        `/api/admin/workspaces/${encodeURIComponent(input.id)}/members`,
+        {
+          method: "POST",
+          body: { email: input.email, role: input.role },
+          fallback: "Could not add that person",
+        },
+      );
+    },
+    onSuccess: (_result, input) =>
+      queryClient.invalidateQueries({ queryKey: memberKeys.of(input.id) }),
+  });
+}
+
+export function removeWorkspaceMemberMutationOptions(queryClient: QueryClient) {
+  return mutationOptions({
+    mutationFn: async (input: { id: string; email: string }) => {
+      await client(
+        `/api/admin/workspaces/${encodeURIComponent(input.id)}/members/${encodeURIComponent(input.email)}`,
+        { method: "DELETE", fallback: "Could not remove that person" },
+      );
+    },
+    onSuccess: (_result, input) =>
+      queryClient.invalidateQueries({ queryKey: memberKeys.of(input.id) }),
+  });
+}

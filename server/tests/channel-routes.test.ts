@@ -57,6 +57,7 @@ function channel(overrides: Partial<AgentChannel> = {}): AgentChannel {
     agentIds: ["agent-1", "agent-2"],
     threadId: "thread-1",
     active: true,
+    campaignId: null,
     ...overrides,
   };
 }
@@ -153,7 +154,10 @@ describe("channel input parser", () => {
         threadId: "forged-thread",
         active: false,
       }),
-    ).toEqual({ ok: true, value: { agentIds: ["agent-1", "agent-2"] } });
+    ).toEqual({
+      ok: true,
+      value: { agentIds: ["agent-1", "agent-2"], campaignId: null },
+    });
   });
 });
 
@@ -221,6 +225,7 @@ describe("channel routes", () => {
         agentIds: ["agent-1"],
         threadId: "thread-1",
         active: true,
+        campaignId: null,
       },
     });
     expect(fetched.status).toBe(200);
@@ -984,6 +989,7 @@ describe("channel store integration", () => {
       agentIds: canonicalAgentIds,
       threadId: created.threadId,
       active: true,
+      campaignId: null,
     });
     const persisted = await persistedChannel(created.id);
     expect(persisted.channelRow?.name).toBe("Zulu, Alpha");

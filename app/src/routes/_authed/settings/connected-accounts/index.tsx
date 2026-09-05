@@ -1,9 +1,4 @@
-import {
-  IconBrandGoogleDrive,
-  IconBrandNotion,
-  IconChevronRight,
-  IconPlug,
-} from "@tabler/icons-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
@@ -27,6 +22,7 @@ import {
   pluginsPageQueryOptions,
 } from "@/lib/plugins/queries";
 import { cn } from "@/lib/utils";
+import { ConnectorMark } from "@/components/connectors/marks";
 
 /**
  * The services a Bot reads as you.
@@ -51,13 +47,6 @@ export const Route = createFileRoute("/_authed/settings/connected-accounts/")({
 });
 
 /** The same marks the admin connector list uses: these are the same vendors seen from your side. */
-const MARKS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "google-drive": IconBrandGoogleDrive,
-  notion: IconBrandNotion,
-};
-
-const markFor = (key: string) => MARKS[key] ?? IconPlug;
-
 function RouteComponent() {
   const { connected: outcome } = Route.useSearch();
   const plugins = useQuery(pluginsPageQueryOptions());
@@ -119,7 +108,6 @@ function RouteComponent() {
           ) : (
             <PageRows>
               {yours.map((entry, index) => {
-                const Mark = markFor(entry.key);
                 return (
                   <React.Fragment key={entry.key}>
                     {/* A real link with no children: children passed to `render` replace the row's own. */}
@@ -134,7 +122,7 @@ function RouteComponent() {
                       size="sm"
                     >
                       <RowMark>
-                        <Mark className="size-4" />
+                        <ConnectorMark className="size-4" keyName={entry.key} />
                       </RowMark>
                       <ItemContent>
                         <ItemTitle>{entry.title}</ItemTitle>

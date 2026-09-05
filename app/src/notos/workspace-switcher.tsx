@@ -12,7 +12,10 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const { data: user } = useQuery(currentUserQueryOptions());
   const params = useParams({ strict: false }) as { workspace?: string };
   const navigate = useNavigate();
-  const workspaces = user?.workspaces ?? [];
+  // NOTOS: the personal space first (5 September 2026); the rest in NOTOS order.
+  const workspaces = [...(user?.workspaces ?? [])].sort(
+    (a, b) => Number(b.kind === "personal") - Number(a.kind === "personal"),
+  );
   const current = workspaces.find((w) => w.notosClientId === params.workspace);
 
   if (workspaces.length <= 1) {
@@ -37,7 +40,11 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
       {workspaces.map((workspace) => (
         <option key={workspace.id} value={workspace.notosClientId}>
           {workspace.displayName}
-          {workspace.kind === "demo" ? " (demo)" : ""}
+          {workspace.kind === "demo"
+            ? " (demo)"
+            : workspace.kind === "personal"
+              ? " (private)"
+              : ""}
         </option>
       ))}
     </select>

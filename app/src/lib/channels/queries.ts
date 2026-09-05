@@ -14,6 +14,8 @@ export type AgentChannel = {
   agentIds: string[];
   threadId: string;
   active: boolean;
+  /** NOTOS: the campaign this channel lives in, or null at workspace level. */
+  campaignId: string | null;
 };
 
 /** A channel plus the last thing said in it, which is what the roster renders. */

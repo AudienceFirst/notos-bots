@@ -2,7 +2,9 @@ import { keepWorkspace } from "@/notos/workspace";
 import {
   IconBolt,
   IconBox,
+  IconFlag,
   IconLogout,
+  IconPlug,
   IconPlus,
   IconSearch,
   IconSettings,
@@ -47,6 +49,7 @@ import {
 } from "@/components/ui/sidebar";
 import { signOutMutationOptions } from "@/lib/auth/mutations";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
+import { campaignListQueryOptions } from "@/lib/campaigns/queries";
 import {
   type ChannelSummary,
   channelListQueryOptions,
@@ -125,6 +128,49 @@ function matchingChannels(
  * reason `byRecency` in use-channel-events.ts mirrors the recency rule. A stable partition, so the
  * recency order inside each group is whatever arrived.
  */
+/**
+ * NOTOS: channels grouped by campaign, campaigns first (in the order the API lists them, newest
+ * first), then the workspace-level ones. With no campaign at all the list is exactly what it was:
+ * one unlabeled group. A channel of an archived campaign counts as workspace-level.
+ */
+export function groupedByCampaign(
+  channels: ChannelSummary[],
+  campaigns: readonly { id: string; name: string }[],
+): { key: string; label: string | null; channels: ChannelSummary[] }[] {
+  const byId = new Map<string, ChannelSummary[]>();
+  const loose: ChannelSummary[] = [];
+  const known = new Set(campaigns.map((campaign) => campaign.id));
+  for (const channel of channels) {
+    if (channel.campaignId && known.has(channel.campaignId)) {
+      byId.set(channel.campaignId, [
+        ...(byId.get(channel.campaignId) ?? []),
+        channel,
+      ]);
+    } else {
+      loose.push(channel);
+    }
+  }
+  const groups: {
+    key: string;
+    label: string | null;
+    channels: ChannelSummary[];
+  }[] = campaigns
+    .filter((campaign) => byId.has(campaign.id))
+    .map((campaign) => ({
+      key: campaign.id,
+      label: campaign.name,
+      channels: byId.get(campaign.id) ?? [],
+    }));
+  if (loose.length > 0) {
+    groups.push({
+      key: "workspace",
+      label: groups.length > 0 ? "Workspace" : null,
+      channels: loose,
+    });
+  }
+  return groups;
+}
+
 export function pinnedFirst(channels: ChannelSummary[]): ChannelSummary[] {
   return [...channels].sort((a, b) => Number(b.pinned) - Number(a.pinned));
 }
@@ -210,6 +256,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
   const signOut = useMutation(signOutMutationOptions(queryClient));
   const channels = useInfiniteQuery(channelListQueryOptions());
+  // NOTOS: channels sit in their campaign, with the workspace-level ones after (5 September 2026).
+  const campaigns = useQuery(campaignListQueryOptions());
   // One socket for the app, opened where the roster is kept live.
   useChannelEvents();
   const [search, setSearch] = useState("");
@@ -305,20 +353,52 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 once you start one.
               </p>
             ) : null}
-            <AnimatePresence initial={false}>
-              {visibleChannels.map((channel) => (
-                <ChannelRow
-                  key={channel.id}
-                  animateOrder={animateOrder}
-                  channel={channel}
-                />
-              ))}
-            </AnimatePresence>
+            {groupedByCampaign(visibleChannels, campaigns.data ?? []).map(
+              (group) => (
+                <div className="contents" key={group.key}>
+                  {group.label ? (
+                    <p className="px-3 pt-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground truncate">
+                      {group.label}
+                    </p>
+                  ) : null}
+                  <AnimatePresence initial={false}>
+                    {group.channels.map((channel) => (
+                      <ChannelRow
+                        key={channel.id}
+                        animateOrder={animateOrder}
+                        channel={channel}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              ),
+            )}
           </SidebarGroup>
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu className="gap-px">
+          <SidebarMenuItem>
+            {/* NOTOS: campaigns are rooms in the workspace; their list and briefs live here. */}
+            <SidebarMenuButton
+              className="hover:bg-foreground/5 h-10"
+              render={(props) => (
+                <Link
+                  {...props}
+                  to="/w/$workspace/campaigns"
+                  params={keepWorkspace}
+                  activeProps={{
+                    className: "bg-foreground/5",
+                  }}
+                />
+              )}
+            >
+              <div className="size-[28px] flex items-center justify-center">
+                <IconFlag />
+              </div>
+              <span className="text-sm trackint-tight">Campaigns</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             {/* Beside Agents rather than inside Admin: writing a skill is something anybody does. */}
             <SidebarMenuButton
@@ -358,6 +438,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <IconBolt />
               </div>
               <span className="text-sm trackint-tight">Agents</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            {/* NOTOS: every service a Bot can reach, with its status, on one tab (5 September 2026). */}
+            <SidebarMenuButton
+              className="hover:bg-foreground/5 h-10"
+              render={(props) => (
+                <Link
+                  {...props}
+                  to="/w/$workspace/connectors"
+                  params={keepWorkspace}
+                  activeProps={{
+                    className: "bg-foreground/5",
+                  }}
+                />
+              )}
+            >
+              <div className="size-[28px] flex items-center justify-center">
+                <IconPlug />
+              </div>
+              <span className="text-sm trackint-tight">Connectors</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           {/* Routines live on each coworker's own dialog now, not as a nav destination: the

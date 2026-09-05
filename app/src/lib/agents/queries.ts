@@ -16,6 +16,8 @@ export type AgentProfile = {
   roleDescription: string;
   avatarSeed: string;
   visibility: AgentVisibility;
+  /** NOTOS: `campaign` Bots work inside a campaign; `workspace` Bots serve the whole workspace. */
+  scope: "campaign" | "workspace";
   /** Where this coworker runs. Null for the Bot in the box. */
   endpoint: string | null;
   /**

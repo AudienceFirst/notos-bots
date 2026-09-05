@@ -410,6 +410,190 @@ export const CATALOGUE: readonly CatalogueEntry[] = Object.freeze([
       /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy)/i,
     docsUrl: "https://developers.webflow.com/mcp/reference/overview",
   },
+  /*
+   * NOTOS (5 September 2026): the connectors for the Connectors tab. Every address below was read
+   * from the vendor's own /.well-known/oauth-authorization-server on the day it was added; none is
+   * a guess. A vendor that publishes no revocation endpoint gets its token endpoint here, like
+   * Notion above: disconnecting then drops our copy of the token, which is all revocation could do.
+   * The write barrier is the pattern plus the approval gate (stap 5).
+   */
+  {
+    key: "hubspot",
+    title: "HubSpot",
+    vendor: "HubSpot",
+    summary:
+      "Contacts, companies, deals and tickets in the CRM, read as you; changes wait for a person.",
+    host: "https://mcp.hubspot.com",
+    path: "/",
+    auth: {
+      kind: "user-oauth",
+      // No dynamic registration: an administrator registers a HubSpot app's client id and secret on the server first.
+      authorizationUrl: "https://mcp.hubspot.com/oauth/authorize/user",
+      tokenUrl: "https://mcp.hubspot.com/oauth/v3/token",
+      revokeUrl: "https://mcp.hubspot.com/oauth/v3/token",
+      scopes: Object.freeze([]),
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://developers.hubspot.com/mcp",
+  },
+  {
+    key: "linear",
+    title: "Linear",
+    vendor: "Linear",
+    summary:
+      "Issues, projects and cycles of the teams you are in; changes wait for a person.",
+    host: "https://mcp.linear.app",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://mcp.linear.app/authorize",
+      tokenUrl: "https://mcp.linear.app/token",
+      revokeUrl: "https://mcp.linear.app/token",
+      scopes: Object.freeze(["read", "write"]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://mcp.linear.app/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://linear.app/docs/mcp",
+  },
+  {
+    key: "stripe",
+    title: "Stripe",
+    vendor: "Stripe",
+    summary:
+      "Customers, payments, subscriptions and invoices of the Stripe account you pick; refunds and changes wait for a person.",
+    host: "https://mcp.stripe.com",
+    path: "/",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://access.stripe.com/mcp/oauth2/authorize",
+      tokenUrl: "https://access.stripe.com/mcp/oauth2/token",
+      revokeUrl: "https://access.stripe.com/mcp/oauth2/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://access.stripe.com/mcp/oauth2/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://docs.stripe.com/mcp",
+  },
+  {
+    key: "figma",
+    title: "Figma",
+    vendor: "Figma",
+    summary:
+      "Design files, components and comments you can open; nothing is changed in Figma from here.",
+    host: "https://mcp.figma.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://www.figma.com/oauth/mcp",
+      tokenUrl: "https://api.figma.com/v1/oauth/token",
+      revokeUrl: "https://api.figma.com/v1/oauth/token",
+      scopes: Object.freeze(["mcp:connect"]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://api.figma.com/v1/oauth/mcp/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://help.figma.com/hc/en-us/articles/32132100833559",
+  },
+  {
+    key: "paypal",
+    title: "PayPal",
+    vendor: "PayPal",
+    summary:
+      "Orders, invoices, disputes and payouts of the PayPal business account; money movements wait for a person.",
+    host: "https://mcp.paypal.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://mcp.paypal.com/authorize",
+      tokenUrl: "https://mcp.paypal.com/token",
+      revokeUrl: "https://mcp.paypal.com/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://mcp.paypal.com/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://developer.paypal.com/tools/mcp-server/",
+  },
+  {
+    key: "cloudflare",
+    title: "Cloudflare",
+    vendor: "Cloudflare",
+    summary:
+      "Zones, DNS, Workers and analytics of the Cloudflare account you connect; changes wait for a person.",
+    host: "https://mcp.cloudflare.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://mcp.cloudflare.com/authorize",
+      tokenUrl: "https://mcp.cloudflare.com/token",
+      revokeUrl: "https://mcp.cloudflare.com/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://mcp.cloudflare.com/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl:
+      "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
+  },
+  {
+    key: "monday",
+    title: "monday.com",
+    vendor: "monday.com",
+    summary:
+      "Boards, items and updates of the workspaces you are in; changes wait for a person.",
+    host: "https://mcp.monday.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      // monday's authorization server lives on auth.monday.com; the MCP resource points there.
+      authorizationUrl: "https://auth.monday.com/oauth2/authorize",
+      tokenUrl: "https://auth.monday.com/oauth_ms/oauth/token",
+      revokeUrl: "https://auth.monday.com/oauth_ms/oauth/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://auth.monday.com/oauth_ms/oauth/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://developer.monday.com/apps/docs/mondaycom-mcp-integration",
+  },
+  {
+    key: "klaviyo",
+    title: "Klaviyo",
+    vendor: "Klaviyo",
+    summary:
+      "Profiles, lists, segments, campaigns and flows of the Klaviyo account; sends and changes wait for a person.",
+    host: "https://mcp.klaviyo.com",
+    path: "/mcp",
+    auth: {
+      kind: "user-oauth",
+      authorizationUrl: "https://mcp.klaviyo.com/authorize",
+      tokenUrl: "https://mcp.klaviyo.com/token",
+      revokeUrl: "https://mcp.klaviyo.com/token",
+      scopes: Object.freeze([]),
+      clientRegistration: "dynamic",
+      registrationUrl: "https://mcp.klaviyo.com/register",
+    },
+    writeTools: Object.freeze([]),
+    writeToolPattern:
+      /(create|update|delete|publish|upload|remove|patch|set_|write|register|unpublish|deploy|send|archive|cancel|refund|capture|charge|merge|assign|move|add_|post_|put_|import|purge)/i,
+    docsUrl: "https://developers.klaviyo.com/en/docs/klaviyo_mcp_server",
+  },
   {
     key: "routines",
     title: "Routines",

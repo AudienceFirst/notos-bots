@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 // NOTOS: per workspace het model en waar het draait (bouwplan stap 3).
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -17,10 +18,15 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import {
+  addWorkspaceMemberMutationOptions,
   adminWorkspacesQueryOptions,
+  MEMBER_ROLE_LABELS,
   MODEL_CHOICES,
+  removeWorkspaceMemberMutationOptions,
   setWorkspaceDriveMutationOptions,
   setWorkspaceModelMutationOptions,
+  type WorkspaceMember,
+  workspaceMembersQueryOptions,
 } from "@/lib/workspaces/queries";
 import { queryClient } from "@/query-client";
 
@@ -112,6 +118,7 @@ function WorkspacesPage() {
                         setDrive.mutate({ id: workspace.id, folders })
                       }
                     />
+                    <MembersField workspaceId={workspace.id} />
                   </ItemActions>
                 </Item>
               );
@@ -192,5 +199,102 @@ function DriveFolderField({
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * NOTOS (5 September 2026): who is in this workspace on top of what NOTOS says. NOTOS stays the
+ * source for client logins; this is the Bots-side roster an administrator keeps by hand, with a
+ * role that decides what the person may approve.
+ */
+function MembersField({ workspaceId }: { workspaceId: string }) {
+  const members = useQuery(workspaceMembersQueryOptions(workspaceId));
+  const add = useMutation(addWorkspaceMemberMutationOptions(queryClient));
+  const remove = useMutation(removeWorkspaceMemberMutationOptions(queryClient));
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<WorkspaceMember["role"]>("specialist");
+  const rows = members.data ?? [];
+
+  return (
+    <div className="mt-2 w-full">
+      <button
+        className="text-muted-foreground text-xs hover:text-foreground"
+        onClick={() => setOpen((value) => !value)}
+        type="button"
+      >
+        {open ? "Hide members" : `Members (${rows.length})`}
+      </button>
+      {open ? (
+        <div className="mt-2 flex flex-col gap-2">
+          {rows.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              Nobody added here yet. People NOTOS already lets in keep their
+              access.
+            </p>
+          ) : null}
+          {rows.map((member) => (
+            <div className="flex items-center gap-2 text-sm" key={member.email}>
+              <span className="truncate">{member.email}</span>
+              <span className="text-muted-foreground text-xs">
+                {MEMBER_ROLE_LABELS[member.role]}
+              </span>
+              <Button
+                disabled={remove.isPending}
+                onClick={() =>
+                  remove.mutate({ id: workspaceId, email: member.email })
+                }
+                size="sm"
+                variant="ghost"
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!email.trim()) return;
+              add.mutate(
+                { id: workspaceId, email: email.trim(), role },
+                { onSuccess: () => setEmail("") },
+              );
+            }}
+          >
+            <Input
+              className="h-8 text-sm"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@company.com"
+              type="email"
+              value={email}
+            />
+            <select
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+              onChange={(event) =>
+                setRole(event.target.value as WorkspaceMember["role"])
+              }
+              value={role}
+            >
+              {(
+                Object.keys(MEMBER_ROLE_LABELS) as WorkspaceMember["role"][]
+              ).map((option) => (
+                <option key={option} value={option}>
+                  {MEMBER_ROLE_LABELS[option]}
+                </option>
+              ))}
+            </select>
+            <Button disabled={add.isPending} size="sm" type="submit">
+              Add
+            </Button>
+          </form>
+          {add.error ? (
+            <p className="text-destructive text-xs" role="alert">
+              {add.error.message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
