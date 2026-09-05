@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import type { RunAgentInput } from "@ag-ui/client";
 import { HttpAgent } from "@ag-ui/client";
 import { BuiltInAgent } from "@copilotkit/runtime/v2";
-import { EMPTY } from "rxjs";
+import { EMPTY, type Observable } from "rxjs";
 import { PROVENANCE_GUIDANCE } from "../../shared/bot-prompt";
 import {
   buildAgents,
@@ -120,12 +120,20 @@ describe("registered Copilot agents", () => {
       ),
     ).toEqual({
       model: FAKE_MODEL,
+      // NOTOS: the campaign brief rides in as a system message per run; upstream drops those by default.
+      forwardSystemMessages: true,
       // The provenance rule is unconditional, so even a Bot with no tools and no computer carries
       // it. That Bot needs it most: nothing it says was read anywhere.
       prompt: `Be helpful.\n\n${PROVENANCE_GUIDANCE}`,
     });
     expect(asked).toEqual([
-      { location: "europe-west4", name: "gemini-2.5-pro" },
+      {
+        provider: "vertex",
+        location: "europe-west4",
+        name: "gemini-2.5-pro",
+        workspaceId: null,
+        personalOwnerId: null,
+      },
     ]);
 
     builtInAgentConfiguration(
@@ -140,8 +148,11 @@ describe("registered Copilot agents", () => {
       modelFor,
     );
     expect(asked[1]).toEqual({
+      provider: "vertex",
       location: "global",
       name: "gemini-3.1-pro-preview",
+      workspaceId: null,
+      personalOwnerId: null,
     });
   });
 
@@ -870,6 +881,14 @@ describe("a chat turn is not sent a conversation the model API refuses", () => {
     return { seen, restore: () => spy.mockRestore() };
   }
 
+  /** NOTOS: `run` now defers until the run context is read, so a test subscribes and waits. */
+  const settle = (run: Observable<unknown> | undefined) =>
+    run
+      ? new Promise<void>((resolve) => {
+          run.subscribe({ complete: () => resolve(), error: () => resolve() });
+        })
+      : Promise.resolve();
+
   function input(
     messages: unknown[],
     resume?: { interruptId: string; status: "resolved" }[],
@@ -913,7 +932,7 @@ describe("a chat turn is not sent a conversation the model API refuses", () => {
     const { seen, restore } = captureRuns();
 
     try {
-      agent?.run(input(danglingCall));
+      await settle(agent?.run(input(danglingCall)));
     } finally {
       restore();
     }
@@ -934,7 +953,7 @@ describe("a chat turn is not sent a conversation the model API refuses", () => {
     const { seen, restore } = captureRuns();
 
     try {
-      agent?.run(input(danglingCall));
+      await settle(agent?.run(input(danglingCall)));
     } finally {
       restore();
     }
@@ -954,10 +973,15 @@ describe("a chat turn is not sent a conversation the model API refuses", () => {
     const { seen, restore } = captureRuns();
 
     try {
-      agent?.run(
-        input(danglingCall, [
-          { interruptId: "chatcmpl-tool-8dd56dc7497c5ea9", status: "resolved" },
-        ]),
+      await settle(
+        agent?.run(
+          input(danglingCall, [
+            {
+              interruptId: "chatcmpl-tool-8dd56dc7497c5ea9",
+              status: "resolved",
+            },
+          ]),
+        ),
       );
     } finally {
       restore();

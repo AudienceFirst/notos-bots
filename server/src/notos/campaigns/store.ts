@@ -185,8 +185,8 @@ export function campaignPrompt(campaign: Campaign): string {
   return [
     `You are working inside the campaign "${campaign.name}" of this workspace.`,
     campaign.brief
-      ? `The campaign brief, written by the team:\n${campaign.brief}`
-      : "The team has not written a brief for this campaign yet; ask for goal, audience, period and budget before you assume them.",
+      ? `This message IS the campaign brief, written by the team in NOTOS. Do not look for it in Drive, FRIDA or anywhere else; quote from it when asked.\n\n${campaign.brief}`
+      : "The team has not written a brief for this campaign in NOTOS yet. Do not search Drive or elsewhere for one; ask the person for goal, audience, period and budget before you assume them.",
     "Keep every answer, plan and number inside this campaign unless the person says otherwise.",
   ].join("\n\n");
 }

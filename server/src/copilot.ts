@@ -237,6 +237,8 @@ export function builtInAgentConfiguration(
 
   return {
     model: languageModel,
+    // NOTOS: the run context (a campaign brief) rides in as a system message; off by default upstream.
+    forwardSystemMessages: true,
     /*
      * The package's role, then what this Bot actually holds, then the computer.
      *
@@ -739,6 +741,14 @@ async function runContextMessages(
   if (!runContextFor) return [];
   try {
     const text = await runContextFor(threadId);
+    // NOTOS: one structured line per run, so "did the Bot get the brief" is a grep, not a guess.
+    console.log(
+      JSON.stringify({
+        type: "run-context",
+        threadId: threadId ?? null,
+        found: Boolean(text),
+      }),
+    );
     return text
       ? [
           {
