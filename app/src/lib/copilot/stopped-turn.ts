@@ -1,6 +1,3 @@
-import { useAgent } from "@copilotkit/react-core/v2";
-import { useEffect, useState } from "react";
-
 /**
  * Why the last turn ended without an answer, for a surface that has to say so itself.
  *
@@ -30,31 +27,4 @@ export function stoppedReason(reported: unknown): string {
         ? reported
         : "";
   return said.trim() || "The Bot stopped without saying why.";
-}
-
-/**
- * Watch one Bot's runs and hold on to the reason the last one ended, if it ended badly.
- *
- * Bound by agent id rather than handed an agent, so a caller that only renders the packaged chat
- * does not have to reach for one: `useAgent` returns the same shared instance the chat itself binds
- * to, so this watches exactly the runs that chat starts.
- *
- * Cleared when the next run begins rather than on a timer. A sentence about a turn that is over
- * should stay until there is something newer to look at, and the person deciding when that is is the
- * one who sends the next message.
- */
-export function useStoppedTurn(agentId: string): string | null {
-  const { agent } = useAgent({ agentId });
-  const [stopped, setStopped] = useState<string | null>(null);
-
-  useEffect(() => {
-    const subscription = agent.subscribe?.({
-      onRunInitialized: () => setStopped(null),
-      onRunErrorEvent: ({ event }) => setStopped(stoppedReason(event?.message)),
-      onRunFailed: ({ error }) => setStopped(stoppedReason(error)),
-    });
-    return () => subscription?.unsubscribe();
-  }, [agent]);
-
-  return stopped;
 }

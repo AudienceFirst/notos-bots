@@ -1,13 +1,12 @@
-import { CopilotChat } from "@copilotkit/react-core/v2";
 import { IconPlus } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { BotThreadChat } from "@/components/channels/bot-thread-chat";
 import { SidebarToggleBar } from "@/components/layout/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { useActiveBot } from "@/lib/copilot/active-bot";
 import { useBotThread } from "@/lib/copilot/bot-thread";
-import { useStoppedTurn } from "@/lib/copilot/stopped-turn";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/bot")({
   component: RouteComponent,
@@ -73,7 +72,6 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
    * person's own message with nothing under it. The banner that would have explained it belongs to
    * a provider this app does not mount.
    */
-  const stopped = useStoppedTurn(agentId);
 
   return (
     <div className="flex h-screen flex-col">
@@ -117,35 +115,16 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
           is answering without them.
         </p>
       ) : null}
-      {/*
-       * Under the header rather than at the end of the transcript, which is where the missing answer
-       * was going to be and where the channel draws its own version of this. The packaged chat owns
-       * that list and virtualises it, so reaching into it means replacing the whole message view and
-       * taking on its scrolling. The cost of putting the sentence here instead is that it is not
-       * beside the gap it explains; what it buys is that it is always on screen, whatever the
-       * transcript has been scrolled to, and that it survives the next release of the chat.
-       */}
-      {stopped ? (
-        <p
-          className="border-b bg-destructive/10 px-6 py-2 text-destructive text-sm"
-          data-testid="bot-chat-stopped"
-          role="alert"
-        >
-          {stopped}
-        </p>
-      ) : null}
       <div className="min-h-0 flex-1">
         {/*
          * Keyed on the thread as well as the agent. Switching agents was already handled by
          * `agentId`, but `startNew` changes only the thread while the agent stays put, and the
-         * packaged chat's own `startNewThread`/`setActiveThreadId` are proven no-ops once
-         * `threadId` is a controlled prop (node_modules/@copilotkit/react-core/dist/copilotkit-
-         * C4RqjAba.mjs:226-254): asking it to start over does nothing while it still holds the
-         * old id. A key that omits the thread would leave the previous conversation on screen
-         * under a composer that silently posts to the new one.
+         * chat below holds one agent per (Bot, thread) pair for its whole life (stap 10: our own
+         * AG-UI layer, no packaged chat any more). A key that omits the thread would leave the
+         * previous conversation on screen under a composer that silently posts to the new one.
          */}
         {threadId ? (
-          <CopilotChat
+          <BotThreadChat
             agentId={agentId}
             key={`${agentId}:${threadId}`}
             threadId={threadId}

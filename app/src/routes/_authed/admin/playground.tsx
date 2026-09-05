@@ -1,4 +1,4 @@
-import { OpenGenerativeUIActivityRenderer } from "@copilotkit/react-core/v2";
+import { SandboxPreview } from "@/components/gallery/sandbox-preview";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useId, useState } from "react";
@@ -224,21 +224,12 @@ function PlaygroundPage() {
                 draw with.
               </p>
             ) : (
-              <OpenGenerativeUIActivityRenderer
-                activityType="open-generative-ui"
-                agent={null}
-                content={{
-                  css: draft.css,
-                  cssComplete: true,
-                  html: [draft.html],
-                  htmlComplete: true,
-                  // Provide sample args in the same sandbox evaluation as the component code.
-                  jsFunctions: `window.__args = ${JSON.stringify(sample)};\n${draft.jsFunctions}`,
-                  jsFunctionsComplete: true,
-                  generating: false,
-                }}
+              <SandboxPreview
+                args={sample}
+                css={draft.css}
+                html={draft.html}
+                jsFunctions={draft.jsFunctions}
                 key={`${draft.html}${draft.css}${draft.jsFunctions}${draft.sampleArguments}`}
-                message={null}
               />
             )}
           </div>

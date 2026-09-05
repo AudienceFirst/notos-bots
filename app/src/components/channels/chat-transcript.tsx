@@ -3,7 +3,7 @@ import type { ActivityMessage, Message } from "@ag-ui/core";
 import {
   useRenderActivityMessage,
   useRenderToolCall,
-} from "@copilotkit/react-core/v2";
+} from "@/notos/agui/react";
 import { IconBox } from "@tabler/icons-react";
 import { motion, useReducedMotion } from "motion/react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";

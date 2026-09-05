@@ -261,7 +261,7 @@ body {
  *
  * The SDK sizes the frame it draws into from a single measurement taken inside the sandbox, and it
  * writes the result as an inline height on the frame's own container. Two races in that code make
- * the number wrong, and both were reproduced against @copilotkit/react-core 1.69.0:
+ * the number wrong, and both were reproduced against CopilotKit react-core 1.69.0 (gone since stap 10; the floor stays for our own frame):
  *
  *   - The measurement is queued alongside the expressions that build the interface. When it runs
  *     first the body it measures is still empty, the container is set to `height: 0px`, and because

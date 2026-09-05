@@ -1,4 +1,4 @@
-import type { useFrontendTool } from "@copilotkit/react-core/v2";
+import type { ToolParameters as AguiToolParameters } from "@/notos/agui/core";
 import type { ReactElement } from "react";
 
 /**
@@ -7,9 +7,7 @@ import type { ReactElement } from "react";
  */
 
 /** The schema type the SDK itself accepts, so a component never needs a cast to register. */
-export type ToolParameters = Parameters<
-  typeof useFrontendTool
->[0]["parameters"];
+export type ToolParameters = AguiToolParameters;
 
 /** Grouping for the Admin page only. Never read by the model. */
 export type GalleryKind = "chart" | "card" | "decision";

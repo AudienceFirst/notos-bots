@@ -1,4 +1,4 @@
-import { useRenderTool } from "@copilotkit/react-core/v2";
+import { useRenderTool } from "@/notos/agui/react";
 import { z } from "zod";
 import { ToolLine } from "@/components/channels/tool-line";
 import { PUT_TO } from "@/lib/copilot/markers";

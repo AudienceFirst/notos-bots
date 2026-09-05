@@ -1,7 +1,5 @@
-import {
-  OpenGenerativeUIActivityRenderer,
-  useFrontendTool,
-} from "@copilotkit/react-core/v2";
+import { SandboxPreview } from "@/components/gallery/sandbox-preview";
+import { useFrontendTool } from "@/notos/agui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import * as z from "zod";
@@ -102,20 +100,12 @@ function SandboxedTool({
 
       return (
         <div className="my-2">
-          <OpenGenerativeUIActivityRenderer
-            activityType="open-generative-ui"
-            agent={null}
-            content={{
-              css: component.css,
-              cssComplete: true,
-              html: [component.html],
-              htmlComplete: true,
-              jsFunctions: `window.__args = ${JSON.stringify(props.args ?? {})};\n${component.jsFunctions}`,
-              jsFunctionsComplete: true,
-              generating: false,
-            }}
+          <SandboxPreview
+            args={props.args ?? {}}
+            css={component.css}
+            html={component.html}
+            jsFunctions={component.jsFunctions}
             key={JSON.stringify(props.args ?? {})}
-            message={null}
           />
         </div>
       );

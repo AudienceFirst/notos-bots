@@ -1,10 +1,5 @@
 import { useSayFromCard } from "@/lib/copilot/turn-bus";
 import type { Message } from "@ag-ui/core";
-import {
-  UseAgentUpdate,
-  useAgent,
-  useCopilotKit,
-} from "@copilotkit/react-core/v2";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toAgentOptions } from "@/components/channels/composer";
@@ -32,6 +27,7 @@ import { stoppedReason } from "@/lib/copilot/stopped-turn";
 import { readThreadMessages } from "@/lib/copilot/thread-messages";
 import { useSkillCommands } from "@/lib/plugins/skill-commands";
 import { queryClient } from "@/query-client";
+import { useAgent, useBotsCore } from "@/notos/agui/react";
 import { newId } from "../../lib/new-id";
 
 /**
@@ -61,17 +57,14 @@ export function ChannelChat({
   runtimeAgentId: string;
 }) {
   // The core attaches the frontend tool registry; direct agent runs do not.
-  const { copilotkit } = useCopilotKit();
+  // NOTOS (stap 10): our own AG-UI core, same verbs as before: connect, run, stop.
+  const copilotkit = useBotsCore();
   // Mentions are scoped to the channel's permitted agents.
   const { data: agentProfiles } = useQuery(agentListQueryOptions());
   const { agent, isReady } = useAgent({
     agentId: `channel:${channel.id}`,
     runtimeAgentId,
     threadId: channel.threadId,
-    updates: [
-      UseAgentUpdate.OnMessagesChanged,
-      UseAgentUpdate.OnRunStatusChanged,
-    ],
   });
 
   /**
