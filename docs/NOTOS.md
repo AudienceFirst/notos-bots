@@ -349,6 +349,44 @@ zonder `--include-email` mist de e-mailclaim en weigert de server (not-a-known-s
 dat is de deur voor n8n en NOTOS-knoppen (voorbeeld in `docs/routines.md`). De Routines-pagina
 maakt een routine aan met presets; `POST /api/w/:workspace/routines`.
 
+## Campagnes, persoonlijke ruimte en leden (5 september 2026)
+
+- **Campagne = ruimte in de workspace.** `campaigns` (migratie 0029): naam, brief, status;
+  `channels.campaign_id`; `agents.scope` (`campaign` of `workspace`, uit `agents.yaml`). De
+  Campaigns-pagina (`/w/:ws/campaigns`) maakt, bewerkt en archiveert; ZUID en de lead van de klant
+  mogen dat, de rest leest. De zijbalk groepeert kanalen per campagne; een nieuw kanaal met een
+  campagne-Bot kiest de campagne ("In:"); workspace-Bots (site, shop, CRM, legal, security, UX,
+  design) hebben die keuze niet.
+- **De brief bereikt de Bot** als systeembericht per run (`setRunContextProvider` →
+  `campaignStore.forThread`). Let op: CopilotKit's `BuiltInAgent` laat systeemberichten uit de
+  input standaard vallen; `forwardSystemMessages: true` staat daarom in
+  `builtInAgentConfiguration`. Elke run logt `{"type":"run-context","threadId":…,"found":…}`.
+- **Persoonlijke ruimte.** `/api/me` maakt per persoon een package met `personal_owner_id`
+  ("Mijn ruimte", bovenaan de switcher). Alleen de eigenaar krijgt er een rol; beheerders niet;
+  de sync raakt haar niet; Admin › Workspaces toont haar niet.
+- **Leden.** `workspace_members` (e-mail + rol) op `/api/admin/workspaces/:id/members`; de
+  actor-resolver voegt ze bij de rollen uit NOTOS. Beheerder zijn is nog steeds NOTOS'
+  `team_members.role = administrator`.
+
+## Connectors-tab (5 september 2026)
+
+`/w/:ws/connectors` toont de hele catalogus per categorie met status en de juiste knop: **Connect**
+(user-oauth, server al aan), **Enable** (beheerder, server nog uit), **Set up** (per-instance of
+bearer, via Admin › Plugins), **Ask an administrator**, **Built in**. Beeldmerken uit
+`@thesvg/react` (`app/src/components/connectors/marks.tsx`). Catalogus +8: HubSpot (geen
+dynamische registratie; beheerder registreert een HubSpot-app), Linear, Stripe, Figma, PayPal,
+Cloudflare, monday.com, Klaviyo; auth-adressen live gelezen uit de vendor-metadata.
+
+## Modelproviders met API-keys (5 september 2026)
+
+Naast Gemini op Vertex (ADC) kan een workspace op Anthropic, OpenAI, OpenRouter of Google AI Studio
+draaien: `deployment_packages.model_provider` + `default_model`, keys in `model_provider_keys`
+(migratie 0030) per scope `deployment` (Admin › Models), `workspace` of `personal` (Settings ›
+Models, alleen voor de eigen ruimte), verzegeld met `KEY_ENCRYPTION_KEY`. `notos/model/providers.ts`
+bouwt het model per (provider, naam, key-vingerafdruk); `notos/model/keys.ts` houdt de keys in
+geheugen (boot + elke minuut) en zoekt persoon → workspace → deployment. Een abonnement (Claude
+Max, Gemini CLI) is geen key en werkt niet vanaf een server; beide pagina's zeggen dat.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
