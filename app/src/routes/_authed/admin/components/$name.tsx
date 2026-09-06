@@ -12,6 +12,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
+import { BotGrantPicker } from "@/components/admin/bot-grant-picker";
 import { ComponentPreview } from "@/components/component-preview";
 import {
   PageRows,
@@ -485,29 +486,13 @@ function ComponentDetail({
                 There are no Bots yet.
               </p>
             ) : (
-              <div className="flex flex-col">
-                {bots.map((bot, index) => {
-                  const has = !withheld.has(bot.id);
-                  return (
-                    <div key={bot.id}>
-                      {index === 0 ? null : <Separator />}
-                      <Item size="sm">
-                        <ItemContent>
-                          <ItemTitle>{bot.name}</ItemTitle>
-                        </ItemContent>
-                        <ItemActions>
-                          <Switch
-                            aria-label={bot.name}
-                            checked={has}
-                            data-testid={`grant-${component.name}-${bot.id}`}
-                            onCheckedChange={(next) => onSetGrant(bot.id, next)}
-                          />
-                        </ItemActions>
-                      </Item>
-                    </div>
-                  );
-                })}
-              </div>
+              /* Grouped by workspace and searchable: five rows reading "Expense Manager" are not a choice. */
+              <BotGrantPicker
+                bots={bots}
+                held={(botId) => !withheld.has(botId)}
+                onChange={onSetGrant}
+                testIdFor={(bot) => `grant-${component.name}-${bot.id}`}
+              />
             )}
           </DialogBody>
           <DialogFooter className="mt-4">

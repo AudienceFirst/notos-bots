@@ -29,6 +29,10 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/agents/")({
 /*
  * The roster wraps on the width it actually has, not on the window's.
  *
+ * No prose cap on the column either. `max-w-2xl` held twenty-two cards to three a row and eight
+ * rows down, with the right half of the screen empty; a grid of fixed cards is not prose, and
+ * `auto-fill` already stops at the container's edge.
+ *
  * A card is a fixed 144px, so four fixed columns overlap the moment the column they sit in is
  * narrower than the card. That is not a narrow-window case: opening the detail pane takes the width
  * out of this column at any window size, so the cards behind an open Bot overlapped each other on a
@@ -71,12 +75,12 @@ function AgentsScreen() {
   return (
     <>
       <SidebarToggleBar />
-      <div className="max-w-2xl px-4 w-full mx-auto">
+      <div className="px-4 w-full">
         {/*
-         * NOTOS: the workspace's Bots come first. Personal agents are the exception here, so an empty
-         * "Your agents" box above the real content only pushed it down; it appears once there is one.
+         * NOTOS: the workspace's Bots come first. Personal Bots are the exception here, so an empty
+         * "Your Bots" box above the real content only pushed it down; it appears once there is one.
          */}
-        <div className="mt-12 w-full max-w-2xl">
+        <div className="mt-12 w-full">
           <div className="flex flex-row w-full items-center justify-between">
             <h2 className="font-bold text-lg">Bots in this workspace</h2>
             <Button
@@ -92,7 +96,7 @@ function AgentsScreen() {
               )}
             >
               <IconPlus />
-              New agent
+              New Bot
             </Button>
           </div>
           {campaignBots.length > 0 && (
@@ -119,15 +123,15 @@ function AgentsScreen() {
             <Empty className="border border-dashed h-[180px]">
               <EmptyHeader>
                 <EmptyTitle className="text-muted-foreground">
-                  This workspace has no Bots yet. Create one with New agent.
+                  This workspace has no Bots yet. Create one with New Bot.
                 </EmptyTitle>
               </EmptyHeader>
             </Empty>
           )}
         </div>
         {!!mine?.length && (
-          <div className="mt-8 w-full max-w-2xl">
-            <h2 className="font-bold text-lg">Your agents</h2>
+          <div className="mt-8 w-full">
+            <h2 className="font-bold text-lg">Your Bots</h2>
             <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
               {mine.map((agent, index) => {
                 return (

@@ -2,7 +2,9 @@ import { IconX } from "@tabler/icons-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { EASE_OUT } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 /**
  * A main pane with a detail pane that slides in beside it.
@@ -45,23 +47,44 @@ export function DetailPanel({
 }) {
   // Reduced motion keeps the fade, which explains the change, and drops the movement.
   const shouldReduceMotion = useReducedMotion();
+  /*
+   * Below md the pane is the whole screen, over the main column rather than beside it.
+   *
+   * Beside it, a 400px pane on a 420px phone left the page a 20px column of single letters and, in
+   * a channel, let the composer's send button poke through the pane. There is no "beside" at that
+   * width: the pane takes the viewport, the main column is hidden until it closes, and the width
+   * animation is skipped because there is nothing left on screen to slide past.
+   */
+  const isMobile = useIsMobile();
+  const fullscreen = isMobile && open;
 
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex flex-1 min-w-0 flex-col">{children}</div>
+      <div
+        className={cn("flex flex-1 min-w-0 flex-col", fullscreen && "hidden")}
+      >
+        {children}
+      </div>
       <motion.div
-        animate={{ width: open ? detailWidth : 0 }}
-        className="shrink-0 overflow-hidden"
+        animate={{ width: open ? (isMobile ? "100%" : detailWidth) : 0 }}
+        className={cn(
+          "shrink-0 overflow-hidden",
+          fullscreen && "fixed inset-0 z-40",
+        )}
         // No entry animation on first paint: URL-opened panels should appear as initial state.
         initial={false}
         transition={{
-          duration: shouldReduceMotion ? 0 : ANIMATION_DURATION_SECONDS,
+          duration:
+            shouldReduceMotion || isMobile ? 0 : ANIMATION_DURATION_SECONDS,
           ease: EASE_OUT,
         }}
       >
         <div
-          className="flex h-full flex-col bg-sidebar border-l border-border"
-          style={{ width: detailWidth }}
+          className={cn(
+            "flex h-full flex-col bg-sidebar",
+            !fullscreen && "border-l border-border",
+          )}
+          style={{ width: fullscreen ? "100%" : detailWidth }}
         >
           {/* Rendered for the whole animation, so the way out is available immediately. */}
           <div className="h-12 shrink-0 sticky top-0 flex flex-row items-center justify-between px-2 gap-2">

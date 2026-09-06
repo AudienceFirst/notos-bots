@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import * as React from "react";
 import { useState } from "react";
+import { BotGrantPicker } from "@/components/admin/bot-grant-picker";
 import {
   PageEmpty,
   PageRows,
@@ -64,8 +65,8 @@ export const Route = createFileRoute("/_authed/admin/plugins/$key")({
   component: RouteComponent,
 });
 
-/** Which of the four dialogs is open, or none. */
-type OpenDialog = "token" | "client" | "instance" | "grant" | null;
+/** Which of the five dialogs is open, or none. */
+type OpenDialog = "token" | "client" | "instance" | "grant" | "disable" | null;
 
 /** The set with one member toggled, as a new set so React sees the change. */
 function toggled(
@@ -263,6 +264,15 @@ function RouteComponent() {
     .filter((bot) => selectedBots.has(bot.id))
     .map((bot) => bot.name);
 
+  /* What switching the vendor off takes with it, said in the dialog that asks. */
+  const grantsHeld = server ? [...server.tools, ...server.withdrawn] : [];
+  const grantCount = grantsHeld.reduce(
+    (sum, tool) => sum + tool.grantedTo.length,
+    0,
+  );
+  const grantedBots = new Set(grantsHeld.flatMap((tool) => tool.grantedTo))
+    .size;
+
   return (
     <PageShell
       backButton={{ label: "Plugins", linkProps: { to: "/admin/plugins" } }}
@@ -306,8 +316,9 @@ function RouteComponent() {
                 checked={server !== undefined}
                 onCheckedChange={(next) => {
                   setError(null);
+                  /* Off is asked about first: it deletes every grant on the vendor's tools. */
                   if (next) void add();
-                  else remove.mutate(key);
+                  else setDialog("disable");
                 }}
               />
             </ItemActions>
@@ -728,7 +739,9 @@ function RouteComponent() {
 
       <Dialog
         onOpenChange={(open) => setDialog(open ? dialog : null)}
-        open={dialog !== null && dialog !== "grant"}
+        open={
+          dialog === "token" || dialog === "client" || dialog === "instance"
+        }
       >
         <DialogContent>
           <DialogHeader>
@@ -861,27 +874,15 @@ function RouteComponent() {
                 <p className="mb-2 font-medium text-sm" id="grant-to-heading">
                   To
                 </p>
-                <div className="space-y-2">
-                  {bots.map((bot) => (
-                    <div className="flex items-center gap-2" key={bot.id}>
-                      <Checkbox
-                        checked={selectedBots.has(bot.id)}
-                        id={`grant-bot-${bot.id}`}
-                        onCheckedChange={() =>
-                          setSelectedBots((previous) =>
-                            toggled(previous, bot.id),
-                          )
-                        }
-                      />
-                      <label
-                        className="text-sm"
-                        htmlFor={`grant-bot-${bot.id}`}
-                      >
-                        {bot.name}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+                {/* Grouped by workspace and searchable: 273 tickboxes in a column were not a choice. */}
+                <BotGrantPicker
+                  bots={bots}
+                  control="checkbox"
+                  held={(botId) => selectedBots.has(botId)}
+                  onChange={(botId) =>
+                    setSelectedBots((previous) => toggled(previous, botId))
+                  }
+                />
               </fieldset>
               <div className="max-h-64 space-y-5 overflow-y-auto">
                 {reads.length > 0 ? (
@@ -1017,6 +1018,44 @@ function RouteComponent() {
                 {granting
                   ? `Granting ${Math.min(granting.done + 1, granting.total)} of ${granting.total}…`
                   : "Grant"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
+      {/*
+       * Switching the vendor off deletes every grant on its tools, and switching it back on does not
+       * bring them back. A Switch has no room for that sentence, so it is asked here, with the count.
+       */}
+      {server ? (
+        <Dialog
+          onOpenChange={(open) => setDialog(open ? dialog : null)}
+          open={dialog === "disable"}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Switch off {title} for this deployment?</DialogTitle>
+              <DialogDescription>
+                {grantCount === 0
+                  ? "No Bot holds any of its tools yet, so nothing else is lost."
+                  : `${grantCount} ${grantCount === 1 ? "grant" : "grants"} across ${grantedBots} ${grantedBots === 1 ? "Bot" : "Bots"} ${grantCount === 1 ? "goes" : "go"} with it, and switching it back on does not bring them back.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4">
+              <Button onClick={() => setDialog(null)} size="sm" variant="ghost">
+                Cancel
+              </Button>
+              <Button
+                disabled={remove.isPending}
+                onClick={() => {
+                  remove.mutate(key);
+                  setDialog(null);
+                }}
+                size="sm"
+                variant="destructive"
+              >
+                Switch it off
               </Button>
             </DialogFooter>
           </DialogContent>

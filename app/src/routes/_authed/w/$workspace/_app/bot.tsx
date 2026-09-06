@@ -136,7 +136,13 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
           is answering without them.
         </p>
       ) : null}
-      <div className="min-h-0 flex-1">
+      {/*
+       * A flex column, so the chat below can take the height: its own `flex-1` did nothing inside a
+       * block, which left the transcript 45px tall, the composer directly under the header and the
+       * rest of the screen blank. In a column the transcript grows and the composer sits at the
+       * bottom, the way a chat does.
+       */}
+      <div className="flex min-h-0 flex-1 flex-col">
         {/*
          * Keyed on the thread as well as the agent. Switching agents was already handled by
          * `agentId`, but `startNew` changes only the thread while the agent stays put, and the

@@ -54,9 +54,9 @@ function matches(query: string, ...fields: (string | undefined)[]): boolean {
 export function agentTrigger(agents: readonly AgentOption[]): TriggerConfig {
   return mentionTrigger({
     char: AGENT_TRIGGER,
-    accessibilityLabel: "agent",
+    accessibilityLabel: "Bot",
     reopenOnChipClick: true,
-    emptyMessage: "No agents in this channel",
+    emptyMessage: "No Bots in this channel",
     onSearch: (query): TriggerSuggestion[] =>
       agents
         .filter((agent) => matches(query, agent.name, agent.description))

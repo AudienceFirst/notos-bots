@@ -10,8 +10,14 @@ export function AgentCard({ agent }: { agent: AgentProfile }) {
       <div className="absolute top-0 left-0 w-full h-full bg-background/40 dark:bg-background/50" />
       <div className="absolute top-0 left-0 w-full h-full flex flex-col justify-end p-3 gap-2">
         <span className="text-sm font-medium line-clamp-1">{agent.name}</span>
-        <span className="text-xs text-foreground dark:text-foreground/80 line-clamp-3">
-          {agent.roleDescription}
+        {/*
+         * The short role, not the role description. The description is the Bot's own instruction,
+         * written to the Bot ("Jij bent kanaal-ops…"), and eight cards carrying the same opening
+         * sentence help nobody choose; the title is the two or three words the `@` picker already
+         * shows, and it is different on every card.
+         */}
+        <span className="text-xs text-foreground dark:text-foreground/80 line-clamp-2">
+          {agent.title}
         </span>
       </div>
     </div>

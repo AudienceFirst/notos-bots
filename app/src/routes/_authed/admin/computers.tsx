@@ -28,11 +28,16 @@ import { Separator } from "@/components/ui/separator";
 import { useBotNames } from "@/lib/agents/bot-names";
 import { setComputerStateMutationOptions } from "@/lib/computers/mutations";
 import { computerFleetQueryOptions } from "@/lib/computers/queries";
+import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 import { queryClient } from "@/query-client";
 
 export const Route = createFileRoute("/_authed/admin/computers")({
   component: ComputersPage,
 });
+
+/** The same sentence in every state, so the page never loses what it is for. */
+const DESCRIPTION =
+  "Each Bot's browser and the profile it keeps. A profile is what makes a Bot still signed in tomorrow, and resetting one signs it out of everything.";
 
 function ComputersPage() {
   /** Bot id currently running a stop/reset request. */
@@ -41,20 +46,32 @@ function ComputersPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const nameFor = useBotNames();
 
-  const fleet = useQuery(computerFleetQueryOptions());
+  /*
+   * NOTOS: whether Bots have computers at all. Without them there is no fleet route, and asking for
+   * one is a 404 dressed as a failure — which this page then reported twice. The list is not asked
+   * for until the answer is in.
+   */
+  const capabilities = useQuery(deploymentCapabilitiesQueryOptions());
+  const computersOn = capabilities.data?.computers === true;
+  const fleet = useQuery({
+    ...computerFleetQueryOptions(),
+    enabled: computersOn,
+  });
   const setState = useMutation(setComputerStateMutationOptions(queryClient));
 
   const computers = fleet.data?.computers ?? null;
   const isolation = fleet.data?.isolation ?? null;
   /*
-   * One line for either failure. A list that could not be read and an action that was refused are
-   * both "this did not work", and the page has one place to say so.
+   * One line for any failure. A list that could not be read and an action that was refused are both
+   * "this did not work", and the page has one place to say so.
    */
   const problem = fleet.error
     ? "The computers could not be listed."
     : setState.error
       ? setState.error.message
-      : null;
+      : capabilities.error
+        ? capabilities.error.message
+        : null;
 
   const run = (botId: string, action: "stop" | "reset") => {
     setBusy(botId);
@@ -62,11 +79,16 @@ function ComputersPage() {
     setState.mutate({ action, botId }, { onSettled: () => setBusy(null) });
   };
 
+  if (capabilities.data?.computers === false) {
+    return (
+      <PageShell description={DESCRIPTION} title="Computers">
+        <PageEmpty>Computers are switched off in this deployment.</PageEmpty>
+      </PageShell>
+    );
+  }
+
   return (
-    <PageShell
-      description="Each Bot's browser and the profile it keeps. A profile is what makes a Bot still signed in tomorrow, and resetting one signs it out of everything."
-      title="Computers"
-    >
+    <PageShell description={DESCRIPTION} title="Computers">
       {problem ? (
         <p
           className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
@@ -93,9 +115,8 @@ function ComputersPage() {
       ) : null}
 
       <PageSection title="Computers in this deployment">
-        {computers === null && problem ? (
-          <PageEmpty>The list could not be loaded.</PageEmpty>
-        ) : computers === null ? null : computers.length === 0 ? (
+        {/* The banner above has already said when the list could not be read; nothing here repeats it. */}
+        {computers === null ? null : computers.length === 0 ? (
           <PageEmpty>
             No computers yet. One appears the first time a Bot opens a page.
           </PageEmpty>
@@ -190,16 +211,19 @@ function ComputersPage() {
         </DialogContent>
       </Dialog>
 
-      <p className="mt-4 text-muted-foreground text-sm">
-        <strong>Stop</strong> closes the browser and keeps its logins: the next
-        thing the Bot does starts it again where it left off.{" "}
-        <strong>Reset</strong> deletes the profile, so the Bot is signed out of
-        everything and starts clean. Both are recorded in{" "}
-        <Link className="underline" to="/admin/audit">
-          Audit
-        </Link>
-        .
-      </p>
+      {/* Only beside rows that carry the two buttons it explains. */}
+      {computers && computers.length > 0 ? (
+        <p className="mt-4 text-muted-foreground text-sm">
+          <strong>Stop</strong> closes the browser and keeps its logins: the
+          next thing the Bot does starts it again where it left off.{" "}
+          <strong>Reset</strong> deletes the profile, so the Bot is signed out
+          of everything and starts clean. Both are recorded in{" "}
+          <Link className="underline" to="/admin/audit">
+            Audit
+          </Link>
+          .
+        </p>
+      ) : null}
     </PageShell>
   );
 }

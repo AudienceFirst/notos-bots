@@ -107,13 +107,13 @@ function RouteComponent() {
             // the caret starts here whenever the recipient question is still open. Same condition
             // as `defaultOpen` — a recipient from the URL means the composer takes focus instead.
             autoFocus={!agent}
-            placeholder="Choose a coworker…"
+            placeholder="Choose a Bot…"
             // InputGroup owns focus rings via `has-[…:focus-visible]`; disable that wrapper ring here.
             className="border-none w-full bg-transparent! text-sm has-[[data-slot=input-group-control]:focus-visible]:ring-0"
           />
           {/* Allow max-w to constrain the popup even though its anchor is full-width. */}
           <ComboboxContent className="min-w-0 max-w-lg" sideOffset={12}>
-            <ComboboxEmpty>No agents found.</ComboboxEmpty>
+            <ComboboxEmpty>No Bots found.</ComboboxEmpty>
             <ComboboxList>
               {(item: AgentProfile) => (
                 <ComboboxItem key={item.id} value={item} className="h-10">
@@ -147,9 +147,11 @@ function RouteComponent() {
         </div>
       ) : null}
       <ConversationView
-        // Choosing a coworker answers the "To:" field, so the message is what remains: the caret
+        // Choosing a Bot answers the "To:" field, so the message is what remains: the caret
         // lands in the composer the moment a recipient exists, whether picked here or in the URL.
         autoFocus
+        // Who was chosen, drawn in the empty transcript so the screen says what it is for.
+        bot={chosen}
         // Commands must be loaded before the first channel message is sent.
         commands={skillCommands}
         disabled={recipients.length === 0}

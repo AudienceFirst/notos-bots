@@ -7,6 +7,7 @@ import {
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { agentListQueryOptions } from "@/lib/agents/queries";
+import { campaignListQueryOptions } from "@/lib/campaigns/queries";
 import { channelListQueryOptions } from "@/lib/channels/queries";
 import { createRoutineMutationOptions } from "@/lib/routines/mutations";
 import { createFileRoute } from "@tanstack/react-router";
@@ -75,6 +76,9 @@ function NewRoutineForm() {
   const queryClient = useQueryClient();
   const agents = useQuery(agentListQueryOptions());
   const channels = useInfiniteQuery(channelListQueryOptions());
+  // For the option labels: channel names repeat across campaigns ("SEA Specialist" three times),
+  // and the campaign is what tells them apart, the same way the sidebar groups them.
+  const campaigns = useQuery(campaignListQueryOptions());
   const create = useMutation(createRoutineMutationOptions(queryClient));
   const [open, setOpen] = useState(false);
   const [agentId, setAgentId] = useState("");
@@ -92,6 +96,40 @@ function NewRoutineForm() {
   const forBot = channelRows.filter(
     (channel) => !agentId || channel.agentIds.includes(agentId),
   );
+  const campaignNames = new Map(
+    (campaigns.data ?? []).map((campaign) => [campaign.id, campaign.name]),
+  );
+  /** "Name · Campaign", or "Name · Workspace" for a channel outside any (active) campaign. */
+  const placed = (channel: { name: string; campaignId?: string | null }) =>
+    `${channel.name} · ${
+      (channel.campaignId && campaignNames.get(channel.campaignId)) ||
+      "Workspace"
+    }`;
+  /*
+   * Three "SEA Specialist · Workspace" are still three identical options, so a label that is
+   * not unique after the campaign gets the channel's creation date and time as well. Only those:
+   * a date on every option is noise on the ones the campaign already tells apart.
+   */
+  const labelCounts = new Map<string, number>();
+  for (const channel of forBot) {
+    const label = placed(channel);
+    labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
+  }
+  const channelLabel = (channel: {
+    name: string;
+    campaignId?: string | null;
+    createdAt: string;
+  }) => {
+    const label = placed(channel);
+    if ((labelCounts.get(label) ?? 0) < 2) return label;
+    const started = new Date(channel.createdAt).toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${label} · started ${started}`;
+  };
 
   if (!open) {
     return (
@@ -155,7 +193,7 @@ function NewRoutineForm() {
           <option value="">Your channel with this Bot</option>
           {forBot.map((channel) => (
             <option key={channel.id} value={channel.id}>
-              {channel.name}
+              {channelLabel(channel)}
             </option>
           ))}
         </select>

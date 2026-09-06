@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useState } from "react";
+import { BotGrantPicker } from "@/components/admin/bot-grant-picker";
 import {
   PageEmpty,
   PageRows,
@@ -14,8 +15,6 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { useBotNames } from "@/lib/agents/bot-names";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { setPluginGrantMutationOptions } from "@/lib/plugins/mutations";
@@ -28,7 +27,8 @@ import { pluginsPageQueryOptions } from "@/lib/plugins/queries";
  * connector page used to draw a chip for every Bot inside every tool row: at three Bots and eight
  * tools that is twenty-four controls stacked in a list, wrapping onto second and third lines, where
  * the thing being decided — does THIS Bot get THIS tool — was the least legible part of it. Here each
- * Bot is one row with one switch, which is the same decision with nothing competing for it.
+ * Bot is one row with one switch, grouped by workspace, which is the same decision with nothing
+ * competing for it.
  *
  * `$key_` opts this route out of nesting under `$key.tsx`, so the connector page stays a page rather
  * than becoming a layout with an outlet.
@@ -105,6 +105,15 @@ function RouteComponent() {
     name: nameFor(agent.id),
   }));
 
+  /*
+   * Granted, and yet every call would be refused: the state a switch cannot show. Counted once and
+   * said once above the list, where it used to be a clamped sentence under each of 264 rows with the
+   * instruction cut off at the second line.
+   */
+  const stuck = bots.filter(
+    (bot) => tool.grantedTo.includes(bot.id) && !canCallBack(bot),
+  ).length;
+
   return (
     <PageShell
       backButton={back}
@@ -155,7 +164,7 @@ function RouteComponent() {
       </PageSection>
 
       <PageSection
-        description="A Bot may call this tool only while its switch is on. Turning one off takes effect on the next call, with nothing cached in between."
+        description="A Bot may call this tool only while its switch is on. Turning one off takes effect on the next call, with nothing cached in between. Every call is still checked against the boundaries and written to the audit trail."
         title="Bots"
       >
         {bots.length === 0 ? (
@@ -164,52 +173,56 @@ function RouteComponent() {
             to.
           </PageEmpty>
         ) : (
-          <PageRows>
-            {bots.map((bot, index) => {
-              const held = tool.grantedTo.includes(bot.id);
-              return (
-                <div key={bot.id}>
-                  <Item size="sm">
-                    <ItemContent>
-                      <ItemTitle>{bot.name}</ItemTitle>
-                      <ItemDescription>
-                        {held
-                          ? canCallBack(bot)
-                            ? "May call this tool. Every call is still checked against the boundaries and written to the audit trail."
-                            : "Granted, but this Bot has no credential for calling tools back, so every call is refused before it reaches the boundary. Issue one on its own page, or set AGENT_TOOL_TOKEN for the deployment."
-                          : "Cannot call this tool. It is not offered to the model at all, so it has nothing to refuse."}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      {/*
-                       * Binary and immediate, which is what a Switch is for: it takes effect when
-                       * switched and there is no save. Disabled only while its own write is in
-                       * flight, so switching one Bot does not freeze the rest of the list.
-                       */}
-                      <Switch
-                        aria-label={`Let ${bot.name} call ${toolName}`}
-                        checked={held}
-                        disabled={
-                          setGrant.isPending &&
-                          setGrant.variables?.agentId === bot.id
-                        }
-                        onCheckedChange={(next) => {
-                          setError(null);
-                          setGrant.mutate({
-                            agentId: bot.id,
-                            granted: next,
-                            kind: "mcp",
-                            ref: tool.ref,
-                          });
-                        }}
-                      />
-                    </ItemActions>
-                  </Item>
-                  {index !== bots.length - 1 && <Separator />}
-                </div>
-              );
-            })}
-          </PageRows>
+          <>
+            {stuck > 0 ? (
+              <p
+                className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+                role="status"
+              >
+                <span className="font-medium">
+                  {stuck === 1
+                    ? "1 Bot holds this tool but cannot call it yet."
+                    : `${stuck} Bots hold this tool but cannot call it yet.`}
+                </span>{" "}
+                They have no credential for calling tools back, so every call is
+                refused before it reaches the boundary. Issue one on each Bot's
+                own page, or set <code>AGENT_TOOL_TOKEN</code> for the
+                deployment.
+              </p>
+            ) : null}
+            {/*
+             * Binary and immediate, which is what a Switch is for: it takes effect when switched and
+             * there is no save. Disabled only while its own write is in flight, so switching one Bot
+             * does not freeze the rest of the list.
+             */}
+            <BotGrantPicker
+              bots={bots}
+              className="mt-4"
+              held={(botId) => tool.grantedTo.includes(botId)}
+              labelFor={(bot) => `Let ${bot.name} call ${toolName}`}
+              onChange={(botId, next) => {
+                setError(null);
+                setGrant.mutate({
+                  agentId: botId,
+                  granted: next,
+                  kind: "mcp",
+                  ref: tool.ref,
+                });
+              }}
+              pendingId={
+                setGrant.isPending
+                  ? (setGrant.variables?.agentId ?? null)
+                  : null
+              }
+              trailing={(bot, held) =>
+                held && !canCallBack(bot) ? (
+                  <span className="text-amber-600 text-xs dark:text-amber-500">
+                    cannot call back
+                  </span>
+                ) : null
+              }
+            />
+          </>
         )}
       </PageSection>
     </PageShell>

@@ -41,10 +41,10 @@ import {
 import { queryClient } from "@/query-client";
 
 /**
- * Creating a coworker, one question at a time.
+ * Creating a Bot, one question at a time.
  *
  * A wizard rather than a form, because the answers are three different kinds of decision: who this
- * coworker is, who may see it, and where it runs. The last one is the fork — a built-in coworker
+ * Bot is, who may see it, and where it runs. The last one is the fork — a built-in Bot
  * needs nothing more, a managed one needs an endpoint — and a flat form showing endpoint fields to
  * everybody made the common case read like the hard one.
  */
@@ -55,7 +55,7 @@ export function CreateAgentDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  /** The new coworker's id, so the caller can open its dialog on it. */
+  /** The new Bot's id, so the caller can open its dialog on it. */
   onCreated: (agentId: string) => void;
 }) {
   return (
@@ -73,7 +73,7 @@ export function CreateAgentDialog({
 const STEPS = ["identity", "visibility", "kind"] as const;
 type StepName = (typeof STEPS)[number];
 
-/** The two ways a coworker can be seen. */
+/** The two ways a Bot can be seen. */
 const VISIBILITY_OPTIONS: Array<{
   value: AgentFormValues["visibility"];
   title: string;
@@ -92,7 +92,7 @@ const VISIBILITY_OPTIONS: Array<{
 ];
 
 /**
- * Where the coworker runs. Not a stored field: the server knows only whether an endpoint was
+ * Where the Bot runs. Not a stored field: the server knows only whether an endpoint was
  * given, so "built-in" is the empty endpoint and this choice exists to make that fork explicit.
  */
 type AgentKind = "builtin" | "managed";
@@ -155,7 +155,7 @@ function CreateAgentWizard({
 }) {
   const createAgent = useMutation(createAgentMutationOptions(queryClient));
   /*
-   * Whether "built-in" is a coworker this deployment can actually make. Assumed true while the
+   * Whether "built-in" is a Bot this deployment can actually make. Assumed true while the
    * answer is loading, so the common deployment never sees the card flash from disabled to
    * enabled; the server refuses the create either way, so an optimistic card risks nothing.
    */
@@ -197,7 +197,7 @@ function CreateAgentWizard({
   const endpointError = !tried
     ? undefined
     : kind === "managed" && values.endpoint.trim() === ""
-      ? "An endpoint is required for a managed coworker."
+      ? "An endpoint is required for a managed Bot."
       : agentFormSchema.shape.endpoint.safeParse(values.endpoint).error
           ?.issues[0]?.message;
 
@@ -244,7 +244,7 @@ function CreateAgentWizard({
     <>
       {/* Read aloud, never shown: each step carries its own heading, and a dialog-level title
           above them made two heading sizes compete. The popup still needs an accessible name. */}
-      <DialogTitle className="sr-only">New coworker</DialogTitle>
+      <DialogTitle className="sr-only">New Bot</DialogTitle>
       <DialogBody className="overflow-y-auto">
         <Questionnaire
           item={STEPS[step]}
@@ -316,7 +316,7 @@ function CreateAgentWizard({
                         onKind={(next) => {
                           setKind(next);
                           if (next === "builtin") {
-                            // A built-in coworker has no endpoint; whatever was typed on the way
+                            // A built-in Bot has no endpoint; whatever was typed on the way
                             // past must not ride along into the create.
                             set("endpoint", "");
                             set("authValue", "");
@@ -359,7 +359,7 @@ function CreateAgentWizard({
               {last
                 ? createAgent.isPending
                   ? "Creating…"
-                  : "Create coworker"
+                  : "Create Bot"
                 : "Continue"}
             </Button>
           </div>
@@ -405,9 +405,9 @@ function IdentityStep({
 }) {
   return (
     <StepItem name="identity">
-      <QuestionnaireTitle>Who is this coworker?</QuestionnaireTitle>
+      <QuestionnaireTitle>Who is this Bot?</QuestionnaireTitle>
       <QuestionnaireDescription>
-        The role you write here applies in every channel this coworker works in.
+        The role you write here applies in every channel this Bot works in.
       </QuestionnaireDescription>
       <FieldGroup>
         <Field data-invalid={errors.name ? true : undefined}>
@@ -499,7 +499,7 @@ function KindStep({
   testing,
   onTest,
 }: {
-  /** Whether this deployment has a Bot of its own for a coworker to run on. */
+  /** Whether this deployment has a Bot of its own for a Bot to run on. */
   builtInAvailable: boolean;
   kind: AgentKind | null;
   onKind: (kind: AgentKind) => void;
@@ -521,7 +521,7 @@ function KindStep({
         {KIND_OPTIONS.map((option) => {
           /*
            * Shown but not offerable, rather than hidden: a deployment with no managed Bot cannot
-           * back a built-in coworker, and the create would be refused. The card staying visible is
+           * back a built-in Bot, and the create would be refused. The card staying visible is
            * what tells the person the kind exists and why it is not theirs to pick.
            */
           const unavailable = option.value === "builtin" && !builtInAvailable;
@@ -536,7 +536,7 @@ function KindStep({
               <span className="font-medium">{option.title}</span>
               <QuestionnaireChoiceDescription>
                 {unavailable
-                  ? "Not available here: this deployment has no Bot of its own for a coworker to run on."
+                  ? "Not available here: this deployment has no Bot of its own for a Bot to run on."
                   : option.description}
               </QuestionnaireChoiceDescription>
             </QuestionnaireChoice>
@@ -545,7 +545,7 @@ function KindStep({
       </QuestionnaireChoices>
       {showKindError ? (
         <p className="text-sm text-destructive" role="alert">
-          Choose where this coworker runs.
+          Choose where this Bot runs.
         </p>
       ) : null}
       {kind === "managed" ? (

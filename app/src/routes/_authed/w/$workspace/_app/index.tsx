@@ -14,6 +14,16 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/")({
   component: RouteComponent,
 });
 
+/**
+ * How many Bots the home screen shows before it points at the roster.
+ *
+ * A wrapping grid of at most eight, not a row of all of them: the row ran to 3,500px inside a
+ * 630px column with nothing to scroll it, so on a laptop six of twenty-two Bots were reachable and
+ * on a phone two and a half. Eight wraps onto two lines at prose width, and the roster is one link
+ * away for the rest.
+ */
+const EXPLORE_LIMIT = 8;
+
 function RouteComponent() {
   const { data: agents } = useQuery(agentListQueryOptions());
   const explore = agents?.filter((a) => !a.mine && a.visibility === "public");
@@ -76,7 +86,7 @@ function RouteComponent() {
             // Said out loud: a message that silently reaches somebody you did not choose is the
             // kind of surprise that costs trust the first time it happens.
             <p className="mt-2 w-full max-w-2xl text-xs text-muted-foreground text-center">
-              Sent to the coworker it is for. Type <code>@</code> to choose one
+              Sent to the Bot it is for. Type <code>@</code> to choose one
               yourself.
             </p>
           ) : null}
@@ -89,11 +99,21 @@ function RouteComponent() {
             </p>
           ) : null}
         </div>
-        <div className="mt-10 w-full max-w-2xl">
-          <h2 className="font-bold text-lg">Explore agents</h2>
-          <div className="flex flex-row gap-4 mt-4">
-            {!!explore?.length &&
-              explore.map((agent) => (
+        {!!explore?.length && (
+          <div className="mt-10 w-full max-w-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-lg">Bots</h2>
+              <Link
+                className="text-sm text-muted-foreground hover:text-foreground"
+                params={keepWorkspace}
+                to="/w/$workspace/agents"
+              >
+                All Bots
+              </Link>
+            </div>
+            {/* The roster's grid: fixed cards, `gap-4`, wrapping on the width it actually has. */}
+            <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
+              {explore.slice(0, EXPLORE_LIMIT).map((agent) => (
                 <Link
                   key={agent.id}
                   to="/w/$workspace/channel/new"
@@ -105,8 +125,9 @@ function RouteComponent() {
                   <AgentCard agent={agent} />
                 </Link>
               ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   );

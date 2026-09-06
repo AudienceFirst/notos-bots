@@ -98,6 +98,9 @@ function ConnectorsPage() {
 
   return (
     <PageShell
+      // A grid of cards, not prose: `wide` still caps at 64rem, which on a large display left two
+      // columns and a 400px margin. The cap goes, and `auto-fill` decides the column count.
+      className="max-w-none"
       description="Everything a Bot can reach, in one place. Connect a service so a Bot reads it as you; an administrator switches a connector on for the whole team."
       title="Connectors"
       width="wide"
@@ -167,9 +170,8 @@ function ConnectorCard({
           </p>
         </div>
       </div>
-      <p className="line-clamp-2 text-muted-foreground text-sm">
-        {entry.summary}
-      </p>
+      {/* The whole summary. Clamped, ten of fifteen cards ended in "…" on a screen with room to spare. */}
+      <p className="text-muted-foreground text-sm">{entry.summary}</p>
       <div className="mt-auto flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <span

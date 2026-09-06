@@ -1,4 +1,4 @@
-import { IconPlus } from "@tabler/icons-react";
+import { IconChevronRight, IconPlus } from "@tabler/icons-react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -55,6 +55,7 @@ import {
   type CredentialStatus,
   credentialListQueryOptions,
 } from "@/lib/credentials/queries";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/admin/credentials")({
   component: CredentialsPage,
@@ -62,6 +63,8 @@ export const Route = createFileRoute("/_authed/admin/credentials")({
 
 function CredentialsPage() {
   const [adding, setAdding] = useState(false);
+  /** Revoked rows are kept for the record and folded away by default; see the list below. */
+  const [showRevoked, setShowRevoked] = useState(false);
   const queryClient = useQueryClient();
   const credentials = useQuery(credentialListQueryOptions());
   const createCredential = useMutation(
@@ -85,6 +88,13 @@ function CredentialsPage() {
       setAdding(false);
     },
   });
+
+  const active = (credentials.data ?? []).filter(
+    (credential) => credential.revokedAt === null,
+  );
+  const revoked = (credentials.data ?? []).filter(
+    (credential) => credential.revokedAt !== null,
+  );
 
   return (
     <PageShell
@@ -293,6 +303,11 @@ function CredentialsPage() {
         </DialogContent>
       </Dialog>
 
+      {/*
+       * Live credentials first, and only those. Revoked rows are kept because the audit trail points
+       * at them, but a list of 236 with 199 revoked buried the 37 that still work, each revoked row
+       * wearing a Revoke button it could not use.
+       */}
       <PageSection title="Configured credentials">
         {credentials.isPending ? null : credentials.error ? (
           <p className="mt-4 text-destructive text-sm" role="alert">
@@ -301,35 +316,76 @@ function CredentialsPage() {
         ) : credentials.data?.length === 0 ? (
           <PageEmpty>No credentials are configured.</PageEmpty>
         ) : (
-          <PageRows>
-            {credentials.data?.map((credential, index) => (
-              <StaggerItem index={index} key={credential.id}>
-                <Item size="sm">
-                  <ItemContent>
-                    <ItemTitle>{credential.provider}</ItemTitle>
-                    <ItemDescription>
-                      {credential.kind} · {credential.keyId} ·{" "}
-                      {credential.revokedAt ? "revoked" : "active"}
-                    </ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <Button
-                      disabled={
-                        Boolean(credential.revokedAt) ||
-                        revokeCredential.isPending
-                      }
-                      onClick={() => revokeCredential.mutate(credential.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Revoke
-                    </Button>
-                  </ItemActions>
-                </Item>
-                {index !== (credentials.data?.length ?? 0) - 1 && <Separator />}
-              </StaggerItem>
-            ))}
-          </PageRows>
+          <>
+            {active.length === 0 ? (
+              <PageEmpty>No active credentials.</PageEmpty>
+            ) : (
+              <PageRows>
+                {active.map((credential, index) => (
+                  <StaggerItem index={index} key={credential.id}>
+                    <Item size="sm">
+                      <ItemContent>
+                        <ItemTitle>{credential.provider}</ItemTitle>
+                        <ItemDescription>
+                          {credential.kind} · {credential.keyId}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <Button
+                          disabled={revokeCredential.isPending}
+                          onClick={() => revokeCredential.mutate(credential.id)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Revoke
+                        </Button>
+                      </ItemActions>
+                    </Item>
+                    {index !== active.length - 1 && <Separator />}
+                  </StaggerItem>
+                ))}
+              </PageRows>
+            )}
+            {revoked.length > 0 ? (
+              <>
+                <button
+                  aria-expanded={showRevoked}
+                  className="mt-3 flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+                  onClick={() => setShowRevoked((value) => !value)}
+                  type="button"
+                >
+                  <IconChevronRight
+                    className={cn(
+                      "size-3.5 transition-transform duration-150",
+                      showRevoked && "rotate-90",
+                    )}
+                  />
+                  {revoked.length} revoked{" "}
+                  {revoked.length === 1 ? "credential" : "credentials"}
+                </button>
+                {showRevoked ? (
+                  <PageRows className="mt-2">
+                    {revoked.map((credential, index) => (
+                      <StaggerItem index={index} key={credential.id}>
+                        <Item size="sm">
+                          <ItemContent>
+                            <ItemTitle>{credential.provider}</ItemTitle>
+                            <ItemDescription>
+                              {credential.kind} · {credential.keyId} · revoked
+                              {credential.revokedAt
+                                ? ` ${new Date(credential.revokedAt).toLocaleDateString("en-GB")}`
+                                : ""}
+                            </ItemDescription>
+                          </ItemContent>
+                        </Item>
+                        {index !== revoked.length - 1 && <Separator />}
+                      </StaggerItem>
+                    ))}
+                  </PageRows>
+                ) : null}
+              </>
+            ) : null}
+          </>
         )}
       </PageSection>
     </PageShell>

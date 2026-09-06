@@ -15,6 +15,14 @@ import { EditSkill } from "@/components/skills/edit-skill";
 import { NewSkill } from "@/components/skills/new-skill";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -74,6 +82,8 @@ function SkillsPage() {
    */
   const loading = skillsPending || mePending;
   const [error, setError] = useState<string | null>(null);
+  /** The slug a delete is being confirmed for, or null. One dialog for the list, as Routines has. */
+  const [confirmingSlug, setConfirmingSlug] = useState<string | null>(null);
 
   const removeSkill = useMutation({
     ...removeSkillMutationOptions(queryClient),
@@ -113,7 +123,7 @@ function SkillsPage() {
             Bot follows. Yours are yours alone, and go on the Bots you own.
           </>
         }
-        title="Agent Skills"
+        title="Skills"
       >
         {error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -193,15 +203,18 @@ function SkillsPage() {
                               Edit
                             </DropdownMenuItem>
                             {/*
-                             * Deleting is immediate and there is no undo. It is behind a menu rather
-                             * than sitting on the row for that reason, and the slug is named in the
-                             * label so the destructive item says WHICH skill it destroys — a menu
-                             * opened over the wrong row is the ordinary way this goes wrong.
+                             * There is no undo, so the item asks first: the same dialog Routines
+                             * puts in front of its delete, so one destructive action behaves the
+                             * same on both screens. It is behind a menu rather than sitting on the
+                             * row for the same reason, and the slug is named in the label so the
+                             * item says WHICH skill it destroys — a menu opened over the wrong row
+                             * is the ordinary way this goes wrong.
                              */}
                             <DropdownMenuItem
                               onClick={() => {
                                 setError(null);
-                                removeSkill.mutate(skill.slug);
+                                removeSkill.reset();
+                                setConfirmingSlug(skill.slug);
                               }}
                               variant="destructive"
                             >
@@ -268,6 +281,49 @@ function SkillsPage() {
          * the real one now. `SkillRow` below is still parked, because its per-Bot grant toggles have
          * no equivalent in the redesigned rows yet.
          */}
+        <Dialog
+          onOpenChange={(open) => {
+            if (!open) setConfirmingSlug(null);
+          }}
+          open={confirmingSlug !== null}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete "/{confirmingSlug}"?</DialogTitle>
+              <DialogDescription>
+                The skill is gone for good, on every Bot you put it on, and
+                there is no undo.
+              </DialogDescription>
+            </DialogHeader>
+            {removeSkill.error ? (
+              <p className="text-destructive text-sm" role="alert">
+                {removeSkill.error.message}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                onClick={() => setConfirmingSlug(null)}
+                size="sm"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={removeSkill.isPending}
+                onClick={() => {
+                  if (!confirmingSlug) return;
+                  removeSkill.mutate(confirmingSlug, {
+                    onSuccess: () => setConfirmingSlug(null),
+                  });
+                }}
+                size="sm"
+                variant="destructive"
+              >
+                {removeSkill.isPending ? "Deleting…" : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageShell>
     </DetailPanel>
   );

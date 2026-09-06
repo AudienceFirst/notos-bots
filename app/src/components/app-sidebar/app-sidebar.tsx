@@ -400,7 +400,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            {/* Beside Agents rather than inside Admin: writing a skill is something anybody does. */}
+            {/* Beside Bots rather than inside Admin: writing a skill is something anybody does. */}
             <SidebarMenuButton
               className="hover:bg-foreground/5 h-10"
               render={(props) => (
@@ -437,7 +437,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="size-[28px] flex items-center justify-center">
                 <IconBolt />
               </div>
-              <span className="text-sm trackint-tight">Agents</span>
+              <span className="text-sm trackint-tight">Bots</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

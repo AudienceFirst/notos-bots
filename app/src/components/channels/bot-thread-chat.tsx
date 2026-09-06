@@ -32,6 +32,8 @@ export function BotThreadChat({
 }) {
   const core = useBotsCore();
   const { data: profiles } = useQuery(agentListQueryOptions());
+  // Who this thread is with, for the empty state; the route already checked the id is known.
+  const profile = profiles?.find((candidate) => candidate.id === agentId);
   const { agent } = useAgent({
     agentId: `bot:${agentId}`,
     runtimeAgentId: agentId,
@@ -125,6 +127,7 @@ export function BotThreadChat({
       <ConversationView
         agents={toAgentOptions(profiles, [agentId])}
         autoFocus
+        bot={profile}
         busy={agent.isRunning}
         commands={skillCommands}
         messages={transcriptMessages(agent.messages, null)}

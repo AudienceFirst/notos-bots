@@ -41,7 +41,7 @@ function WelcomeStep() {
           compact
           className="scale-90"
           editorClassName="text-base"
-          initialValue="Hand off tasks to your team of agents"
+          initialValue="Hand off tasks to your team of Bots"
         />
       </div>
     </div>
@@ -79,7 +79,7 @@ const AGENTS_PLACEHOLDER: RosterCard[] = [
   { id: "placeholder-data", name: "Data Analyst", avatarSeed: "data-analyst" },
   {
     id: "placeholder-support",
-    name: "Support Agent",
+    name: "Support Bot",
     avatarSeed: "support-agent",
   },
 ];

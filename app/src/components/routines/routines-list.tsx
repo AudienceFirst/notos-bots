@@ -27,6 +27,7 @@ import {
   ItemFooter,
   ItemTitle,
 } from "@/components/ui/item";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { relativeTime } from "@/lib/relative-time";
 import {
@@ -157,8 +158,21 @@ export function RoutinesList({
         </p>
       ) : null}
 
-      {/* Pending renders nothing: the empty-state sentence would otherwise flash for the fetch. */}
-      {routines.isPending ? null : routines.error ? (
+      {/*
+       * Two row-shaped placeholders while the list is fetched, not the empty-state sentence (which
+       * would flash a claim the page has not earned) and not nothing (which on the Bot dialog's
+       * Routines tab was a heading over blank space, indistinguishable from a tab that failed).
+       */}
+      {routines.isPending ? (
+        <div
+          aria-label="Loading routines"
+          className="mt-4 flex flex-col gap-2"
+          role="status"
+        >
+          <Skeleton className="h-16 w-full rounded-lg bg-muted/40" />
+          <Skeleton className="h-16 w-full rounded-lg bg-muted/40" />
+        </div>
+      ) : routines.error ? (
         <p className="mt-4 text-destructive text-sm" role="alert">
           Your routines could not be loaded.
         </p>
@@ -166,14 +180,22 @@ export function RoutinesList({
         <Empty className="h-[180px] border border-dashed">
           <EmptyHeader>
             <EmptyTitle className="text-muted-foreground">
-              {agentId
-                ? "Nothing scheduled for this coworker"
-                : "Nothing scheduled"}
+              {agentId ? "Nothing scheduled for this Bot" : "Nothing scheduled"}
             </EmptyTitle>
+            {/* Two ways in, both named: the form on the Routines page, or a sentence to the Bot. */}
             <EmptyDescription>
-              {agentId
-                ? 'Ask it in a channel — "every weekday at 9, …" — and it will appear here.'
-                : 'Ask a Bot — "every weekday at 9, …" — and it will appear here.'}
+              {agentId ? (
+                <>
+                  Ask it in a channel ("every weekday at 9, …"), or make one on
+                  the{" "}
+                  <Link params={keepWorkspace} to="/w/$workspace/routines">
+                    Routines page
+                  </Link>
+                  .
+                </>
+              ) : (
+                'Use New routine above, or ask a Bot in a channel ("every weekday at 9, …"). It appears here.'
+              )}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

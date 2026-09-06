@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { AbstractAvatar } from "@/components/agents/abstract-avatar";
 import { ChatTranscript } from "@/components/channels/chat-transcript";
 import {
   type AgentOption,
@@ -16,13 +17,49 @@ import {
   type QueuedMessage,
   reduceQueue,
 } from "@/components/channels/composer";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import type { AgentProfile } from "@/lib/agents/queries";
 import { newId } from "../../lib/new-id";
+
+/** The three facts the intro needs; a full profile satisfies it, so callers pass what they have. */
+type BotIntro = Pick<AgentProfile, "name" | "title" | "avatarSeed">;
+
+/**
+ * Who is on the other side, drawn while the conversation is still empty.
+ *
+ * Avatar, name, the short role, one sentence: enough to know who is listening and that a question
+ * is the next move, and nothing that repeats what the header already says. It goes the moment the
+ * first message lands, because the transcript then says all of this on its own.
+ */
+function ConversationIntro({ bot }: { bot: BotIntro }) {
+  return (
+    <Empty className="flex-1">
+      <EmptyHeader>
+        <EmptyMedia>
+          <AbstractAvatar name={bot.name} seed={bot.avatarSeed} size={56} />
+        </EmptyMedia>
+        <EmptyTitle className="text-base">{bot.name}</EmptyTitle>
+        <EmptyDescription>{bot.title}</EmptyDescription>
+        <EmptyDescription>
+          Ask a question or say what you need; the answer lands here.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
+}
 
 export function ConversationView({
   messages,
   busy = false,
   notice,
   agents = [],
+  bot,
   commands,
   disabled = false,
   pending = false,
@@ -39,6 +76,8 @@ export function ConversationView({
   /** Shown above the composer. An error, or why this conversation is read-only. */
   notice?: ReactNode;
   agents?: readonly AgentOption[];
+  /** The Bot this conversation is with; drawn as the empty state until something is said. */
+  bot?: BotIntro | undefined;
   /**
    * The `/` menu for this Bot's granted skills, supplied by the route that owns grant loading.
    */
@@ -214,6 +253,7 @@ export function ConversationView({
           commandNames={(commands ?? [])
             .map((command) => command.name)
             .join(",")}
+          empty={bot ? <ConversationIntro bot={bot} /> : undefined}
           messages={messages}
           onRemoveQueued={(id) => {
             apply({ id, type: "remove" });

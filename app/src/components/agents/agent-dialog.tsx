@@ -133,7 +133,7 @@ function AgentDialogBody({ agentId }: { agentId: string }) {
   if (agent.error || !agent.data) {
     return (
       <p className="p-6 text-sm text-destructive" role="alert">
-        Could not load this coworker.
+        Could not load this Bot.
       </p>
     );
   }
@@ -200,7 +200,10 @@ function AgentDialogBody({ agentId }: { agentId: string }) {
                 {profile.name}
               </span>
             </div>
-            <div className="flex gap-1 overflow-x-auto">
+            {/* Wrapping, not scrolling: a scroll row hid Routines and Manage off the edge of a
+                phone with nothing to say they were there. Two lines of buttons is the honest
+                shape of six sections in 330px. */}
+            <div className="flex flex-wrap gap-1">
               {SECTIONS.map((item) => (
                 <Button
                   className="shrink-0"
@@ -315,9 +318,7 @@ function GeneralSection({
       <Item variant="muted">
         <ItemContent>
           <ItemTitle>Start channel</ItemTitle>
-          <ItemDescription>
-            Open a new channel with this coworker.
-          </ItemDescription>
+          <ItemDescription>Open a new channel with this Bot.</ItemDescription>
         </ItemContent>
         <ItemActions>
           <Button
@@ -557,7 +558,7 @@ function AccessSection({ agentId }: { agentId: string }) {
   if (plugins.error || !plugins.data) {
     return (
       <p className="text-sm text-destructive" role="alert">
-        What this coworker may reach could not be loaded.
+        What this Bot may reach could not be loaded.
       </p>
     );
   }
@@ -592,7 +593,7 @@ function AccessSection({ agentId }: { agentId: string }) {
           </EmptyTitle>
           <EmptyDescription>
             An administrator grants connectors and skills from the Plugins
-            screens. Until then this coworker can converse, and nothing more.
+            screens. Until then this Bot can converse, and nothing more.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -602,8 +603,8 @@ function AccessSection({ agentId }: { agentId: string }) {
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        What this coworker may reach when it works. Granted by an administrator
-        on the Plugins screens; anything not listed is refused when called.
+        What this Bot may reach when it works. Granted by an administrator on
+        the Plugins screens; anything not listed is refused when called.
       </p>
       <div className="flex flex-col gap-2">
         {[...connectors.entries()].map(([key, labels]) => (
@@ -704,8 +705,8 @@ function ManageSection({
             <ItemTitle>{profile.hidden ? "Hidden" : "Hide"}</ItemTitle>
             <ItemDescription>
               {profile.hidden
-                ? "Hidden from your agents list. This changes nothing for anyone else."
-                : "Take it off your agents list. This changes nothing for anyone else."}
+                ? "Hidden from your Bots list. This changes nothing for anyone else."
+                : "Take it off your Bots list. This changes nothing for anyone else."}
             </ItemDescription>
           </ItemContent>
           <ItemActions>

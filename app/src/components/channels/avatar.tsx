@@ -1,6 +1,28 @@
+import { useQuery } from "@tanstack/react-query";
 import Avatar from "boring-avatars";
 import { memo } from "react";
+import { type AgentProfile, agentListQueryOptions } from "@/lib/agents/queries";
 import { cn } from "@/lib/utils";
+
+/** Stable selector, so the map only rebuilds when the roster changes (the bot-names idiom). */
+const toSeeds = (agents: AgentProfile[]): Map<string, string> =>
+  new Map(agents.map((agent) => [agent.id, agent.avatarSeed]));
+
+/**
+ * ONE FACE PER BOT, EVERYWHERE. The profile beside a conversation and the Bot dialog draw from
+ * `avatarSeed`, which a tenant package may set to something other than the id; this component drew
+ * from the id, so the same Bot wore one face in the header and the sidebar and another in the panel
+ * next to it, which reads as two identities. The roster is already in the cache on every screen
+ * that draws this, so the lookup costs nothing; the id stays the fallback for a participant the
+ * roster does not list (deleted, or hidden from you), which is also what the server falls back to.
+ */
+function useAvatarSeeds(): (participantId: string) => string {
+  const { data: seeds } = useQuery({
+    ...agentListQueryOptions(),
+    select: toSeeds,
+  });
+  return (participantId) => seeds?.get(participantId) ?? participantId;
+}
 
 /**
  * Memoized roster avatar. Row updates usually change preview/timestamp only, and
@@ -22,10 +44,15 @@ export const ChannelAvatar = memo(function ChannelAvatar({
   typing?: boolean;
 }) {
   const channelSize = participantIds?.length;
+  const seedFor = useAvatarSeeds();
 
   const avatar =
     channelSize === 1 ? (
-      <Avatar className="size-full" name={participantIds[0]} size={size} />
+      <Avatar
+        className="size-full"
+        name={seedFor(participantIds[0])}
+        size={size}
+      />
     ) : (
       <div className="flex flex-row items-center size-full">
         {participantIds.slice(0, 3).map((c, i, shown) => (
@@ -40,7 +67,7 @@ export const ChannelAvatar = memo(function ChannelAvatar({
           >
             <Avatar
               className="size-full"
-              name={c}
+              name={seedFor(c)}
               size={size / (shown.length / 2)}
             />
           </div>

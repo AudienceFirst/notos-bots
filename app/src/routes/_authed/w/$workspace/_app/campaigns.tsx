@@ -55,7 +55,13 @@ function CampaignsPage() {
   const [showArchived, setShowArchived] = useState(false);
   const campaigns = useQuery(campaignListQueryOptions(showArchived));
   const channels = useInfiniteQuery(channelListQueryOptions());
+  /*
+   * One form open at a time. Creating and a row's edit are both inline, and with each holding its
+   * own flag the page could show two forms at once, which reads as a page that lost track. So the
+   * row being edited lives here beside `creating`, and opening either closes the other.
+   */
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const counts = new Map<string, number>();
   for (const channel of channels.data ?? []) {
@@ -68,7 +74,13 @@ function CampaignsPage() {
     <PageShell
       action={
         mayManage ? (
-          <Button size="sm" onClick={() => setCreating((open) => !open)}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingId(null);
+              setCreating((open) => !open);
+            }}
+          >
             <IconPlus />
             New campaign
           </Button>
@@ -97,7 +109,13 @@ function CampaignsPage() {
                   <CampaignRow
                     campaign={campaign}
                     channels={counts.get(campaign.id) ?? 0}
+                    editing={editingId === campaign.id}
                     mayManage={mayManage}
+                    onDone={() => setEditingId(null)}
+                    onEdit={() => {
+                      setCreating(false);
+                      setEditingId(campaign.id);
+                    }}
                   />
                   {index !== rows.length - 1 && <Separator />}
                 </React.Fragment>
@@ -128,6 +146,13 @@ function NewCampaignForm({ onDone }: { onDone: () => void }) {
   return (
     <form
       className="mb-6 flex flex-col gap-3 rounded-xl border border-border/60 bg-background p-4"
+      // Escape is Cancel. The form is inline, so there is no dialog to catch the key for it.
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onDone();
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         if (name.trim().length < 2) return;
@@ -151,6 +176,7 @@ function NewCampaignForm({ onDone }: { onDone: () => void }) {
           maxLength={80}
           onChange={(event) => setName(event.target.value)}
           placeholder="Q4 sleep campaign"
+          required
           value={name}
         />
       </label>
@@ -188,58 +214,86 @@ function NewCampaignForm({ onDone }: { onDone: () => void }) {
 function CampaignRow({
   campaign,
   channels,
+  editing,
   mayManage,
+  onDone,
+  onEdit,
 }: {
   campaign: Campaign;
   channels: number;
+  /** Whether this row is the one open for editing. The page holds it, so only one ever is. */
+  editing: boolean;
   mayManage: boolean;
+  /** Close the edit form, saved or not. */
+  onDone: () => void;
+  /** Ask the page to open this row's edit form. */
+  onEdit: () => void;
 }) {
   const queryClient = useQueryClient();
   const update = useMutation(updateCampaignMutationOptions(queryClient));
-  const [editing, setEditing] = useState(false);
   const [name, setName] = useState(campaign.name);
   const [brief, setBrief] = useState(campaign.brief);
   const archived = campaign.status === "archived";
+  const cancel = () => {
+    setName(campaign.name);
+    setBrief(campaign.brief);
+    onDone();
+  };
 
   if (editing) {
     return (
       <form
         className="flex flex-col gap-3 py-3"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            cancel();
+          }
+        }}
         onSubmit={(event) => {
           event.preventDefault();
+          if (name.trim().length < 2) return;
           update.mutate(
             { id: campaign.id, name: name.trim(), brief: brief.trim() },
-            { onSuccess: () => setEditing(false) },
+            { onSuccess: onDone },
           );
         }}
       >
-        <Input
-          maxLength={80}
-          onChange={(event) => setName(event.target.value)}
-          value={name}
-        />
-        <Textarea
-          maxLength={8000}
-          onChange={(event) => setBrief(event.target.value)}
-          rows={6}
-          value={brief}
-        />
+        {/* The same labelled fields as the new-campaign form; ids carry the campaign so two rows never share one. */}
+        <label
+          className="flex flex-col gap-1 text-sm"
+          htmlFor={`campaign-${campaign.id}-name`}
+        >
+          <span className="text-muted-foreground text-xs">Name</span>
+          <Input
+            autoFocus
+            id={`campaign-${campaign.id}-name`}
+            maxLength={80}
+            onChange={(event) => setName(event.target.value)}
+            required
+            value={name}
+          />
+        </label>
+        <label
+          className="flex flex-col gap-1 text-sm"
+          htmlFor={`campaign-${campaign.id}-brief`}
+        >
+          <span className="text-muted-foreground text-xs">Brief</span>
+          <Textarea
+            id={`campaign-${campaign.id}-brief`}
+            maxLength={8000}
+            onChange={(event) => setBrief(event.target.value)}
+            rows={6}
+            value={brief}
+          />
+        </label>
         {update.error ? (
           <p className="text-destructive text-xs" role="alert">
             {update.error.message}
           </p>
         ) : null}
         <div className="flex justify-end gap-2">
-          <Button
-            onClick={() => {
-              setName(campaign.name);
-              setBrief(campaign.brief);
-              setEditing(false);
-            }}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
+          <Button onClick={cancel} size="sm" type="button" variant="ghost">
             Cancel
           </Button>
           <Button disabled={update.isPending} size="sm" type="submit">
@@ -288,7 +342,11 @@ function CampaignRow({
           <>
             {!archived ? (
               <Button
-                onClick={() => setEditing(true)}
+                onClick={() => {
+                  setName(campaign.name);
+                  setBrief(campaign.brief);
+                  onEdit();
+                }}
                 size="sm"
                 variant="ghost"
               >

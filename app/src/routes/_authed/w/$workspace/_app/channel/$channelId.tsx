@@ -261,7 +261,7 @@ function RouteComponent() {
               </Button>
             ) : null}
             <Button
-              aria-label="Channel coworker"
+              aria-label="Channel Bot"
               aria-pressed={isSettingsOpen}
               className={isSettingsOpen ? "bg-foreground/5" : undefined}
               disabled={agentId === undefined}
@@ -311,7 +311,7 @@ function ChannelBody({
   if (!runtimeAgentId) {
     return (
       <p className="p-8 text-sm text-muted-foreground">
-        This channel has more than one coworker, which is not supported yet.
+        This channel has more than one Bot, which is not supported yet.
       </p>
     );
   }

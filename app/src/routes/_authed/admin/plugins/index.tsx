@@ -35,7 +35,7 @@ import {
  * This screen used to be three tabs: a catalogue of what could be added, a second tab for what had
  * been, and skills. Answering one question about one vendor — is Drive available, and what can it
  * do — meant visiting two of them, and the third was a different kind of thing altogether. Two
- * lists say the same thing in one read: what is connected, and what else there is.
+ * lists say the same thing in one read: what is added, and what else there is.
  *
  * Every row goes to that vendor's own page, because what a connector needs configured is not the
  * same from one vendor to the next. A token, an OAuth client, an instance hostname, and a grant per
@@ -68,8 +68,9 @@ const markFor = (key: string) => MARKS[key] ?? IconPlug;
  *
  * A vendor reached as the person asking is a special case worth its own words. It can be fully
  * configured — client registered, tools listed — and still answer nothing, because the thing that
- * reads anything is a grant belonging to whoever is asking. "Not connected" is about you, not about
- * the deployment.
+ * reads anything is a grant belonging to whoever is asking. "Connect your account" is about you, not
+ * about the deployment, which is why it comes after the deployment's own facts rather than instead
+ * of them: a vendor with one tool held by 264 Bots used to read as one nobody had set up.
  */
 function summaryFor(
   server: PluginServer,
@@ -83,13 +84,24 @@ function summaryFor(
   auth: CatalogueItem["auth"] | undefined,
   youConnected: boolean,
 ): string {
-  if (auth === "user-oauth" && !youConnected) return "Not connected";
-  if (server.tools.length === 0) return "No tools yet";
-
-  const bots = new Set(server.tools.flatMap((tool) => tool.grantedTo)).size;
-  const tools = `${server.tools.length} ${server.tools.length === 1 ? "tool" : "tools"}`;
-  if (bots === 0) return `${tools} · no Bots`;
-  return `${tools} · ${bots} ${bots === 1 ? "Bot" : "Bots"}`;
+  const facts: string[] = [];
+  if (server.tools.length === 0) {
+    facts.push("No tools yet");
+  } else {
+    const bots = new Set(server.tools.flatMap((tool) => tool.grantedTo)).size;
+    facts.push(
+      `${server.tools.length} ${server.tools.length === 1 ? "tool" : "tools"}`,
+    );
+    facts.push(
+      bots === 0 ? "no Bots" : `${bots} ${bots === 1 ? "Bot" : "Bots"}`,
+    );
+  }
+  if (auth === "user-oauth") {
+    facts.push(
+      youConnected ? "your account connected" : "connect your account",
+    );
+  }
+  return facts.join(" · ");
 }
 
 function RouteComponent() {
@@ -122,11 +134,11 @@ function RouteComponent() {
         <>
           <PageSection
             description="Added for the whole deployment. Open one to set what it needs and which Bots hold its tools."
-            title="Connected"
+            title="Added"
           >
             {plugins.data?.servers.length === 0 ? (
               <PageEmpty>
-                Nothing connected yet. Everything available is below.
+                Nothing added yet. Everything available is below.
               </PageEmpty>
             ) : (
               <PageRows>
@@ -193,7 +205,7 @@ function RouteComponent() {
             title="Explore plugins"
           >
             {explore.length === 0 ? (
-              <PageEmpty>Everything in the catalogue is connected.</PageEmpty>
+              <PageEmpty>Everything in the catalogue is added.</PageEmpty>
             ) : (
               <PageRows>
                 {explore.map((entry: CatalogueItem, index) => {

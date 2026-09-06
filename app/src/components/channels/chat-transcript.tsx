@@ -37,6 +37,12 @@ type ChatTranscriptProps = {
   busy?: boolean;
   /** Comma-separated `/` command names, used to tell a skill chip from a leading slash. */
   commandNames?: string;
+  /**
+   * What to draw while the conversation has nothing in it yet: not restoring, nothing queued, no
+   * message. A new thread used to open on a blank region with the composer under the header, which
+   * said nothing about who was listening or what to ask.
+   */
+  empty?: React.ReactNode;
   messages: ReadonlyArray<Readonly<Message>>;
   /**
    * Typed while the Bot had the turn, and waiting for it to finish. Empty on a screen that does not
@@ -458,7 +464,18 @@ const TranscriptMessage = memo(function TranscriptMessage({
                  * closing token arrives, so the answer visibly rewrites itself as it lands. This
                  * closes them for the duration.
                  */
-                <Streamdown components={markdownComponents}>{text}</Streamdown>
+                <Streamdown
+                  /*
+                   * A single line break stays a line break. Markdown folds "Campagne: …\nDoel: …"
+                   * into one line, and a Bot asked for three short lines then answers in one. The
+                   * newline is still in the paragraph's text, so `pre-line` draws it; a hard-break
+                   * plugin would do the same and costs a dependency this app does not carry.
+                   */
+                  className="[&_p]:whitespace-pre-line"
+                  components={markdownComponents}
+                >
+                  {text}
+                </Streamdown>
               )}
             </BubbleContent>
           </Bubble>
@@ -661,6 +678,7 @@ function useSmoothSendScroll(
 export function ChatTranscript({
   busy = false,
   commandNames = "",
+  empty,
   messages,
   onRemoveQueued,
   queued = EMPTY_QUEUE,
@@ -749,6 +767,9 @@ export function ChatTranscript({
               ))}
             </div>
             {items.length === 0 && restoring ? <RestoringTranscript /> : null}
+            {items.length === 0 && !restoring && queued.length === 0 && empty
+              ? empty
+              : null}
             {items.map((item, index) =>
               item.kind === "tool" ? (
                 <MessageScrollerItem key={item.id} messageId={item.id}>

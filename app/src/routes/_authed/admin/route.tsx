@@ -19,7 +19,12 @@ function RouteComponent() {
   return (
     <SidebarShell width="300px">
       <AdminSidebar />
-      <main className="flex-1">
+      {/*
+       * `min-w-0`, or a flex child takes its min-content width from a table inside it and the whole
+       * page scrolls sideways on a phone, with the header and filters sliding out of view. With it,
+       * a wide table scrolls inside its own `overflow-x-auto` wrapper as the audit page intends.
+       */}
+      <main className="min-w-0 flex-1">
         <Outlet />
       </main>
     </SidebarShell>

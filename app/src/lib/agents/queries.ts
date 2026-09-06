@@ -4,7 +4,7 @@ import { client, tryClient } from "@/lib/client";
 export type AgentVisibility = "public" | "private";
 
 /**
- * A coworker as the browser sees it.
+ * A Bot as the browser sees it.
  *
  * `canManage` and `systemOwned` are server-decided authorization facts; components render from the
  * returned flags rather than recomputing ownership rules.
@@ -18,21 +18,21 @@ export type AgentProfile = {
   visibility: AgentVisibility;
   /** NOTOS: `campaign` Bots work inside a campaign; `workspace` Bots serve the whole workspace. */
   scope: "campaign" | "workspace";
-  /** Where this coworker runs. Null for the Bot in the box. */
+  /** Where this Bot runs. Null for the Bot in the box. */
   endpoint: string | null;
   /**
    * Whether it runs on this deployment's own Bot.
    *
-   * Creating a coworker with no endpoint stores the deployment's managed address, so `endpoint`
+   * Creating a Bot with no endpoint stores the deployment's managed address, so `endpoint`
    * alone cannot tell "built-in" from "hosted by a person" — and the difference decides whether the
-   * Connection screen asks for a callback token. A built-in coworker calls tools back with the
+   * Connection screen asks for a callback token. A built-in Bot calls tools back with the
    * deployment's own credential and needs no setup at all.
    */
   builtIn: boolean;
   /** Whether a key is set for it. Never the key itself. */
   hasAuth: boolean;
   /**
-   * Whether this coworker holds a credential for calling tools back.
+   * Whether this Bot holds a credential for calling tools back.
    *
    * A boolean, because the token is readable exactly once: in the response that issued it. The
    * surface needs this only to decide between offering "generate" and "rotate".
@@ -42,9 +42,9 @@ export type AgentProfile = {
   systemOwned: boolean;
   canManage: boolean;
   /**
-   * Whether the signed-in person created this coworker.
+   * Whether the signed-in person created this Bot.
    *
-   * Separate from `canManage`, which is also true for administrators on everybody's coworkers. Split
+   * Separate from `canManage`, which is also true for administrators on everybody's Bots. Split
    * a roster on `canManage` and an administrator's "mine" fills up with other people's work.
    */
   mine: boolean;
@@ -58,9 +58,9 @@ export const agentKeys = {
   capabilities: () => ["agents", "capabilities"] as const,
 };
 
-/** What kinds of coworker this deployment can create. */
+/** What kinds of Bot this deployment can create. */
 export type AgentCapabilities = {
-  /** Whether a coworker can run on the deployment's own Bot, with no endpoint of its own. */
+  /** Whether a Bot can run on the deployment's own Bot, with no endpoint of its own. */
   builtInAvailable: boolean;
 };
 
@@ -104,7 +104,7 @@ export function agentListQueryOptions(hidden = false) {
     queryKey: agentKeys.list(hidden),
     queryFn: (): Promise<AgentProfile[]> =>
       client(`/api/agents${hidden ? "?hidden=true" : ""}`, "agents", {
-        fallback: "Could not load coworkers",
+        fallback: "Could not load Bots",
       }),
   });
 }
@@ -114,7 +114,7 @@ export function agentQueryOptions(agentId: string) {
     queryKey: agentKeys.detail(agentId),
     queryFn: (): Promise<AgentProfile> =>
       client(`/api/agents/${agentId}`, "agent", {
-        fallback: "Could not load this coworker",
+        fallback: "Could not load this Bot",
       }),
   });
 }
@@ -135,7 +135,7 @@ export type ConnectionVerdict =
   | { ok: false; reason: string };
 
 /**
- * Ask the server to reach a coworker's endpoint, from where a run will reach it.
+ * Ask the server to reach a Bot's endpoint, from where a run will reach it.
  *
  * A plain function rather than a factory: the answer is about this moment, nothing caches it, and
  * there is no key for anything to invalidate. Fails closed, like the other verdicts here — an

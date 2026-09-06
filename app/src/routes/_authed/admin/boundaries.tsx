@@ -1,7 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { PageSection, PageShell } from "@/components/layout/page-shell";
+import {
+  PageEmpty,
+  PageSection,
+  PageShell,
+} from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { saveActionPolicyMutationOptions } from "@/lib/computers/mutations";
@@ -12,6 +16,7 @@ import {
   dryRunActionPolicy,
   type PolicyMode,
 } from "@/lib/computers/queries";
+import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 import { queryClient } from "@/query-client";
 
 /**
@@ -59,7 +64,17 @@ function BoundariesPage() {
   } | null>(null);
   const [testing, setTesting] = useState(false);
 
-  const stored = useQuery(actionPolicyQueryOptions());
+  /*
+   * NOTOS: whether Bots have computers at all. Without them there is no policy route, and asking
+   * for one is a 404 dressed as a failure; the page says the plain thing instead, and does not ask
+   * until the answer is in.
+   */
+  const capabilities = useQuery(deploymentCapabilitiesQueryOptions());
+  const computersOn = capabilities.data?.computers === true;
+  const stored = useQuery({
+    ...actionPolicyQueryOptions(),
+    enabled: computersOn,
+  });
   const savePolicy = useMutation(saveActionPolicyMutationOptions(queryClient));
 
   /*
@@ -78,11 +93,41 @@ function BoundariesPage() {
     });
   };
 
-  if (problem && !policy) {
+  /* The same sentence in every state, so the page never loses what it is for. */
+  const description = (
+    <>
+      What every Bot may and may not do with its computer. Rules are checked on
+      every action before it happens, and a refusal is recorded in{" "}
+      <Link className="underline" to="/admin/audit">
+        Audit
+      </Link>{" "}
+      with the rule that refused it.
+    </>
+  );
+
+  if (capabilities.data?.computers === false) {
     return (
-      <PageShell title="Boundaries">
+      <PageShell description={description} title="Boundaries">
+        <PageEmpty>
+          Computers are switched off in this deployment, so there is nothing to
+          bound here.
+        </PageEmpty>
+      </PageShell>
+    );
+  }
+
+  /*
+   * A read that failed is shown the same way as a save that failed. It used to be dropped, which
+   * left the page blank under its heading with the reason sitting unread in the query.
+   */
+  const failure =
+    problem ?? stored.error?.message ?? capabilities.error?.message ?? null;
+
+  if (failure && !policy) {
+    return (
+      <PageShell description={description} title="Boundaries">
         <p className="mt-4 text-destructive text-sm" role="alert">
-          {problem}
+          {failure}
         </p>
       </PageShell>
     );
@@ -90,7 +135,11 @@ function BoundariesPage() {
 
   /* Nothing until the policy is known: a rule list that guesses is worse than a blank. */
   if (!policy) {
-    return <PageShell title="Boundaries">{null}</PageShell>;
+    return (
+      <PageShell description={description} title="Boundaries">
+        {null}
+      </PageShell>
+    );
   }
 
   const addRule = (rule: string) => {
@@ -126,19 +175,7 @@ function BoundariesPage() {
   };
 
   return (
-    <PageShell
-      description={
-        <>
-          What every Bot may and may not do with its computer. Rules are checked
-          on every action before it happens, and a refusal is recorded in{" "}
-          <Link className="underline" to="/admin/audit">
-            Audit
-          </Link>{" "}
-          with the rule that refused it.
-        </>
-      }
-      title="Boundaries"
-    >
+    <PageShell description={description} title="Boundaries">
       {/*
        * NOTOS (stap 5): what every workspace runs on before anybody writes rules here. The rules
        * below are the deployment's own, for the computer and for Bots from before the workspaces.

@@ -159,7 +159,7 @@ function Row({
   /*
    * Three different things, and the difference is what somebody comes to this row to find out.
    *
-   * A person naming a coworker, the router matching one, and the router giving up and using the
+   * A person naming a Bot, the router matching one, and the router giving up and using the
    * default are not the same event, and one label covering all three would make the row worth less
    * than the reason line under it. Nothing here is a refusal, so none of them take the refusal
    * colour.
@@ -167,10 +167,10 @@ function Row({
   const routed =
     event.eventType === "channel.routed"
       ? payload.viaMention === true
-        ? "The person chose this coworker"
+        ? "The person chose this Bot"
         : payload.fallback === true
-          ? "Sent to the default coworker"
-          : "Sent to the coworker it is for"
+          ? "Sent to the default Bot"
+          : "Sent to the Bot it is for"
       : null;
   // Allowed by policy but not carried out. A stalled turn belongs in the same family: the Bot was
   // asked and the answer never arrived. Colour is how this table is read, and a row left in the
@@ -181,7 +181,11 @@ function Row({
   return (
     <tr className="border-border border-t align-top">
       <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
-        {new Date(event.createdAt).toLocaleTimeString()}
+        {/* The day as well as the time: a trail that is not only today's cannot be read from times alone. */}
+        {new Date(event.createdAt).toLocaleString("en-GB", {
+          dateStyle: "medium",
+          timeStyle: "medium",
+        })}
       </td>
       <td className="px-4 py-2 font-medium">
         {/* Strip the internal computer tool namespace for display. */}
@@ -191,7 +195,7 @@ function Row({
       </td>
       <td className="px-4 py-2">
         {/*
-         * A routing row's subject is the coworker it went to, and it is the only thing on the row
+         * A routing row's subject is the Bot it went to, and it is the only thing on the row
          * worth reading. Its target type is `agent`, which is not a named target because everywhere
          * else an agent id appears it belongs in the Bot column; here nothing acted, so there is no
          * Bot and the target is all there is. Rendered through `nameFor` so it reads as the name on

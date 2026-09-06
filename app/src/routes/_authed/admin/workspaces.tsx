@@ -53,10 +53,10 @@ function WorkspacesPage() {
       {problem ? <p className="text-sm text-destructive">{problem}</p> : null}
       <PageSection>
         {rows === null ? (
-          <PageEmpty>Laden…</PageEmpty>
+          <PageEmpty>Loading…</PageEmpty>
         ) : rows.length === 0 ? (
           <PageEmpty>
-            Nog geen workspaces: de sync met NOTOS heeft nog niets opgehaald.
+            No workspaces yet: the NOTOS sync has not fetched anything.
           </PageEmpty>
         ) : (
           <PageRows>
@@ -112,10 +112,20 @@ function WorkspacesPage() {
                           key={`${choice.provider}|${choice.defaultModel}`}
                           value={`${choice.provider}|${choice.vertexLocation}|${choice.defaultModel}`}
                         >
-                          {choice.label}
+                          {choice.short}
                         </option>
                       ))}
                     </select>
+                    {/*
+                     * The option holds the short name and the long one sits under the select: at
+                     * 340px the select clipped exactly the part that said whether traffic stays in
+                     * the EU, which is the one thing the page asks somebody to decide on.
+                     */}
+                    {chosen ? (
+                      <p className="text-muted-foreground text-xs">
+                        {chosen.label}
+                      </p>
+                    ) : null}
                     <DriveFolderField
                       disabled={setDrive.isPending}
                       roots={workspace.driveRoots ?? []}
@@ -257,7 +267,7 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
             </div>
           ))}
           <form
-            className="flex items-center gap-2"
+            className="flex flex-wrap items-center gap-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (!email.trim()) return;
@@ -267,14 +277,17 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
               );
             }}
           >
+            {/* Takes a row of its own when the role and the button would leave it too narrow to read an address in. */}
             <Input
-              className="h-8 text-sm"
+              aria-label="Email address"
+              className="h-8 min-w-0 flex-[1_1_12rem] text-sm"
               onChange={(event) => setEmail(event.target.value)}
               placeholder="name@company.com"
               type="email"
               value={email}
             />
             <select
+              aria-label="Role"
               className="h-8 rounded-md border border-border bg-background px-2 text-sm"
               onChange={(event) =>
                 setRole(event.target.value as WorkspaceMember["role"])

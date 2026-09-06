@@ -6,11 +6,16 @@ const RELATIVE_UNITS = [
   { limit: Number.POSITIVE_INFINITY, divisor: 604_800_000, unit: "week" },
 ] as const;
 
-const relativeFormat = new Intl.RelativeTimeFormat(undefined, {
+/*
+ * Pinned to English rather than the browser's locale: the interface is English, and a Dutch
+ * browser turned one chip into "Next over 6 dagen" and the roster into "8 uur geleden" beside
+ * "Search..." and "Ask anything". One language per screen; this is the one the chrome speaks.
+ */
+const relativeFormat = new Intl.RelativeTimeFormat("en", {
   numeric: "auto",
 });
 
-/** Locale-aware relative timestamp, e.g. "2 minutes ago". */
+/** Relative timestamp in the interface's language, e.g. "2 minutes ago". */
 export function relativeTime(iso: string): string {
   const elapsed = Date.now() - new Date(iso).getTime();
   const scale =
