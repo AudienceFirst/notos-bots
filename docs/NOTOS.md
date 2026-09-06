@@ -502,6 +502,15 @@ De migratie meldde bij het aanmaken van de schone database
 `trigger "audit_events_no_truncate" for relation "audit_events" does not exist, skipping`; dat is
 een `DROP TRIGGER IF EXISTS` in een upstream-migratie en geen fout.
 
+## Tests op een eigen database (6 september 2026)
+
+De launchd-dienst op de Mac gebruikt `openbot` op de docker-Postgres (poort 5433). Tests draaien
+op `openbot_test` in dezelfde Postgres: `DATABASE_URL=postgres://openbot:openbot@localhost:5433/openbot_test
+bun run test:ci`. Voorheen liepen ze op `openbot` zelf en lieten ze fixtures achter (21
+`testRaced_*`-componenten, 16 `@example.test`-gebruikers, 144 credentials) die in Admin › People,
+Components en Credentials zichtbaar waren; die zijn op 6 september opgeruimd. Nieuwe migraties ook
+op de testdatabase draaien: `DATABASE_URL=…/openbot_test bun server/src/notos/migrate.ts`.
+
 ## Lokaal ontwikkelen
 
 - `origin` wijst naar `https://ZUIDcontent@github.com/AudienceFirst/notos-bots.git`; de gebruikersnaam
