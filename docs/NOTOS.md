@@ -432,6 +432,18 @@ elk met brief, betrokken Bots en de routines die daar draaiden (hier bewust niet
 Bot-prompts uit de Grok-roster verwezen naar 30 lokale paden; die staan nu als bestanden in Drive
 (map NOTOS › `4 · Bronnen voor Bots`) en de prompts verwijzen daarnaar.
 
+## Twee talen: Nederlands en Engels (6 september 2026)
+
+De interface volgt de persoon: Settings › Preferences › Language (Zelfde als mijn browser,
+Nederlands, English), bewaard in `users.locale` (migratie 0033) via `PUT /api/me/locale`; zonder
+keuze beslist de browsertaal. De laag zit in `app/src/i18n/`: `I18nProvider` in de root,
+`useT()` in componenten, `tr()` erbuiten, `formatDateTime()`; relatieve tijden volgen mee.
+Woordenboeken staan per schermgroep in `i18n/en/` en `i18n/nl/` (admin-a, admin-b, settings,
+workspace, channels, components, lib, common) met sleutels `<groep>.<bestand>.<naam>`; een
+sleutel die in het Nederlands ontbreekt valt terug op Engels en daarna op de sleutel zelf. Nieuwe
+tekst = sleutel in beide woordenboeken. Nederlands volgt de ZUID-schrijfwijze (je/jij, geen u,
+geen em dash). Bots antwoorden in de taal waarin je schrijft; dat staat los van de interface.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
