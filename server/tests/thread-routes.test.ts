@@ -67,7 +67,7 @@ describe("checking whether a remembered thread is still known upstream", () => {
       `http://openbot.local/threads/${threadId}`,
     );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ known: true });
+    expect(await response.json()).toEqual({ known: true, model: null });
   });
 
   test("answers unknown when the reader reports Intelligence has never heard of it", async () => {
@@ -76,7 +76,7 @@ describe("checking whether a remembered thread is still known upstream", () => {
       `http://openbot.local/threads/${threadId}`,
     );
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ known: false });
+    expect(await response.json()).toEqual({ known: false, model: null });
   });
 
   test("answers 502, not the reader's own error, when the check itself fails", async () => {
