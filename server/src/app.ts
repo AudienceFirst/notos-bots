@@ -4,6 +4,7 @@ import { createCampaignRoutes } from "./notos/campaigns/routes";
 import type { CampaignStore } from "./notos/campaigns/store";
 import { createRunsRoutes } from "./notos/routines/runs-route";
 import type { MemberStore } from "./notos/workspaces/members";
+import { isLocale, type PreferenceStore } from "./notos/preferences/store";
 import {
   isModelProvider,
   KEYED_PROVIDERS,
@@ -263,6 +264,8 @@ export function createApp(
   memberStore?: MemberStore,
   /** NOTOS: API keys for keyed model providers, per deployment, workspace or person. */
   modelKeyStore?: ModelKeyStore,
+  /** NOTOS: personal preferences kept on the server (interface language). */
+  preferenceStore?: PreferenceStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
   // NOTOS: whether a keyed provider can run for an actor; undefined accepts any (tests).
@@ -346,9 +349,14 @@ export function createApp(
         .ensurePersonal({ id: context.var.actor.id })
         .catch(() => undefined);
     }
+    // NOTOS: the interface language this person chose; null lets the browser decide.
+    const locale = preferenceStore
+      ? await preferenceStore.locale(context.var.actor.id).catch(() => null)
+      : null;
     return context.json({
       user: {
         ...context.var.actor,
+        locale,
         /*
          * Read here rather than in the guard, so only this route pays the extra query. Null means
          * this deployment does not track onboarding, which the app reads as nothing to finish;
@@ -1306,6 +1314,21 @@ export function createApp(
       () => null,
       (context) => context.var.actor.id,
     );
+  }
+
+  if (preferenceStore) {
+    // NOTOS: the interface language, kept on the server so it follows the person to every device.
+    app.put("/api/me/locale", requireUser, async (context) => {
+      const body = (await context.req.json().catch(() => null)) as {
+        locale?: unknown;
+      } | null;
+      const locale = body?.locale ?? null;
+      if (locale !== null && !isLocale(locale)) {
+        return context.json({ error: "Locale must be nl, en or null." }, 400);
+      }
+      await preferenceStore.setLocale(context.var.actor.id, locale);
+      return context.json({ locale });
+    });
   }
 
   if (workspaceStore) {

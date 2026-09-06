@@ -232,6 +232,13 @@
       "when": 1788634498548,
       "tag": "0032_thread_model",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788685656115,
+      "tag": "0033_user_locale",
+      "breakpoints": true
     }
   ]
 }

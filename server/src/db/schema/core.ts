@@ -71,6 +71,8 @@ export const users = pgTable("users", {
    * The step is where the wizard resumes if they leave halfway; the null completion timestamp is
    * what gates the app into /onboarding. Set once — finishing again keeps the first timestamp.
    */
+  /** NOTOS: the interface language this person chose (`nl` or `en`); null = the browser's. */
+  locale: text("locale"),
   onboardingStep: integer("onboarding_step").notNull().default(0),
   onboardingCompletedAt: timestamp("onboarding_completed_at", {
     withTimezone: true,

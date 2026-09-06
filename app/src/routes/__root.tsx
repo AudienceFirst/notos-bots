@@ -4,6 +4,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "@/components/theme-provider";
+import { I18nProvider } from "@/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { RouterContext } from "../router-context";
 import "@fontsource-variable/inter/wght.css";
@@ -22,9 +23,11 @@ function RootComponent() {
   return (
     <div className="min-h-dvh w-full antialiased">
       <ThemeProvider>
-        <TooltipProvider>
-          <Outlet />
-        </TooltipProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Outlet />
+          </TooltipProvider>
+        </I18nProvider>
       </ThemeProvider>
     </div>
   );

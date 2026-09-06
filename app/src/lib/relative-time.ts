@@ -6,23 +6,27 @@ const RELATIVE_UNITS = [
   { limit: Number.POSITIVE_INFINITY, divisor: 604_800_000, unit: "week" },
 ] as const;
 
-/*
- * Pinned to English rather than the browser's locale: the interface is English, and a Dutch
- * browser turned one chip into "Next over 6 dagen" and the roster into "8 uur geleden" beside
- * "Search..." and "Ask anything". One language per screen; this is the one the chrome speaks.
+/**
+ * NOTOS: relative times follow the interface language, which the I18nProvider sets here. Kept
+ * as a module-level formatter so callers outside React (roster rows, chips) need no hook.
  */
-const relativeFormat = new Intl.RelativeTimeFormat("en", {
-  numeric: "auto",
-});
+const formatters: Record<string, Intl.RelativeTimeFormat> = {};
+let currentLocale = "en";
 
-/** Relative timestamp in the interface's language, e.g. "2 minutes ago". */
+export function setRelativeTimeLocale(locale: "nl" | "en"): void {
+  currentLocale = locale;
+}
+
+function formatter(): Intl.RelativeTimeFormat {
+  const tag = currentLocale === "nl" ? "nl-NL" : "en";
+  formatters[tag] ??= new Intl.RelativeTimeFormat(tag, { numeric: "auto" });
+  return formatters[tag];
+}
+
 export function relativeTime(iso: string): string {
   const elapsed = Date.now() - new Date(iso).getTime();
   const scale =
     RELATIVE_UNITS.find(({ limit }) => Math.abs(elapsed) < limit) ??
     RELATIVE_UNITS[RELATIVE_UNITS.length - 1];
-  return relativeFormat.format(
-    -Math.round(elapsed / scale.divisor),
-    scale.unit,
-  );
+  return formatter().format(-Math.round(elapsed / scale.divisor), scale.unit);
 }

@@ -65,6 +65,7 @@ import {
 } from "./credentials";
 import { createDatabase } from "./db/client";
 import { createListenClient } from "./db/listen";
+import { createPreferenceStore } from "./notos/preferences/store";
 import { agents, intelligenceChannelMappings } from "./db/schema";
 import {
   createActorResolver,
@@ -1286,6 +1287,8 @@ const app = createApp(
   memberStore,
   // NOTOS: API keys for keyed model providers.
   modelKeys,
+  // NOTOS: personal preferences (interface language).
+  createPreferenceStore(database),
 );
 
 /**

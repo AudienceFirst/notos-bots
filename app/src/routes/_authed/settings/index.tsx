@@ -16,6 +16,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { formatHotkey, HOTKEYS } from "@/lib/hotkeys/hotkeys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LOCALE_LABELS, LOCALES, useT } from "@/i18n";
+import { setLocaleMutationOptions } from "@/lib/auth/mutations";
+import { currentUserQueryOptions } from "@/lib/auth/queries";
 
 export const Route = createFileRoute("/_authed/settings/")({
   component: RouteComponent,
@@ -23,6 +27,11 @@ export const Route = createFileRoute("/_authed/settings/")({
 
 function RouteComponent() {
   const { dark, setDark } = useTheme();
+  // NOTOS: the interface language, chosen here and kept on the server (6 September 2026).
+  const t = useT();
+  const queryClient = useQueryClient();
+  const { data: user } = useQuery(currentUserQueryOptions());
+  const setLocale = useMutation(setLocaleMutationOptions(queryClient));
 
   /*
    * The measurements that used to be written out here now live in `PageShell`, which Skills, Admin
@@ -39,6 +48,37 @@ function RouteComponent() {
     >
       <PageSection title="General">
         <PageRows>
+          <Item size="sm">
+            <ItemContent>
+              <ItemTitle>{t("common.language.title")}</ItemTitle>
+              <ItemDescription>
+                {t("common.language.description")}
+              </ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <select
+                aria-label={t("common.language.title")}
+                className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+                disabled={setLocale.isPending}
+                onChange={(event) =>
+                  setLocale.mutate(
+                    event.target.value === "nl" || event.target.value === "en"
+                      ? event.target.value
+                      : null,
+                  )
+                }
+                value={user?.locale ?? ""}
+              >
+                <option value="">{t("common.language.browser")}</option>
+                {LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {LOCALE_LABELS[locale]}
+                  </option>
+                ))}
+              </select>
+            </ItemActions>
+          </Item>
+          <Separator />
           <Item size="sm">
             <ItemContent>
               <ItemTitle>Dark theme</ItemTitle>

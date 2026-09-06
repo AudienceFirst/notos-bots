@@ -26,6 +26,8 @@ export type AuthenticatedUser = {
   onboarding: OnboardingStatus | null;
   /** NOTOS: the workspaces this person may enter (stap 2). */
   workspaces: WorkspaceSummary[];
+  /** NOTOS: the interface language this person chose; null lets the browser decide. */
+  locale?: "nl" | "en" | null;
 };
 
 /** Whether the gate holds: there is an onboarding to do and this person has not finished it. */
