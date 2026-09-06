@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import en from "../src/i18n/en";
 import nl from "../src/i18n/nl";
+import { serverMessage } from "../src/i18n/server-message";
 
 /**
  * The sentences the server sends, and the translations that stand for them.
@@ -25,8 +26,39 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
+/**
+ * The errors a route catches and hands to the browser as `error.message`. A message thrown by any
+ * other class stays where it was thrown: a boot-time refusal to start, or an invariant nobody but a
+ * developer reads. Those are not screen text and are deliberately not translated.
+ */
+const SURFACED_ERRORS = [
+  "ActionRefusedError",
+  "AgentNotFoundError",
+  "AgentNotManageableError",
+  "CampaignRefusedError",
+  "CatalogueEntryUnknownError",
+  "ComponentNotFoundError",
+  "CustomServerRefusedError",
+  "EndpointNotAllowedError",
+  "ManagedAgentUnavailableError",
+  "ModelKeyRefusedError",
+  "NavigationRefusedError",
+  "PluginRefusedError",
+  "ProtectedAgentError",
+  "RoutineNotFoundError",
+  "RoutineRefusedError",
+  "SandboxedNameRefusedError",
+  "SandboxedNotFoundError",
+  "WorkspaceRefusedError",
+  "WorkspaceRequestError",
+] as const;
+
 function sentences(): Set<string> {
   const found = new Set<string>();
+  const thrown = new RegExp(
+    `new\\s+(?:${SURFACED_ERRORS.join("|")})\\(\\s*\\n?\\s*"((?:[^"\\\\]|\\\\.)*)"`,
+    "g",
+  );
   for (const path of sourceFiles(SERVER_SOURCE)) {
     const source = readFileSync(path, "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -36,6 +68,7 @@ function sentences(): Set<string> {
     )) {
       found.add(match[1]);
     }
+    for (const match of source.matchAll(thrown)) found.add(match[1]);
   }
   return found;
 }
@@ -70,6 +103,18 @@ describe("the server's own sentences", () => {
     for (const sentence of sentences()) {
       expect(en[keyed(sentence)]).toBe(sentence);
     }
+  });
+
+  test("a sentence the server sends is looked up, not passed through blindly", () => {
+    const sentence = "That person is not here.";
+    expect(sentences()).toContain(sentence);
+    expect(serverMessage(sentence)).toBe(en[keyed(sentence)]);
+    expect(nl[keyed(sentence)]).not.toBe(sentence);
+  });
+
+  test("a sentence with no translation arrives as the server wrote it", () => {
+    const built = "Klaviyo has not been added to this deployment yet.";
+    expect(serverMessage(built)).toBe(built);
   });
 });
 
