@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /** A tool one server offers, as the Plugins page sees it. */
 export type PluginTool = {
@@ -163,7 +164,7 @@ export function connectionsQueryOptions() {
     queryKey: pluginKeys.connections(),
     queryFn: async (): Promise<PluginConnections> => {
       const response = await client("/api/plugins/connections", {
-        fallback: "Your connected accounts could not be loaded.",
+        fallback: tr("lib.plugins.connectionsLoadFailed"),
       });
       return response.json();
     },
@@ -175,7 +176,7 @@ export function pluginsPageQueryOptions() {
     queryKey: pluginKeys.page(),
     queryFn: async (): Promise<PluginsPage> => {
       const response = await client("/api/plugins", {
-        fallback: "Plugins could not be loaded.",
+        fallback: tr("lib.plugins.loadFailed"),
       });
       return response.json();
     },
@@ -193,7 +194,7 @@ export function agentPluginsQueryOptions(agentId: string) {
     queryFn: async (): Promise<GrantedPlugins> => {
       const response = await client(
         `/api/plugins/for/${encodeURIComponent(agentId)}`,
-        { fallback: "This Bot's plugins could not be read." },
+        { fallback: tr("lib.plugins.botLoadFailed") },
       );
       return response.json();
     },

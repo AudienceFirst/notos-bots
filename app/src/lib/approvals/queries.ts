@@ -5,6 +5,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export type ApprovalDecision = "granted" | "denied";
 
@@ -35,7 +36,7 @@ export function approvalQueryOptions(id: string) {
     queryKey: approvalKeys.one(id),
     queryFn: async (): Promise<Approval> => {
       const response = await client(`/api/approvals/${id}`, {
-        fallback: "The approval could not be loaded.",
+        fallback: tr("lib.approvals.loadFailed"),
       });
       return (await response.json()) as Approval;
     },
@@ -51,7 +52,7 @@ export function decideApprovalMutationOptions(queryClient: QueryClient) {
       const response = await client(`/api/approvals/${input.id}/decide`, {
         method: "POST",
         body: { decision: input.decision },
-        fallback: "The decision could not be recorded.",
+        fallback: tr("lib.approvals.decideFailed"),
       });
       return (await response.json()) as Approval;
     },

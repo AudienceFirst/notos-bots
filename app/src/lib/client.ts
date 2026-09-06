@@ -13,8 +13,10 @@
  * guessed the envelope would be a client that had to be argued with.
  */
 
-import { accessToken } from "@/notos/supabase";
+import { tr } from "@/i18n";
+import { serverMessage } from "@/i18n/server-message";
 import { apiUrl } from "@/notos/base";
+import { accessToken } from "@/notos/supabase";
 import { apiPath, workspaceHeaders } from "@/notos/workspace";
 
 export type ClientOptions = {
@@ -104,7 +106,11 @@ export async function client<T>(
       .json()
       .then((body: { error?: string }) => body.error)
       .catch(() => undefined);
-    throw new Error(message ?? options.fallback ?? "That request failed.");
+    throw new Error(
+      (message === undefined ? undefined : serverMessage(message)) ??
+        options.fallback ??
+        tr("lib.client.requestFailed"),
+    );
   }
 
   if (key === undefined) return response;

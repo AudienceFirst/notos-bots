@@ -35,6 +35,7 @@ import {
 } from "@/lib/campaigns/queries";
 import { channelListQueryOptions } from "@/lib/channels/queries";
 import { keepWorkspace } from "@/notos/workspace";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/campaigns")({
   component: CampaignsPage,
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/campaigns")({
  */
 function CampaignsPage() {
   const { workspace } = Route.useParams();
+  const t = useT();
   const { data: user } = useQuery(currentUserQueryOptions());
   const role = user?.workspaces.find(
     (row) => row.notosClientId === workspace,
@@ -82,25 +84,25 @@ function CampaignsPage() {
             }}
           >
             <IconPlus />
-            New campaign
+            {t("workspace.campaigns.new")}
           </Button>
         ) : undefined
       }
-      description="A campaign is a room in this workspace: its own channels, its own brief, and the channel Bots working inside it. Site, shop, CRM and legal Bots stay outside, at workspace level."
-      title="Campaigns"
+      description={t("workspace.campaigns.description")}
+      title={t("workspace.campaigns.title")}
     >
       {creating ? <NewCampaignForm onDone={() => setCreating(false)} /> : null}
       {campaigns.isPending ? null : campaigns.error ? (
         <p className="text-destructive text-sm" role="alert">
-          The campaigns could not be loaded.
+          {t("workspace.campaigns.loadFailed")}
         </p>
       ) : (
         <PageSection>
           {rows.length === 0 ? (
             <PageEmpty>
               {mayManage
-                ? "No campaigns yet. Start one with New campaign; the brief you write there goes to every Bot working in it."
-                : "No campaigns yet. Somebody from ZUID or the client's lead can start one."}
+                ? t("workspace.campaigns.emptyManage")
+                : t("workspace.campaigns.emptyReadOnly")}
             </PageEmpty>
           ) : (
             <PageRows>
@@ -128,8 +130,8 @@ function CampaignsPage() {
             type="button"
           >
             {showArchived
-              ? "Hide archived campaigns"
-              : "Show archived campaigns"}
+              ? t("workspace.campaigns.hideArchived")
+              : t("workspace.campaigns.showArchived")}
           </button>
         </PageSection>
       )}
@@ -138,6 +140,7 @@ function CampaignsPage() {
 }
 
 function NewCampaignForm({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const create = useMutation(createCampaignMutationOptions(queryClient));
   const [name, setName] = useState("");
@@ -169,27 +172,28 @@ function NewCampaignForm({ onDone }: { onDone: () => void }) {
       }}
     >
       <label className="flex flex-col gap-1 text-sm" htmlFor="campaign-name">
-        <span className="text-muted-foreground text-xs">Name</span>
+        <span className="text-muted-foreground text-xs">
+          {t("workspace.campaigns.nameLabel")}
+        </span>
         <Input
           autoFocus
           id="campaign-name"
           maxLength={80}
           onChange={(event) => setName(event.target.value)}
-          placeholder="Q4 sleep campaign"
+          placeholder={t("workspace.campaigns.namePlaceholder")}
           required
           value={name}
         />
       </label>
       <label className="flex flex-col gap-1 text-sm" htmlFor="campaign-brief">
         <span className="text-muted-foreground text-xs">
-          Brief: goal, audience, period, budget. Every Bot in this campaign
-          reads it before it answers.
+          {t("workspace.campaigns.briefHint")}
         </span>
         <Textarea
           id="campaign-brief"
           maxLength={8000}
           onChange={(event) => setBrief(event.target.value)}
-          placeholder="Sell 400 mattresses in NL between 1 October and 15 December on a €25.000 media budget; audience 30–55, home owners; Meta and Search; blended CPA under €50."
+          placeholder={t("workspace.campaigns.briefPlaceholder")}
           rows={5}
           value={brief}
         />
@@ -201,10 +205,10 @@ function NewCampaignForm({ onDone }: { onDone: () => void }) {
       ) : null}
       <div className="flex justify-end gap-2">
         <Button onClick={onDone} size="sm" type="button" variant="ghost">
-          Cancel
+          {t("workspace.campaigns.cancel")}
         </Button>
         <Button disabled={create.isPending} size="sm" type="submit">
-          Start campaign
+          {t("workspace.campaigns.start")}
         </Button>
       </div>
     </form>
@@ -229,6 +233,7 @@ function CampaignRow({
   /** Ask the page to open this row's edit form. */
   onEdit: () => void;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const update = useMutation(updateCampaignMutationOptions(queryClient));
   const [name, setName] = useState(campaign.name);
@@ -264,7 +269,9 @@ function CampaignRow({
           className="flex flex-col gap-1 text-sm"
           htmlFor={`campaign-${campaign.id}-name`}
         >
-          <span className="text-muted-foreground text-xs">Name</span>
+          <span className="text-muted-foreground text-xs">
+            {t("workspace.campaigns.nameLabel")}
+          </span>
           <Input
             autoFocus
             id={`campaign-${campaign.id}-name`}
@@ -278,7 +285,9 @@ function CampaignRow({
           className="flex flex-col gap-1 text-sm"
           htmlFor={`campaign-${campaign.id}-brief`}
         >
-          <span className="text-muted-foreground text-xs">Brief</span>
+          <span className="text-muted-foreground text-xs">
+            {t("workspace.campaigns.briefLabel")}
+          </span>
           <Textarea
             id={`campaign-${campaign.id}-brief`}
             maxLength={8000}
@@ -294,10 +303,10 @@ function CampaignRow({
         ) : null}
         <div className="flex justify-end gap-2">
           <Button onClick={cancel} size="sm" type="button" variant="ghost">
-            Cancel
+            {t("workspace.campaigns.cancel")}
           </Button>
           <Button disabled={update.isPending} size="sm" type="submit">
-            Save
+            {t("workspace.campaigns.save")}
           </Button>
         </div>
       </form>
@@ -310,15 +319,18 @@ function CampaignRow({
         <ItemTitle>
           {campaign.name}
           {archived ? (
-            <span className="ml-2 text-muted-foreground text-xs">archived</span>
+            <span className="ml-2 text-muted-foreground text-xs">
+              {t("workspace.campaigns.archivedBadge")}
+            </span>
           ) : null}
         </ItemTitle>
         <ItemDescription className="line-clamp-2 whitespace-pre-line">
-          {campaign.brief ||
-            "No brief yet. The Bots will ask before they assume."}
+          {campaign.brief || t("workspace.campaigns.noBrief")}
         </ItemDescription>
         <p className="text-muted-foreground text-xs">
-          {channels === 1 ? "1 channel" : `${channels} channels`}
+          {channels === 1
+            ? t("workspace.campaigns.channelsOne")
+            : t("workspace.campaigns.channelsOther", { count: channels })}
         </p>
       </ItemContent>
       <ItemActions>
@@ -335,7 +347,7 @@ function CampaignRow({
             size="sm"
             variant="outline"
           >
-            Start a channel
+            {t("workspace.campaigns.startChannel")}
           </Button>
         ) : null}
         {mayManage ? (
@@ -350,7 +362,7 @@ function CampaignRow({
                 size="sm"
                 variant="ghost"
               >
-                Edit
+                {t("workspace.campaigns.edit")}
               </Button>
             ) : null}
             <Button
@@ -364,7 +376,9 @@ function CampaignRow({
               size="sm"
               variant="ghost"
             >
-              {archived ? "Restore" : "Archive"}
+              {archived
+                ? t("workspace.campaigns.restore")
+                : t("workspace.campaigns.archive")}
             </Button>
           </>
         ) : null}

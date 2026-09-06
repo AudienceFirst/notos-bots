@@ -24,6 +24,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { useT } from "@/i18n";
 import type { AgentProfile } from "@/lib/agents/queries";
 import { newId } from "../../lib/new-id";
 
@@ -38,6 +39,7 @@ type BotIntro = Pick<AgentProfile, "name" | "title" | "avatarSeed">;
  * first message lands, because the transcript then says all of this on its own.
  */
 function ConversationIntro({ bot }: { bot: BotIntro }) {
+  const t = useT();
   return (
     <Empty className="flex-1">
       <EmptyHeader>
@@ -47,7 +49,7 @@ function ConversationIntro({ bot }: { bot: BotIntro }) {
         <EmptyTitle className="text-base">{bot.name}</EmptyTitle>
         <EmptyDescription>{bot.title}</EmptyDescription>
         <EmptyDescription>
-          Ask a question or say what you need; the answer lands here.
+          {t("channels.conversation-view.intro")}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

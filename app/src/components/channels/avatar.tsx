@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import Avatar from "boring-avatars";
 import { memo } from "react";
 import { type AgentProfile, agentListQueryOptions } from "@/lib/agents/queries";
+import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /** Stable selector, so the map only rebuilds when the roster changes (the bot-names idiom). */
@@ -89,9 +90,10 @@ export const ChannelAvatar = memo(function ChannelAvatar({
  * a different point in the same bounce, which is what makes the three read as one wave.
  */
 function TypingBadge() {
+  const t = useT();
   return (
     <div className="absolute -bottom-0.5 -right-0.5 flex items-center gap-0.5 rounded-full bg-sidebar p-0.5 ring-2 ring-sidebar">
-      <span className="sr-only">Working…</span>
+      <span className="sr-only">{t("channels.avatar.working")}</span>
       <Dot className="[animation-delay:-0.3s]" />
       <Dot className="[animation-delay:-0.15s]" />
       <Dot />

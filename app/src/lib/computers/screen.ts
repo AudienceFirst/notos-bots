@@ -1,4 +1,5 @@
 import { tryClient } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * One frame of a Bot's screen.
@@ -26,7 +27,7 @@ export type Screenshot = {
 export async function readScreenshot(
   computerId: string,
 ): Promise<{ frame?: Screenshot; error?: string }> {
-  const unavailable = "The screen is not available right now.";
+  const unavailable = tr("lib.computers.screenUnavailable");
   try {
     const response = await tryClient(`/api/computers/${computerId}/screenshot`);
     if (!response.ok) {

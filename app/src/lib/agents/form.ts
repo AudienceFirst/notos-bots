@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tr } from "@/i18n";
 
 /**
  * Browser-side coworker form contract. Limits match the server parser so validation errors can be
@@ -8,18 +9,18 @@ export const agentFormSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Name is required.")
-    .max(80, "Name must be 80 characters or fewer."),
+    .min(1, { error: () => tr("lib.agents.nameRequired") })
+    .max(80, { error: () => tr("lib.agents.nameTooLong") }),
   title: z
     .string()
     .trim()
-    .min(1, "Title is required.")
-    .max(120, "Title must be 120 characters or fewer."),
+    .min(1, { error: () => tr("lib.agents.titleRequired") })
+    .max(120, { error: () => tr("lib.agents.titleTooLong") }),
   roleDescription: z
     .string()
     .trim()
-    .min(1, "Role description is required.")
-    .max(1000, "Role description must be 1000 characters or fewer."),
+    .min(1, { error: () => tr("lib.agents.roleRequired") })
+    .max(1000, { error: () => tr("lib.agents.roleTooLong") }),
   visibility: z.enum(["public", "private"]),
   /**
    * The AG-UI endpoint this coworker runs on. Empty means the Bot in the box.
@@ -29,10 +30,9 @@ export const agentFormSchema = z.object({
   endpoint: z
     .string()
     .trim()
-    .refine(
-      (value) => value === "" || /^https?:\/\/\S+$/.test(value),
-      "Enter a web address starting with http:// or https://.",
-    ),
+    .refine((value) => value === "" || /^https?:\/\/\S+$/.test(value), {
+      error: () => tr("lib.agents.endpointInvalid"),
+    }),
   /**
    * A key the agent sits behind. WRITE-ONLY: it is never sent back from the server, so this field is
    * always empty when editing, and leaving it empty keeps whatever key is already set.

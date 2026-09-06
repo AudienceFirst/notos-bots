@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * One standing instruction, as the Routines page sees it.
@@ -47,7 +48,7 @@ export function routinesQueryOptions() {
     queryKey: routineKeys.list(),
     queryFn: (): Promise<RoutineRecord[]> =>
       client("/api/routines", "routines", {
-        fallback: "Your routines could not be loaded.",
+        fallback: tr("lib.routines.loadFailed"),
       }),
   });
 }

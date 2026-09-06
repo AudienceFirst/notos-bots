@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
+import { useT } from "@/i18n";
 
 /**
  * ZUID ziet elke workspace, in dezelfde volgorde als de NOTOS-switcher; een klantgast met één
@@ -12,6 +13,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
   const { data: user } = useQuery(currentUserQueryOptions());
   const params = useParams({ strict: false }) as { workspace?: string };
   const navigate = useNavigate();
+  const t = useT();
   // NOTOS: the personal space first (5 September 2026); the rest in NOTOS order.
   const workspaces = [...(user?.workspaces ?? [])].sort(
     (a, b) => Number(b.kind === "personal") - Number(a.kind === "personal"),
@@ -28,7 +30,7 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
 
   return (
     <select
-      aria-label="Workspace"
+      aria-label={t("workspace.workspaceSwitcher.label")}
       className={`bg-transparent outline-none cursor-pointer max-w-full truncate ${className ?? ""}`}
       value={current?.notosClientId ?? ""}
       onChange={(event) => {
@@ -41,9 +43,9 @@ export function WorkspaceSwitcher({ className }: { className?: string }) {
         <option key={workspace.id} value={workspace.notosClientId}>
           {workspace.displayName}
           {workspace.kind === "demo"
-            ? " (demo)"
+            ? ` ${t("workspace.workspaceSwitcher.demo")}`
             : workspace.kind === "personal"
-              ? " (private)"
+              ? ` ${t("workspace.workspaceSwitcher.private")}`
               : ""}
         </option>
       ))}

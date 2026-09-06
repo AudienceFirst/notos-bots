@@ -23,7 +23,9 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { formatDateTime, useT } from "@/i18n";
 import { connectAccountMutationOptions } from "@/lib/plugins/mutations";
+import { useConnectorSummary } from "@/lib/plugins/catalogue-text";
 import {
   connectionsQueryOptions,
   pluginsPageQueryOptions,
@@ -42,6 +44,8 @@ export const Route = createFileRoute(
 )({ component: RouteComponent });
 
 function RouteComponent() {
+  const t = useT();
+  const summaryOf = useConnectorSummary();
   const { key } = useParams({
     from: "/_authed/settings/connected-accounts/$key",
   });
@@ -68,11 +72,15 @@ function RouteComponent() {
   );
 
   if (plugins.isPending) {
-    return <PageShell title="Account">{null}</PageShell>;
+    return (
+      <PageShell title={t("settings.connectedAccount.account")}>
+        {null}
+      </PageShell>
+    );
   }
 
   const back = {
-    label: "Connected accounts",
+    label: t("settings.connectedAccount.backLabel"),
     linkProps: { to: "/settings/connected-accounts" as const },
   };
 
@@ -85,13 +93,13 @@ function RouteComponent() {
     return (
       <PageShell
         backButton={back}
-        description="This is not a service you connect for yourself."
+        description={t("settings.connectedAccount.notYoursDescription")}
         title={entry?.title ?? key}
       >
         <PageEmpty>
           {entry
-            ? "A Bot reaches this one with a credential the deployment holds, the same for everybody."
-            : "This deployment has no connector by that name."}
+            ? t("settings.connectedAccount.sharedCredential")
+            : t("settings.connectedAccount.unknown")}
         </PageEmpty>
       </PageShell>
     );
@@ -100,7 +108,7 @@ function RouteComponent() {
   return (
     <PageShell
       backButton={back}
-      description={entry.summary}
+      description={summaryOf(entry.key, entry.summary)}
       title={entry.title}
     >
       {notice ? (
@@ -116,13 +124,15 @@ function RouteComponent() {
             <ItemContent>
               {/* Not "Connect your account": the row is also the connected state, and a title has to
                   read for both. */}
-              <ItemTitle>Your account</ItemTitle>
+              <ItemTitle>
+                {t("settings.connectedAccount.yourAccount")}
+              </ItemTitle>
               <ItemDescription>
                 {!enabled
-                  ? "An administrator has not enabled this connector, so there is nothing to connect to yet."
+                  ? t("settings.connectedAccount.notEnabled")
                   : connection
-                    ? "A Bot granted its tools reads this as you, and sees only what you can see."
-                    : "No Bot can read this as you. Connecting takes you to the vendor to consent."}
+                    ? t("settings.connectedAccount.readsAsYou")
+                    : t("settings.connectedAccount.nobodyReads")}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
@@ -141,7 +151,7 @@ function RouteComponent() {
                           aria-hidden="true"
                           className="size-1.5 rounded-full bg-emerald-500"
                         />
-                        Connected
+                        {t("settings.connectedAccount.connected")}
                         <IconChevronDown />
                       </Button>
                     }
@@ -164,13 +174,17 @@ function RouteComponent() {
                          * had not, which is the one outcome worse than not offering it.
                          */
                         setNotice(
-                          `Disconnecting is not built yet. Until it is, revoke it in your ${entry.vendor} account's third-party access settings — that stops this deployment reading anything immediately.`,
+                          t("settings.connectedAccount.disconnectNotice", {
+                            vendor: entry.vendor,
+                          }),
                         )
                       }
                       className="whitespace-nowrap"
                       variant="destructive"
                     >
-                      Disconnect your {entry.title} account
+                      {t("settings.connectedAccount.disconnect", {
+                        title: entry.title,
+                      })}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -189,7 +203,7 @@ function RouteComponent() {
                   type="button"
                   variant="outline"
                 >
-                  Connect
+                  {t("settings.connectedAccount.connect")}
                   <IconArrowUpRight />
                 </Button>
               )}
@@ -200,26 +214,28 @@ function RouteComponent() {
 
       {connection ? (
         <PageSection
-          description="What you agreed to, as the vendor recorded it — not what was asked for. The two differ when a consent screen is only partly accepted."
-          title="Access"
+          description={t("settings.connectedAccount.accessDescription")}
+          title={t("settings.connectedAccount.accessTitle")}
         >
           <PageRows>
             <Item size="sm">
               <ItemContent>
-                <ItemTitle>Granted</ItemTitle>
+                <ItemTitle>{t("settings.connectedAccount.granted")}</ItemTitle>
                 <ItemDescription className="line-clamp-none">
-                  {connection.scope || "The vendor named no scope."}
+                  {connection.scope || t("settings.connectedAccount.noScope")}
                 </ItemDescription>
               </ItemContent>
             </Item>
             <Separator />
             <Item size="sm">
               <ItemContent>
-                <ItemTitle>Connected</ItemTitle>
+                <ItemTitle>
+                  {t("settings.connectedAccount.connected")}
+                </ItemTitle>
               </ItemContent>
               <ItemActions>
                 <span className="text-muted-foreground text-xs">
-                  {new Date(connection.connectedAt).toLocaleString()}
+                  {formatDateTime(connection.connectedAt)}
                 </span>
               </ItemActions>
             </Item>

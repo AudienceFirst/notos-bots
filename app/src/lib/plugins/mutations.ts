@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { pluginKeys } from "./queries";
 
 /**
@@ -51,7 +52,7 @@ export type CustomServerInput = {
 /** Which kinds of plugin a grant can be about. */
 export type PluginKind = "mcp" | "skill";
 
-const FALLBACK = "That did not work.";
+const failed = () => tr("lib.plugins.failed");
 
 /**
  * Refetch everything the plugin screens read.
@@ -83,7 +84,7 @@ export function grantPlugin(variables: {
       ref: variables.ref,
       agentId: variables.agentId,
     },
-    fallback: "That Bot could not be changed.",
+    fallback: tr("lib.plugins.botChangeFailed"),
   });
 }
 
@@ -107,7 +108,7 @@ export function setPluginGrantMutationOptions(queryClient: QueryClient) {
       }
       await client(
         `/api/plugins/grants?kind=${variables.kind}&ref=${encodeURIComponent(variables.ref)}&agentId=${encodeURIComponent(variables.agentId)}`,
-        { method: "DELETE", fallback: "That Bot could not be changed." },
+        { method: "DELETE", fallback: tr("lib.plugins.botChangeFailed") },
       );
     },
     onSuccess: () => invalidatePlugins(queryClient),
@@ -120,7 +121,7 @@ export function addCuratedServerMutationOptions(queryClient: QueryClient) {
       await client("/api/plugins/servers", {
         method: "POST",
         body: input,
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidatePlugins(queryClient),
@@ -133,7 +134,7 @@ export function addCustomServerMutationOptions(queryClient: QueryClient) {
       await client("/api/plugins/servers/custom", {
         method: "POST",
         body: input,
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidatePlugins(queryClient),
@@ -147,7 +148,7 @@ export function refreshPluginServerMutationOptions(queryClient: QueryClient) {
       await client(`/api/plugins/servers/${serverId}/refresh`, {
         method: "POST",
         body: {},
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidatePlugins(queryClient),
@@ -159,7 +160,7 @@ export function removePluginServerMutationOptions(queryClient: QueryClient) {
     mutationFn: async (serverId: string) => {
       await client(`/api/plugins/servers/${encodeURIComponent(serverId)}`, {
         method: "DELETE",
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidatePlugins(queryClient),
@@ -182,7 +183,7 @@ export function saveSkillMutationOptions(queryClient: QueryClient) {
          * The server refuses for reasons a form cannot check — a slug somebody else already owns is
          * the common one — and paraphrasing that would throw away the only part worth reading.
          */
-        fallback: "The skill could not be saved.",
+        fallback: tr("lib.plugins.skillSaveFailed"),
       }),
     onSuccess: () => invalidatePlugins(queryClient),
   });
@@ -214,7 +215,7 @@ export function registerOAuthClientMutationOptions(queryClient: QueryClient) {
         {
           method: "POST",
           body: { clientId: input.clientId, clientSecret: input.clientSecret },
-          fallback: "That OAuth client could not be registered.",
+          fallback: tr("lib.plugins.oauthRegisterFailed"),
         },
       );
     },
@@ -247,7 +248,7 @@ export function connectAccountMutationOptions(
       client<string>(
         `/api/plugins/servers/${encodeURIComponent(serverId)}/connect?returnTo=${returnTo}`,
         "authorizationUrl",
-        { method: "POST", fallback: "That account could not be connected." },
+        { method: "POST", fallback: tr("lib.plugins.connectFailed") },
       ),
   });
 }
@@ -257,7 +258,7 @@ export function removeSkillMutationOptions(queryClient: QueryClient) {
     mutationFn: async (slug: string) => {
       await client(`/api/plugins/skills/${encodeURIComponent(slug)}`, {
         method: "DELETE",
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidatePlugins(queryClient),

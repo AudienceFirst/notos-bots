@@ -40,6 +40,7 @@ import { Separator } from "@/components/ui/separator";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
 import { removeSkillMutationOptions } from "@/lib/plugins/mutations";
 import { pluginsPageQueryOptions } from "@/lib/plugins/queries";
+import { useT } from "@/i18n";
 
 /**
  * Personal `/` skills. They are instructions, not capabilities, and can only be granted to Bots the
@@ -63,6 +64,7 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/skills")({
 });
 
 function SkillsPage() {
+  const t = useT();
   const queryClient = useQueryClient();
   const { new: isCreating, edit: editingSlug } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -119,11 +121,12 @@ function SkillsPage() {
       <PageShell
         description={
           <>
-            A skill is a named instruction you invoke with <code>/</code> and a
-            Bot follows. Yours are yours alone, and go on the Bots you own.
+            {t("workspace.skills.descriptionBefore")}
+            <code>/</code>
+            {t("workspace.skills.descriptionAfter")}
           </>
         }
-        title="Skills"
+        title={t("workspace.skills.title")}
       >
         {error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -146,10 +149,10 @@ function SkillsPage() {
               variant="ghost"
             >
               <IconPlus />
-              New skill
+              {t("workspace.skills.new")}
             </Button>
           }
-          title="Your skills"
+          title={t("workspace.skills.yourSkills")}
         >
           {/*
            * Nothing while the two queries are still in flight. The alternative is the empty state
@@ -159,8 +162,7 @@ function SkillsPage() {
           {loading ? null : mine.length === 0 ? (
             /* NOTOS: one quiet line instead of a 180px dashed box above the skills that do exist. */
             <p className="mt-4 text-muted-foreground text-sm">
-              No skills of your own yet. Write one with New skill; it goes on
-              the Bots you own.
+              {t("workspace.skills.emptyMine")}
             </p>
           ) : (
             <PageRows>
@@ -200,7 +202,7 @@ function SkillsPage() {
                                 navigate({ search: { edit: skill.slug } })
                               }
                             >
-                              Edit
+                              {t("workspace.skills.edit")}
                             </DropdownMenuItem>
                             {/*
                              * There is no undo, so the item asks first: the same dialog Routines
@@ -218,7 +220,9 @@ function SkillsPage() {
                               }}
                               variant="destructive"
                             >
-                              Delete /{skill.slug}
+                              {t("workspace.skills.deleteSlug", {
+                                slug: skill.slug,
+                              })}
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
@@ -244,8 +248,8 @@ function SkillsPage() {
          */}
         {deployment.length > 0 ? (
           <PageSection
-            description="Written for everyone by an administrator. Which Bots carry them is decided in Admin."
-            title="Workspace skills"
+            description={t("workspace.skills.workspaceDescription")}
+            title={t("workspace.skills.workspaceSkills")}
           >
             <PageRows>
               {deployment.map((skill, index) => (
@@ -289,10 +293,13 @@ function SkillsPage() {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete "/{confirmingSlug}"?</DialogTitle>
+              <DialogTitle>
+                {t("workspace.skills.confirmTitle", {
+                  slug: confirmingSlug ?? "",
+                })}
+              </DialogTitle>
               <DialogDescription>
-                The skill is gone for good, on every Bot you put it on, and
-                there is no undo.
+                {t("workspace.skills.confirmDescription")}
               </DialogDescription>
             </DialogHeader>
             {removeSkill.error ? (
@@ -306,7 +313,7 @@ function SkillsPage() {
                 size="sm"
                 variant="ghost"
               >
-                Cancel
+                {t("workspace.skills.cancel")}
               </Button>
               <Button
                 disabled={removeSkill.isPending}
@@ -319,7 +326,9 @@ function SkillsPage() {
                 size="sm"
                 variant="destructive"
               >
-                {removeSkill.isPending ? "Deleting…" : "Delete"}
+                {removeSkill.isPending
+                  ? t("workspace.skills.deleting")
+                  : t("workspace.skills.delete")}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -9,6 +9,7 @@ import {
   takeFirstMessage,
   transcriptMessages,
 } from "@/components/channels/transcript-messages";
+import { useT } from "@/i18n";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import {
   recordChannelActivityMutationOptions,
@@ -59,6 +60,7 @@ export function ChannelChat({
   // The core attaches the frontend tool registry; direct agent runs do not.
   // NOTOS (stap 10): our own AG-UI core, same verbs as before: connect, run, stop.
   const copilotkit = useBotsCore();
+  const t = useT();
   // Mentions are scoped to the channel's permitted agents.
   const { data: agentProfiles } = useQuery(agentListQueryOptions());
   const { agent, isReady } = useAgent({
@@ -501,15 +503,16 @@ export function ChannelChat({
             {unreadable > 0 ? (
               <p className="pb-2 text-sm text-muted-foreground" role="status">
                 {unreadable === 1
-                  ? "One earlier message could not be read and is not shown."
-                  : `${unreadable} earlier messages could not be read and are not shown.`}{" "}
-                The rest of this conversation is complete.
+                  ? t("channels.channel-chat.unreadableOne")
+                  : t("channels.channel-chat.unreadableOther", {
+                      count: unreadable,
+                    })}{" "}
+                {t("channels.channel-chat.restComplete")}
               </p>
             ) : null}
             {channel.active ? null : (
               <p className="pb-2 text-sm text-muted-foreground" role="status">
-                This Bot has been deleted. The conversation stays readable, but
-                it can no longer reply.
+                {t("channels.channel-chat.botDeleted")}
               </p>
             )}
           </>

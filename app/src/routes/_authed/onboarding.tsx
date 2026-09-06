@@ -9,6 +9,7 @@ import { Composer } from "@/components/channels/composer";
 import { DesktopIllustration } from "@/components/computer/desktop-illustration";
 import { ComputerPlaceholder } from "@/components/computer/placeholder";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { type AgentProfile, agentListQueryOptions } from "@/lib/agents/queries";
 import { currentUserQueryOptions, needsOnboarding } from "@/lib/auth/queries";
 import { appConfig } from "@/lib/generated/application-config";
@@ -29,10 +30,13 @@ export const Route = createFileRoute("/_authed/onboarding")({
 });
 
 function WelcomeStep() {
+  const t = useT();
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <h1 className="text-3xl font-semibold tracking-tight max-w-md text-center">
-        Welcome to {appConfig.brand.productName}
+        {t("settings.onboarding.welcomeTitle", {
+          product: appConfig.brand.productName,
+        })}
       </h1>
       <div className="h-32" />
       <AgentOrb size="72px" />
@@ -41,7 +45,7 @@ function WelcomeStep() {
           compact
           className="scale-90"
           editorClassName="text-base"
-          initialValue="Hand off tasks to your team of Bots"
+          initialValue={t("settings.onboarding.composerExample")}
         />
       </div>
     </div>
@@ -49,10 +53,11 @@ function WelcomeStep() {
 }
 
 function ComputerUseStep() {
+  const t = useT();
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <h1 className="text-3xl font-semibold tracking-tight max-w-md text-center">
-        Each agent has its own computer
+        {t("settings.onboarding.computerTitle")}
       </h1>
       <div className="h-8" />
       <div className="relative aspect-5/3 w-full max-w-lg rounded-2xl overflow-hidden border border-border">
@@ -69,22 +74,30 @@ type RosterCard = Pick<AgentProfile, "id" | "name" | "avatarSeed">;
 /**
  * Stand-ins for a deployment that has fewer than three public agents to show. Invented names on
  * purpose: they illustrate what a roster looks like without claiming any of these exist here.
+ * The name is a dictionary key, translated at render time.
  */
-const AGENTS_PLACEHOLDER: RosterCard[] = [
+const AGENTS_PLACEHOLDER: Array<
+  Pick<RosterCard, "id" | "avatarSeed"> & { nameKey: string }
+> = [
   {
     id: "placeholder-research",
-    name: "Research Analyst",
+    nameKey: "settings.onboarding.placeholderResearch",
     avatarSeed: "research-analyst",
   },
-  { id: "placeholder-data", name: "Data Analyst", avatarSeed: "data-analyst" },
+  {
+    id: "placeholder-data",
+    nameKey: "settings.onboarding.placeholderData",
+    avatarSeed: "data-analyst",
+  },
   {
     id: "placeholder-support",
-    name: "Support Bot",
+    nameKey: "settings.onboarding.placeholderSupport",
     avatarSeed: "support-agent",
   },
 ];
 
 function RosterStep() {
+  const t = useT();
   const { data: agents } = useQuery(agentListQueryOptions());
   const explore =
     agents?.filter((a) => !a.mine && a.visibility === "public") ?? [];
@@ -92,16 +105,19 @@ function RosterStep() {
   // slice past the end is just [], so a roster of three or more takes no placeholders at all.
   const roster: Array<RosterCard & { example?: boolean }> = [
     ...explore.slice(0, 3),
-    ...AGENTS_PLACEHOLDER.slice(explore.length).map((placeholder) => ({
-      ...placeholder,
-      example: true,
-    })),
+    ...AGENTS_PLACEHOLDER.slice(explore.length).map(
+      ({ nameKey, ...placeholder }) => ({
+        ...placeholder,
+        name: t(nameKey),
+        example: true,
+      }),
+    ),
   ];
 
   return (
     <div className="w-full flex flex-col items-center justify-center">
       <h1 className="text-3xl font-semibold tracking-tight max-w-md text-center">
-        Choose from a variety of agents or create your own
+        {t("settings.onboarding.rosterTitle")}
       </h1>
       <div className="h-8" />
       <div className="w-full max-w-lg overflow-hidden grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -118,7 +134,9 @@ function RosterStep() {
                   {a.name}
                 </h3>
                 {a.example ? (
-                  <span className="text-xs text-muted-foreground">Example</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("settings.onboarding.example")}
+                  </span>
                 ) : null}
               </div>
             </div>
@@ -127,7 +145,7 @@ function RosterStep() {
         <div className="bg-card p-4 rounded-lg flex flex-row gap-4 items-center">
           <div className="rounded-full size-[40px] border border-foreground/30 border-dashed" />
           <h3 className="line-clamp-1 text-base font-medium tracking-tight text-foreground/70">
-            Your own agent
+            {t("settings.onboarding.yourOwn")}
           </h3>
         </div>
       </div>
@@ -149,6 +167,7 @@ const variants = {
 };
 
 function RouteComponent() {
+  const t = useT();
   const navigate = useNavigate();
   const complete = useMutation(completeOnboardingMutationOptions(queryClient));
 
@@ -232,10 +251,10 @@ function RouteComponent() {
                   size="lg"
                 >
                   {complete.isPending
-                    ? "Saving…"
+                    ? t("settings.onboarding.saving")
                     : last
-                      ? "Get started"
-                      : "Continue"}
+                      ? t("settings.onboarding.getStarted")
+                      : t("settings.onboarding.continue")}
                 </Button>
                 {step !== 0 && (
                   <Button
@@ -244,7 +263,7 @@ function RouteComponent() {
                     variant="secondary"
                     size="lg"
                   >
-                    Back
+                    {t("settings.onboarding.back")}
                   </Button>
                 )}
               </motion.div>

@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { componentKeys } from "./queries";
 
 /**
@@ -11,7 +12,7 @@ import { componentKeys } from "./queries";
  */
 
 /** The sentence for every write here, for the rare case the server sends none of its own. */
-const FALLBACK = "Component operation failed";
+const failed = () => tr("lib.components.operationFailed");
 
 /** Server-derived fields are invalidated instead of patched by hand. */
 function invalidateComponents(queryClient: QueryClient) {
@@ -40,11 +41,11 @@ export function setComponentGrantMutationOptions(queryClient: QueryClient) {
         ? client(`${componentPath(variables.name)}/grants`, {
             method: "POST",
             body: { agentId: variables.agentId },
-            fallback: FALLBACK,
+            fallback: failed(),
           })
         : client(
             `${componentPath(variables.name)}/grants/${encodeURIComponent(variables.agentId)}`,
-            { method: "DELETE", fallback: FALLBACK },
+            { method: "DELETE", fallback: failed() },
           ));
     },
     onSuccess: () => invalidateComponents(queryClient),
@@ -63,11 +64,11 @@ export function setComponentFunctionMutationOptions(queryClient: QueryClient) {
         ? client(`${componentPath(variables.name)}/functions`, {
             method: "POST",
             body: { function: variables.functionName },
-            fallback: FALLBACK,
+            fallback: failed(),
           })
         : client(
             `${componentPath(variables.name)}/functions/${encodeURIComponent(variables.functionName)}`,
-            { method: "DELETE", fallback: FALLBACK },
+            { method: "DELETE", fallback: failed() },
           ));
     },
     onSuccess: () => invalidateComponents(queryClient),
@@ -81,7 +82,7 @@ export function setComponentPublishedMutationOptions(queryClient: QueryClient) {
       await client(`${componentPath(variables.name)}/publication`, {
         method: "POST",
         body: { published: variables.published },
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateComponents(queryClient),
@@ -98,7 +99,7 @@ export function saveComponentDraftMutationOptions(queryClient: QueryClient) {
       await client(`${componentPath(variables.name)}/draft`, {
         method: "PUT",
         body: { description: variables.description },
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateComponents(queryClient),

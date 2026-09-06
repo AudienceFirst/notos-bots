@@ -9,7 +9,9 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { useT } from "@/i18n";
 import { componentListQueryOptions } from "@/lib/components/queries";
+import { componentTitle } from "@/lib/copilot/gallery-registry";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,12 +24,13 @@ export const Route = createFileRoute("/_authed/admin/components/")({
 });
 
 function RouteComponent() {
+  const t = useT();
   const components = useQuery(componentListQueryOptions());
 
   return (
     <PageShell
-      description="What each Bot may answer with. Every published component is available to every Bot; switch one off here and that Bot is never told about it. Each change and each refusal is a row in Audit."
-      title="UI Components"
+      description={t("admin-b.components.description")}
+      title={t("admin-b.components.title")}
     >
       {/*
        * Pending, error, empty, rows — in that order. Pending draws nothing rather than a
@@ -36,14 +39,14 @@ function RouteComponent() {
        */}
       {components.isPending ? null : components.error ? (
         <p className="mt-12 text-destructive text-sm" role="alert">
-          Could not load components.
+          {t("admin-b.components.loadFailed")}
         </p>
       ) : components.data?.length === 0 ? (
         <Empty className="mt-12 min-h-[30dvh] border border-dashed">
           <EmptyHeader>
-            <EmptyTitle>No components yet</EmptyTitle>
+            <EmptyTitle>{t("admin-b.components.emptyTitle")}</EmptyTitle>
             <EmptyDescription className="text-pretty">
-              Components that your Agents can use will be shown here.
+              {t("admin-b.components.emptyDescription")}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -71,7 +74,7 @@ function RouteComponent() {
                     })}
                   />
                   <h4 className="line-clamp-1 font-medium text-sm">
-                    {component.title}
+                    {componentTitle(component.name, component.title)}
                   </h4>
                 </div>
                 <p className="mt-2 line-clamp-2 text-muted-foreground text-xs">

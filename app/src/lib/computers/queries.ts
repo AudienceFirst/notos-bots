@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /** One Bot's computer, as Admin sees it. */
 export type ComputerProfile = {
@@ -55,7 +56,7 @@ export function computerFleetQueryOptions() {
     queryKey: computerKeys.fleet(),
     queryFn: async (): Promise<ComputerFleet> => {
       const response = await client(FLEET_PATH, {
-        fallback: "The computers could not be listed.",
+        fallback: tr("lib.computers.listFailed"),
       });
       return response.json();
     },
@@ -67,7 +68,7 @@ export function actionPolicyQueryOptions() {
     queryKey: computerKeys.policy(),
     queryFn: (): Promise<ActionPolicy> =>
       client("/api/computers/policy", "policy", {
-        fallback: "The boundary could not be read.",
+        fallback: tr("lib.computers.policyReadFailed"),
       }),
   });
 }
@@ -109,6 +110,6 @@ export async function dryRunActionPolicy(
   return client("/api/computers/policy-dry-run", "report", {
     method: "POST",
     body: { policy: candidate },
-    fallback: "The rule could not be tested against history.",
+    fallback: tr("lib.computers.dryRunFailed"),
   });
 }

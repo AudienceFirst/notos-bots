@@ -26,6 +26,7 @@ import {
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n";
 import {
   type AgentFormValues,
   agentFormSchema,
@@ -73,21 +74,21 @@ export function CreateAgentDialog({
 const STEPS = ["identity", "visibility", "kind"] as const;
 type StepName = (typeof STEPS)[number];
 
-/** The two ways a Bot can be seen. */
+/** The two ways a Bot can be seen. Dictionary keys, translated where the choice is drawn. */
 const VISIBILITY_OPTIONS: Array<{
   value: AgentFormValues["visibility"];
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }> = [
   {
     value: "private",
-    title: "Private",
-    description: "Only you can see it and start channels with it.",
+    titleKey: "components.create-agent-dialog.privateTitle",
+    descriptionKey: "components.create-agent-dialog.privateDescription",
   },
   {
     value: "public",
-    title: "Public",
-    description: "Everyone in the deployment can find and use it.",
+    titleKey: "components.create-agent-dialog.publicTitle",
+    descriptionKey: "components.create-agent-dialog.publicDescription",
   },
 ];
 
@@ -99,20 +100,18 @@ type AgentKind = "builtin" | "managed";
 
 const KIND_OPTIONS: Array<{
   value: AgentKind;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
 }> = [
   {
     value: "builtin",
-    title: "Built-in",
-    description:
-      "Runs on this deployment's own Bot. Nothing to host or connect — it is ready the moment it is created.",
+    titleKey: "components.create-agent-dialog.builtInTitle",
+    descriptionKey: "components.create-agent-dialog.builtInDescription",
   },
   {
     value: "managed",
-    title: "Managed",
-    description:
-      "Runs on an agent you host, spoken to over AG-UI. This server dials your endpoint on every run.",
+    titleKey: "components.create-agent-dialog.managedTitle",
+    descriptionKey: "components.create-agent-dialog.managedDescription",
   },
 ];
 
@@ -153,6 +152,7 @@ function CreateAgentWizard({
   onClose: () => void;
   onCreated: (agentId: string) => void;
 }) {
+  const t = useT();
   const createAgent = useMutation(createAgentMutationOptions(queryClient));
   /*
    * Whether "built-in" is a Bot this deployment can actually make. Assumed true while the
@@ -197,7 +197,7 @@ function CreateAgentWizard({
   const endpointError = !tried
     ? undefined
     : kind === "managed" && values.endpoint.trim() === ""
-      ? "An endpoint is required for a managed Bot."
+      ? t("components.create-agent-dialog.endpointRequired")
       : agentFormSchema.shape.endpoint.safeParse(values.endpoint).error
           ?.issues[0]?.message;
 
@@ -244,7 +244,9 @@ function CreateAgentWizard({
     <>
       {/* Read aloud, never shown: each step carries its own heading, and a dialog-level title
           above them made two heading sizes compete. The popup still needs an accessible name. */}
-      <DialogTitle className="sr-only">New Bot</DialogTitle>
+      <DialogTitle className="sr-only">
+        {t("components.create-agent-dialog.dialogTitle")}
+      </DialogTitle>
       <DialogBody className="overflow-y-auto">
         <Questionnaire
           item={STEPS[step]}
@@ -271,7 +273,10 @@ function CreateAgentWizard({
           {/* A plain element rather than QuestionnaireProgress: only the active step is mounted,
               so the primitive would count one question and announce the wrong total. */}
           <p className="text-xs font-medium text-muted-foreground tabular-nums">
-            Step {step + 1} of {STEPS.length}
+            {t("components.create-agent-dialog.stepOf", {
+              step: step + 1,
+              total: STEPS.length,
+            })}
           </p>
           <MotionConfig
             transition={{ duration: 0.5, type: "spring", bounce: 0 }}
@@ -349,7 +354,9 @@ function CreateAgentWizard({
               type="button"
               variant="outline"
             >
-              {step === 0 ? "Cancel" : "Back"}
+              {step === 0
+                ? t("components.create-agent-dialog.cancel")
+                : t("components.create-agent-dialog.back")}
             </Button>
             <Button
               disabled={createAgent.isPending}
@@ -358,9 +365,9 @@ function CreateAgentWizard({
             >
               {last
                 ? createAgent.isPending
-                  ? "Creating…"
-                  : "Create Bot"
-                : "Continue"}
+                  ? t("components.create-agent-dialog.creating")
+                  : t("components.create-agent-dialog.createBot")
+                : t("components.create-agent-dialog.continue")}
             </Button>
           </div>
         </Questionnaire>
@@ -403,20 +410,25 @@ function IdentityStep({
     value: AgentFormValues[K],
   ) => void;
 }) {
+  const t = useT();
   return (
     <StepItem name="identity">
-      <QuestionnaireTitle>Who is this Bot?</QuestionnaireTitle>
+      <QuestionnaireTitle>
+        {t("components.create-agent-dialog.identityTitle")}
+      </QuestionnaireTitle>
       <QuestionnaireDescription>
-        The role you write here applies in every channel this Bot works in.
+        {t("components.create-agent-dialog.identityDescription")}
       </QuestionnaireDescription>
       <FieldGroup>
         <Field data-invalid={errors.name ? true : undefined}>
-          <FieldLabel htmlFor="create-agent-name">Name</FieldLabel>
+          <FieldLabel htmlFor="create-agent-name">
+            {t("components.create-agent-dialog.nameLabel")}
+          </FieldLabel>
           <Input
             aria-invalid={errors.name ? true : undefined}
             id="create-agent-name"
             onChange={(event) => set("name", event.target.value)}
-            placeholder="Expense Manager"
+            placeholder={t("components.create-agent-dialog.namePlaceholder")}
             value={values.name}
           />
           {errors.name ? (
@@ -424,12 +436,14 @@ function IdentityStep({
           ) : null}
         </Field>
         <Field data-invalid={errors.title ? true : undefined}>
-          <FieldLabel htmlFor="create-agent-title">Title</FieldLabel>
+          <FieldLabel htmlFor="create-agent-title">
+            {t("components.create-agent-dialog.titleLabel")}
+          </FieldLabel>
           <Input
             aria-invalid={errors.title ? true : undefined}
             id="create-agent-title"
             onChange={(event) => set("title", event.target.value)}
-            placeholder="Finance Operations"
+            placeholder={t("components.create-agent-dialog.titlePlaceholder")}
             value={values.title}
           />
           {errors.title ? (
@@ -437,12 +451,14 @@ function IdentityStep({
           ) : null}
         </Field>
         <Field data-invalid={errors.roleDescription ? true : undefined}>
-          <FieldLabel htmlFor="create-agent-role">Role</FieldLabel>
+          <FieldLabel htmlFor="create-agent-role">
+            {t("components.create-agent-dialog.roleLabel")}
+          </FieldLabel>
           <Textarea
             aria-invalid={errors.roleDescription ? true : undefined}
             id="create-agent-role"
             onChange={(event) => set("roleDescription", event.target.value)}
-            placeholder="Review receipts, categorize expenses, and prepare reimbursement reports."
+            placeholder={t("components.create-agent-dialog.rolePlaceholder")}
             rows={4}
             value={values.roleDescription}
           />
@@ -465,9 +481,12 @@ function VisibilityStep({
     value: AgentFormValues[K],
   ) => void;
 }) {
+  const t = useT();
   return (
     <StepItem name="visibility">
-      <QuestionnaireTitle>Who can see it?</QuestionnaireTitle>
+      <QuestionnaireTitle>
+        {t("components.create-agent-dialog.visibilityTitle")}
+      </QuestionnaireTitle>
       <QuestionnaireChoices>
         {VISIBILITY_OPTIONS.map((option) => (
           <QuestionnaireChoice
@@ -476,9 +495,9 @@ function VisibilityStep({
             onChange={() => set("visibility", option.value)}
             value={option.value}
           >
-            <span className="font-medium">{option.title}</span>
+            <span className="font-medium">{t(option.titleKey)}</span>
             <QuestionnaireChoiceDescription>
-              {option.description}
+              {t(option.descriptionKey)}
             </QuestionnaireChoiceDescription>
           </QuestionnaireChoice>
         ))}
@@ -514,9 +533,12 @@ function KindStep({
   testing: boolean;
   onTest: () => void;
 }) {
+  const t = useT();
   return (
     <StepItem name="kind">
-      <QuestionnaireTitle>Where does it run?</QuestionnaireTitle>
+      <QuestionnaireTitle>
+        {t("components.create-agent-dialog.kindTitle")}
+      </QuestionnaireTitle>
       <QuestionnaireChoices>
         {KIND_OPTIONS.map((option) => {
           /*
@@ -533,11 +555,11 @@ function KindStep({
               onChange={() => onKind(option.value)}
               value={option.value}
             >
-              <span className="font-medium">{option.title}</span>
+              <span className="font-medium">{t(option.titleKey)}</span>
               <QuestionnaireChoiceDescription>
                 {unavailable
-                  ? "Not available here: this deployment has no Bot of its own for a Bot to run on."
-                  : option.description}
+                  ? t("components.create-agent-dialog.builtInUnavailable")
+                  : t(option.descriptionKey)}
               </QuestionnaireChoiceDescription>
             </QuestionnaireChoice>
           );
@@ -545,14 +567,14 @@ function KindStep({
       </QuestionnaireChoices>
       {showKindError ? (
         <p className="text-sm text-destructive" role="alert">
-          Choose where this Bot runs.
+          {t("components.create-agent-dialog.chooseKind")}
         </p>
       ) : null}
       {kind === "managed" ? (
         <FieldGroup>
           <Field data-invalid={endpointError ? true : undefined}>
             <FieldLabel htmlFor="create-agent-endpoint">
-              Agent endpoint
+              {t("components.create-agent-dialog.endpointLabel")}
             </FieldLabel>
             <div className="flex gap-2">
               <Input
@@ -568,7 +590,9 @@ function KindStep({
                 type="button"
                 variant="outline"
               >
-                {testing ? "Testing…" : "Test"}
+                {testing
+                  ? t("components.create-agent-dialog.testing")
+                  : t("components.create-agent-dialog.test")}
               </Button>
             </div>
             {endpointError ? (
@@ -580,19 +604,20 @@ function KindStep({
                 role="status"
               >
                 {connection.ok
-                  ? `It answered: ${connection.events.join(", ")}`
+                  ? t("components.create-agent-dialog.answered", {
+                      events: connection.events.join(", "),
+                    })
                   : connection.reason}
               </p>
             ) : (
               <p className="text-muted-foreground text-sm">
-                Anything that speaks AG-UI works. This server dials your agent,
-                so an agent on your own machine has to be reachable from here.
+                {t("components.create-agent-dialog.endpointHint")}
               </p>
             )}
           </Field>
           <Field>
             <FieldLabel htmlFor="create-agent-key">
-              Key for that agent (optional)
+              {t("components.create-agent-dialog.keyLabel")}
             </FieldLabel>
             <Input
               autoComplete="off"
@@ -603,8 +628,9 @@ function KindStep({
               value={values.authValue}
             />
             <p className="text-muted-foreground text-sm">
-              Sent as an <code>Authorization</code> header on every run, and
-              kept in the credential vault.
+              {t("components.create-agent-dialog.keyHintBefore")}{" "}
+              <code>Authorization</code>{" "}
+              {t("components.create-agent-dialog.keyHintAfter")}
             </p>
           </Field>
         </FieldGroup>

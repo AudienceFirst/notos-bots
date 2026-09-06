@@ -7,6 +7,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { formatDateTime, useT } from "@/i18n";
 import {
   type KeyedProvider,
   type KeyScope,
@@ -34,6 +35,7 @@ const MARKS: Record<
  * server, so the page says that once, above the list, instead of letting somebody try.
  */
 export function ModelKeysPanel({ scope }: { scope: KeyScope }) {
+  const t = useT();
   const keys = useQuery(modelKeysQueryOptions(scope));
   const rows = keys.data?.keys ?? [];
   const providers = keys.data?.providers ?? [];
@@ -42,7 +44,7 @@ export function ModelKeysPanel({ scope }: { scope: KeyScope }) {
   if (keys.error) {
     return (
       <p className="text-destructive text-sm" role="alert">
-        The keys could not be loaded.
+        {t("settings.modelKeysPanel.loadFailed")}
       </p>
     );
   }
@@ -70,6 +72,7 @@ function ProviderRow({
   scope: KeyScope;
   existing: { label: string; hint: string; updatedAt: string } | null;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const save = useMutation(setModelKeyMutationOptions(queryClient, scope));
   const remove = useMutation(removeModelKeyMutationOptions(queryClient, scope));
@@ -80,6 +83,18 @@ function ProviderRow({
   const help = PROVIDER_HELP[provider];
   const set = existing !== null;
 
+  const status = () => {
+    if (!set) return t("settings.modelKeysPanel.noKey");
+    const date = formatDateTime(existing.updatedAt, { dateStyle: "medium" });
+    return existing.label
+      ? t("settings.modelKeysPanel.keySetWithLabel", {
+          hint: existing.hint,
+          label: existing.label,
+          date,
+        })
+      : t("settings.modelKeysPanel.keySet", { hint: existing.hint, date });
+  };
+
   return (
     <div className="rounded-xl border border-border/60 bg-background p-4">
       <div className="flex items-center gap-3">
@@ -88,25 +103,27 @@ function ProviderRow({
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-medium text-sm">{PROVIDER_LABELS[provider]}</p>
-          <p className="truncate text-muted-foreground text-xs">
-            {set
-              ? `Key ${existing.hint}${existing.label ? ` · ${existing.label}` : ""} · set ${new Date(existing.updatedAt).toLocaleDateString("nl-NL")}`
-              : "No key yet"}
-          </p>
+          <p className="truncate text-muted-foreground text-xs">{status()}</p>
         </div>
         <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
           <span
             aria-hidden="true"
             className={`size-1.5 rounded-full ${set ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
           />
-          {set ? "Ready" : "Off"}
+          {set
+            ? t("settings.modelKeysPanel.ready")
+            : t("settings.modelKeysPanel.off")}
         </span>
         <Button
           onClick={() => setOpen((value) => !value)}
           size="sm"
           variant={set ? "ghost" : "outline"}
         >
-          {open ? "Close" : set ? "Replace" : "Add key"}
+          {open
+            ? t("settings.modelKeysPanel.close")
+            : set
+              ? t("settings.modelKeysPanel.replace")
+              : t("settings.modelKeysPanel.addKey")}
         </Button>
       </div>
       {open ? (
@@ -127,7 +144,7 @@ function ProviderRow({
           }}
         >
           <p className="text-muted-foreground text-xs">
-            Get one at{" "}
+            {t("settings.modelKeysPanel.getOneAt")}{" "}
             <a
               className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-foreground"
               href={help.url}
@@ -137,11 +154,13 @@ function ProviderRow({
               {help.where}
               <IconExternalLink className="size-3" />
             </a>
-            . It starts with {help.prefix}
+            . {t("settings.modelKeysPanel.startsWith", { prefix: help.prefix })}
           </p>
           <div className="flex items-center gap-2">
             <Input
-              aria-label={`${PROVIDER_LABELS[provider]} API key`}
+              aria-label={t("settings.modelKeysPanel.apiKeyLabel", {
+                provider: PROVIDER_LABELS[provider],
+              })}
               autoComplete="off"
               className="h-8 font-mono text-sm"
               onChange={(event) => setKey(event.target.value)}
@@ -150,11 +169,11 @@ function ProviderRow({
               value={key}
             />
             <Input
-              aria-label="Label"
+              aria-label={t("settings.modelKeysPanel.label")}
               className="h-8 w-40 text-sm"
               maxLength={80}
               onChange={(event) => setLabel(event.target.value)}
-              placeholder="Label (optional)"
+              placeholder={t("settings.modelKeysPanel.labelPlaceholder")}
               value={label}
             />
             <Button
@@ -162,7 +181,7 @@ function ProviderRow({
               size="sm"
               type="submit"
             >
-              Save
+              {t("settings.modelKeysPanel.save")}
             </Button>
             {set ? (
               <Button
@@ -174,7 +193,7 @@ function ProviderRow({
                 type="button"
                 variant="ghost"
               >
-                Remove
+                {t("settings.modelKeysPanel.remove")}
               </Button>
             ) : null}
           </div>

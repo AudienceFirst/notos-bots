@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { SkillAgents } from "@/components/skills/skill-agents";
 import { SkillFields } from "@/components/skills/skill-fields";
+import { useT } from "@/i18n";
 import { saveSkillMutationOptions } from "@/lib/plugins/mutations";
 import { pluginsPageQueryOptions } from "@/lib/plugins/queries";
 
@@ -15,6 +16,7 @@ import { pluginsPageQueryOptions } from "@/lib/plugins/queries";
  * refused anyone editing a skill that is not theirs before it gets that far.
  */
 export function EditSkill({ slug }: { slug: string }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data, isPending } = useQuery(pluginsPageQueryOptions());
@@ -41,7 +43,7 @@ export function EditSkill({ slug }: { slug: string }) {
          * not own.
          */}
         <p className="text-muted-foreground text-sm">
-          That skill no longer exists, or it is not yours to edit.
+          {t("components.edit-skill.missing")}
         </p>
       </div>
     );
@@ -50,10 +52,13 @@ export function EditSkill({ slug }: { slug: string }) {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
       <header>
-        <h1 className="text-2xl font-semibold">Edit skill</h1>
+        <h1 className="text-2xl font-semibold">
+          {t("components.edit-skill.title")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Changes apply the next time <code>/{skill.slug}</code> is used. Agents
-          already carrying it keep it.
+          {t("components.edit-skill.descriptionBefore")}{" "}
+          <code>/{skill.slug}</code>{" "}
+          {t("components.edit-skill.descriptionAfter")}
         </p>
       </header>
 
@@ -83,7 +88,7 @@ export function EditSkill({ slug }: { slug: string }) {
           });
         }}
         slugLocked
-        submitLabel="Save changes"
+        submitLabel={t("components.edit-skill.submit")}
       />
     </div>
   );

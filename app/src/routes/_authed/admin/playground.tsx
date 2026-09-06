@@ -15,6 +15,7 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n";
 import {
   deleteSandboxedMutationOptions,
   publishSandboxedMutationOptions,
@@ -34,6 +35,11 @@ export const Route = createFileRoute("/_authed/admin/playground")({
   component: PlaygroundPage,
 });
 
+/*
+ * The starter is source code for a component, not interface text: what is here is what gets
+ * saved and published as the component's own HTML, CSS and JavaScript, so it is the same in every
+ * language.
+ */
 const STARTER = {
   slug: "",
   title: "",
@@ -48,6 +54,7 @@ const STARTER = {
 type Draft = typeof STARTER;
 
 function PlaygroundPage() {
+  const t = useT();
   const [deleting, setDeleting] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { data: components } = useQuery(sandboxedListQueryOptions());
@@ -133,11 +140,11 @@ function PlaygroundPage() {
         <div className="flex items-start gap-2">
           <SidebarToggle className="-ml-2 shrink-0" />
           <div>
-            <h1 className="font-bold text-2xl">Playground</h1>
+            <h1 className="font-bold text-2xl">
+              {t("admin-a.playground.title")}
+            </h1>
             <p className="mt-1 max-w-prose text-pretty text-muted-foreground text-sm leading-relaxed">
-              Write a component here and publish it without a deployment. What
-              you edit is a draft; a conversation only ever draws what is
-              published.
+              {t("admin-a.playground.description")}
             </p>
           </div>
         </div>
@@ -149,7 +156,7 @@ function PlaygroundPage() {
             type="button"
             variant="outline"
           >
-            Save draft
+            {t("admin-a.playground.saveDraft")}
           </Button>
           <Button
             /* `publish` saves first, since publishing acts on the stored draft, not the editors. */
@@ -158,7 +165,7 @@ function PlaygroundPage() {
             size="sm"
             type="button"
           >
-            Publish
+            {t("admin-a.playground.publish")}
           </Button>
         </div>
       </header>
@@ -176,22 +183,23 @@ function PlaygroundPage() {
         <div className="space-y-3">
           <div className="grid gap-2 md:grid-cols-2">
             <TextField
-              label="Name"
+              label={t("admin-a.playground.nameLabel")}
               onChange={set("slug")}
+              /* A slug example, the same in every language. */
               placeholder="refund_card"
               value={draft.slug}
             />
             <TextField
-              label="Title"
+              label={t("admin-a.playground.titleLabel")}
               onChange={set("title")}
-              placeholder="Refund card"
+              placeholder={t("admin-a.playground.titlePlaceholder")}
               value={draft.title}
             />
           </div>
           <TextField
-            label="What the model is told about it"
+            label={t("admin-a.playground.descriptionLabel")}
             onChange={set("description")}
-            placeholder="Show a refund with its amount, reason and status."
+            placeholder={t("admin-a.playground.descriptionPlaceholder")}
             value={draft.description}
           />
           <CodeField label="HTML" onChange={set("html")} value={draft.html} />
@@ -203,13 +211,13 @@ function PlaygroundPage() {
           />
           <CodeField
             invalid={schema === null}
-            label="Arguments (JSON Schema)"
+            label={t("admin-a.playground.argumentsLabel")}
             onChange={set("argumentSchema")}
             value={draft.argumentSchema}
           />
           <CodeField
             invalid={sample === null}
-            label="Sample arguments"
+            label={t("admin-a.playground.sampleLabel")}
             onChange={set("sampleArguments")}
             value={draft.sampleArguments}
           />
@@ -217,11 +225,12 @@ function PlaygroundPage() {
 
         <div className="space-y-4">
           <div className="rounded-lg border p-4">
-            <div className="mb-2 text-sm font-medium">Preview</div>
+            <div className="mb-2 text-sm font-medium">
+              {t("admin-a.playground.preview")}
+            </div>
             {sample === null ? (
               <p className="text-sm text-destructive">
-                The sample arguments are not valid JSON, so there is nothing to
-                draw with.
+                {t("admin-a.playground.invalidSample")}
               </p>
             ) : (
               <SandboxPreview
@@ -236,11 +245,11 @@ function PlaygroundPage() {
 
           <div className="rounded-lg border border-border bg-card">
             <div className="border-border border-b px-4 py-2 font-medium text-sm">
-              Saved here
+              {t("admin-a.playground.savedHere")}
             </div>
             {(components ?? []).length === 0 ? (
               <p className="px-4 py-3 text-muted-foreground text-sm">
-                Nothing yet.
+                {t("admin-a.playground.nothingYet")}
               </p>
             ) : (
               <ul className="divide-y divide-border">
@@ -253,10 +262,12 @@ function PlaygroundPage() {
                       <div className="font-mono text-xs">{component.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {component.published
-                          ? `published, revision ${component.revision}`
-                          : "draft only, no Bot can draw it"}
+                          ? t("admin-a.playground.publishedRevision", {
+                              revision: component.revision,
+                            })
+                          : t("admin-a.playground.draftOnly")}
                         {component.hasUnpublishedChanges
-                          ? " · edited since publishing"
+                          ? t("admin-a.playground.editedSince")
                           : ""}
                       </div>
                     </div>
@@ -267,7 +278,7 @@ function PlaygroundPage() {
                         type="button"
                         variant="outline"
                       >
-                        Open
+                        {t("admin-a.playground.open")}
                       </Button>
                       <Button
                         onClick={() => setDeleting(component.name)}
@@ -275,7 +286,7 @@ function PlaygroundPage() {
                         type="button"
                         variant="ghost"
                       >
-                        Delete
+                        {t("admin-a.playground.delete")}
                       </Button>
                     </div>
                   </li>
@@ -283,9 +294,7 @@ function PlaygroundPage() {
               </ul>
             )}
             <p className="border-border border-t px-4 py-2 text-muted-foreground text-xs">
-              Publishing makes it available to every Bot. Switch it off for a
-              particular Bot on the Components page, the same as for a component
-              this build ships.
+              {t("admin-a.playground.publishNote")}
             </p>
           </div>
         </div>
@@ -303,15 +312,16 @@ function PlaygroundPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {deleting}?</DialogTitle>
+            <DialogTitle>
+              {t("admin-a.playground.deleteTitle", { name: deleting ?? "" })}
+            </DialogTitle>
             <DialogDescription>
-              It is removed from this deployment. Any Bot that could draw it no
-              longer can, and this cannot be undone.
+              {t("admin-a.playground.deleteDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setDeleting(null)} size="sm" variant="ghost">
-              Cancel
+              {t("admin-a.playground.cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -325,7 +335,7 @@ function PlaygroundPage() {
               size="sm"
               variant="destructive"
             >
-              Delete it
+              {t("admin-a.playground.deleteIt")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -375,13 +385,16 @@ function CodeField({
   onChange: (value: string) => void;
   invalid?: boolean;
 }) {
+  const t = useT();
   const id = useId();
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor={id}>
         {label}
         {invalid ? (
-          <span className="ml-2 text-destructive">not valid JSON</span>
+          <span className="ml-2 text-destructive">
+            {t("admin-a.playground.notValidJson")}
+          </span>
         ) : null}
       </FieldLabel>
       <Textarea

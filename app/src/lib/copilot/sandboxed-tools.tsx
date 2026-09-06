@@ -2,6 +2,7 @@ import { SandboxPreview } from "@/components/gallery/sandbox-preview";
 import { useFrontendTool } from "@/notos/agui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { useT } from "@/i18n";
 import * as z from "zod";
 import { ToolLine } from "@/components/channels/tool-line";
 import { RefusedCard } from "@/components/gallery/refused";
@@ -69,6 +70,7 @@ function SandboxedTool({
   description: string | undefined;
   botId: string;
 }) {
+  const t = useT();
   const [refusals, setRefusals] = useState<Map<string, string>>(new Map());
   const isHeld = description !== undefined;
 
@@ -87,7 +89,9 @@ function SandboxedTool({
       if (!isHeld) {
         return (
           <RefusedCard
-            reason={`${component.name} is not available to this Bot at the moment. An administrator grants components per Bot.`}
+            reason={t("lib.copilot.sandboxedUnavailable", {
+              name: component.name,
+            })}
             title={component.name}
           />
         );
@@ -95,7 +99,13 @@ function SandboxedTool({
 
       // Wait for complete arguments because sandbox source is injected once per keyed instance.
       if (props.status !== "complete") {
-        return <ToolLine label="Drawing" detail={component.name} running />;
+        return (
+          <ToolLine
+            label={t("lib.copilot.drawing")}
+            detail={component.name}
+            running
+          />
+        );
       }
 
       return (
@@ -110,7 +120,7 @@ function SandboxedTool({
         </div>
       );
     },
-    [component, isHeld, refusals],
+    [component, isHeld, refusals, t],
   );
 
   useFrontendTool({
@@ -127,7 +137,7 @@ function SandboxedTool({
     ) => {
       const decision = await decideComponent(component.name, botId);
       if (!decision.allowed) {
-        const reason = decision.reason ?? "That component is not allowed here.";
+        const reason = decision.reason ?? t("lib.copilot.componentNotAllowed");
         const id = context?.toolCall?.id;
         if (id) setRefusals((current) => new Map(current).set(id, reason));
         return reason;

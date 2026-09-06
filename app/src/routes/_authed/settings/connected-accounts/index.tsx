@@ -2,6 +2,7 @@ import { IconChevronRight } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
+import { ConnectorMark } from "@/components/connectors/marks";
 import {
   PageEmpty,
   PageRows,
@@ -17,12 +18,13 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/i18n";
+import { useConnectorSummary } from "@/lib/plugins/catalogue-text";
 import {
   connectionsQueryOptions,
   pluginsPageQueryOptions,
 } from "@/lib/plugins/queries";
 import { cn } from "@/lib/utils";
-import { ConnectorMark } from "@/components/connectors/marks";
 
 /**
  * The services a Bot reads as you.
@@ -48,6 +50,8 @@ export const Route = createFileRoute("/_authed/settings/connected-accounts/")({
 
 /** The same marks the admin connector list uses: these are the same vendors seen from your side. */
 function RouteComponent() {
+  const t = useT();
+  const summaryOf = useConnectorSummary();
   const { connected: outcome } = Route.useSearch();
   const plugins = useQuery(pluginsPageQueryOptions());
   const connections = useQuery(connectionsQueryOptions());
@@ -78,8 +82,8 @@ function RouteComponent() {
 
   return (
     <PageShell
-      description="Services a Bot reads as you, so it only ever sees what you can see. Connecting is yours to grant, and nobody can grant it for you."
-      title="Connected accounts"
+      description={t("settings.connectedAccounts.description")}
+      title={t("settings.connectedAccounts.title")}
     >
       {/*
        * Only the failure is worth saying. A success needs no sentence: the row it came back to now
@@ -87,12 +91,12 @@ function RouteComponent() {
        */}
       {outcome === "failed" ? (
         <p className="text-destructive text-sm" role="alert">
-          That account could not be connected. Nothing was saved — try again.
+          {t("settings.connectedAccounts.connectFailed")}
         </p>
       ) : null}
       {plugins.isPending || connections.isPending ? null : plugins.error ? (
         <p className="mt-12 text-destructive text-sm" role="alert">
-          Your connected accounts could not be loaded.
+          {t("settings.connectedAccounts.loadFailed")}
         </p>
       ) : (
         <PageSection>
@@ -101,10 +105,7 @@ function RouteComponent() {
              * Says whose move it is. "Nothing here" on its own reads as though you failed to do
              * something, when what is missing is an administrator enabling a connector.
              */
-            <PageEmpty>
-              Nothing to connect yet. These appear once an administrator enables
-              a connector that reads as the person asking.
-            </PageEmpty>
+            <PageEmpty>{t("settings.connectedAccounts.empty")}</PageEmpty>
           ) : (
             <PageRows>
               {yours.map((entry, index) => {
@@ -126,7 +127,9 @@ function RouteComponent() {
                       </RowMark>
                       <ItemContent>
                         <ItemTitle>{entry.title}</ItemTitle>
-                        <ItemDescription>{entry.summary}</ItemDescription>
+                        <ItemDescription>
+                          {summaryOf(entry.key, entry.summary)}
+                        </ItemDescription>
                       </ItemContent>
                       <ItemActions>
                         {/*
@@ -150,8 +153,8 @@ function RouteComponent() {
                         />
                         <span className="text-muted-foreground text-xs">
                           {connected.has(entry.key)
-                            ? "Connected"
-                            : "Not connected"}
+                            ? t("settings.connectedAccounts.connected")
+                            : t("settings.connectedAccounts.notConnected")}
                         </span>
                         <IconChevronRight className="size-4 shrink-0 text-muted-foreground" />
                       </ItemActions>

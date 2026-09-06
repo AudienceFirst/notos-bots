@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useT } from "@/i18n";
 import {
   availableModelsQueryOptions,
   type ConversationModel,
@@ -56,6 +57,7 @@ export function ModelPicker({
   disabled?: boolean;
   pending?: boolean;
 }) {
+  const t = useT();
   const available = useQuery(availableModelsQueryOptions());
   const providers = available.data?.providers ?? { vertex: true };
   const workspaceDefault = available.data?.workspaceDefault ?? null;
@@ -63,14 +65,16 @@ export function ModelPicker({
     (choice) => providers[choice.provider] === true,
   );
   const current = value ?? workspaceDefault;
-  const label = current ? modelShortLabel(current) : "Model";
+  const label = current
+    ? modelShortLabel(current)
+    : t("settings.modelPicker.model");
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <Button
-            aria-label={`Model for this conversation: ${label}`}
+            aria-label={t("settings.modelPicker.triggerLabel", { label })}
             className="h-8 gap-1 px-2 text-muted-foreground text-xs font-normal hover:text-foreground"
             disabled={disabled || pending || available.isPending}
             size="sm"
@@ -83,7 +87,7 @@ export function ModelPicker({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 p-1" sideOffset={6}>
         <p className="px-2 pt-1.5 pb-1 text-muted-foreground text-[11px] uppercase tracking-wide">
-          Model for this conversation
+          {t("settings.modelPicker.heading")}
         </p>
         {workspaceDefault ? (
           <DropdownMenuItem
@@ -94,7 +98,7 @@ export function ModelPicker({
               {value === null ? <IconCheck className="size-4" /> : null}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span>Workspace model</span>
+              <span>{t("settings.modelPicker.workspaceModel")}</span>
               <span className="text-muted-foreground text-xs">
                 {modelShortLabel(workspaceDefault)}
               </span>
@@ -128,8 +132,7 @@ export function ModelPicker({
         })}
         {choices.length <= 2 ? (
           <p className="px-2 pt-1 pb-1.5 text-muted-foreground text-xs">
-            Claude, GPT and OpenRouter appear here once a key is set under
-            Models.
+            {t("settings.modelPicker.keyedHint")}
           </p>
         ) : null}
       </DropdownMenuContent>

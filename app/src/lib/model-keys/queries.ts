@@ -5,6 +5,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export type KeyedProvider = "anthropic" | "openai" | "openrouter" | "google-ai";
 export type ModelProvider = "vertex" | KeyedProvider;
@@ -20,12 +21,23 @@ export type ModelKeySummary = {
   updatedAt: string;
 };
 
+/** Translated at read time, so a label follows the language in force. */
 export const PROVIDER_LABELS: Record<ModelProvider, string> = {
-  vertex: "Vertex AI (Google Cloud)",
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  openrouter: "OpenRouter",
-  "google-ai": "Google AI Studio",
+  get vertex() {
+    return tr("lib.modelKeys.providerVertex");
+  },
+  get anthropic() {
+    return tr("lib.modelKeys.providerAnthropic");
+  },
+  get openai() {
+    return tr("lib.modelKeys.providerOpenai");
+  },
+  get openrouter() {
+    return tr("lib.modelKeys.providerOpenrouter");
+  },
+  get "google-ai"() {
+    return tr("lib.modelKeys.providerGoogleAi");
+  },
 };
 
 /** Where a person gets a key. The page links there so nobody has to search for it. */
@@ -34,22 +46,30 @@ export const PROVIDER_HELP: Record<
   { where: string; url: string; prefix: string }
 > = {
   anthropic: {
-    where: "console.anthropic.com → API keys",
+    get where() {
+      return tr("lib.modelKeys.whereAnthropic");
+    },
     url: "https://console.anthropic.com/settings/keys",
     prefix: "sk-ant-…",
   },
   openai: {
-    where: "platform.openai.com → API keys",
+    get where() {
+      return tr("lib.modelKeys.whereOpenai");
+    },
     url: "https://platform.openai.com/api-keys",
     prefix: "sk-…",
   },
   openrouter: {
-    where: "openrouter.ai → Keys",
+    get where() {
+      return tr("lib.modelKeys.whereOpenrouter");
+    },
     url: "https://openrouter.ai/keys",
     prefix: "sk-or-…",
   },
   "google-ai": {
-    where: "aistudio.google.com → Get API key",
+    get where() {
+      return tr("lib.modelKeys.whereGoogleAi");
+    },
     url: "https://aistudio.google.com/apikey",
     prefix: "AIza…",
   },
@@ -69,7 +89,7 @@ export function modelKeysQueryOptions(scope: KeyScope) {
     queryFn: async () =>
       (await (
         await client(base(scope), {
-          fallback: "The keys could not be loaded.",
+          fallback: tr("lib.modelKeys.loadFailed"),
         })
       ).json()) as { providers: KeyedProvider[]; keys: ModelKeySummary[] },
   });
@@ -88,7 +108,7 @@ export function setModelKeyMutationOptions(
       const response = await client(`${base(scope)}/${input.provider}`, {
         method: "PUT",
         body: { key: input.key, label: input.label ?? "" },
-        fallback: "The key could not be saved.",
+        fallback: tr("lib.modelKeys.saveFailed"),
       });
       return ((await response.json()) as { key: ModelKeySummary }).key;
     },
@@ -105,7 +125,7 @@ export function removeModelKeyMutationOptions(
     mutationFn: async (provider: KeyedProvider) => {
       await client(`${base(scope)}/${provider}`, {
         method: "DELETE",
-        fallback: "The key could not be removed.",
+        fallback: tr("lib.modelKeys.removeFailed"),
       });
     },
     onSuccess: () =>
@@ -132,7 +152,7 @@ export function availableModelsQueryOptions() {
     queryFn: async () =>
       (await (
         await client("/api/models/available", {
-          fallback: "The models could not be loaded.",
+          fallback: tr("lib.modelKeys.modelsLoadFailed"),
         })
       ).json()) as AvailableModels,
     staleTime: 60_000,
@@ -145,7 +165,7 @@ export function threadModelQueryOptions(threadId: string) {
     queryFn: async () =>
       (await (
         await client(`/api/threads/${encodeURIComponent(threadId)}`, {
-          fallback: "The thread could not be read.",
+          fallback: tr("lib.modelKeys.threadReadFailed"),
         })
       ).json()) as { known: boolean; model: ConversationModel | null },
   });
@@ -160,7 +180,7 @@ export function setThreadModelMutationOptions(queryClient: QueryClient) {
       await client(`/api/threads/${encodeURIComponent(input.threadId)}/model`, {
         method: "PUT",
         body: { model: input.model },
-        fallback: "Could not change the model for this chat",
+        fallback: tr("lib.modelKeys.chatModelChangeFailed"),
       });
     },
     onSuccess: (_result, input) =>
@@ -182,7 +202,7 @@ export function personalModelQueryOptions() {
     queryFn: async () =>
       (await (
         await client("/api/me/personal-model", {
-          fallback: "Your model choice could not be loaded.",
+          fallback: tr("lib.modelKeys.personalLoadFailed"),
         })
       ).json()) as PersonalModel,
   });
@@ -194,7 +214,7 @@ export function setPersonalModelMutationOptions(queryClient: QueryClient) {
       await client("/api/me/personal-model", {
         method: "PUT",
         body: input,
-        fallback: "Your model choice could not be saved.",
+        fallback: tr("lib.modelKeys.personalSaveFailed"),
       });
     },
     onSuccess: () =>

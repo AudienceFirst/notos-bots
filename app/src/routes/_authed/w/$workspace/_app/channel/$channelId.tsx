@@ -31,6 +31,7 @@ import {
   channelQueryOptions,
 } from "@/lib/channels/queries";
 import { onComputerActivity } from "@/lib/copilot/computer-activity";
+import { useT } from "@/i18n";
 
 const chatSearchSchema = z.object({
   settings: z.boolean().optional(),
@@ -69,13 +70,16 @@ function ComputerViewPanel({
   agentId: string;
   name?: string;
 }) {
+  const t = useT();
   return (
     <div className="mt-4 px-4">
       <div className="p-4">
         <ComputerView active computerId={agentId} name={name} />
 
         <div className="mt-10">
-          <h3 className="mb-2 font-medium text-sm">Activity</h3>
+          <h3 className="mb-2 font-medium text-sm">
+            {t("workspace.channel.activity")}
+          </h3>
           <ActivityLog computerId={agentId} />
         </div>
       </div>
@@ -85,6 +89,7 @@ function ComputerViewPanel({
 
 function RouteComponent() {
   const { channelId } = Route.useParams();
+  const t = useT();
   const { settings, watch } = Route.useSearch();
   const channel = useQuery(channelQueryOptions(channelId));
   const navigate = Route.useNavigate();
@@ -225,7 +230,7 @@ function RouteComponent() {
                 ease: EASE_OUT,
               }}
             >
-              {channel.data?.name ?? "Channel"}
+              {channel.data?.name ?? t("workspace.channel.fallbackName")}
             </motion.span>
           </div>
           <div className="flex flex-row items-center gap-1.5">
@@ -243,8 +248,8 @@ function RouteComponent() {
               <Button
                 aria-label={
                   needsYou
-                    ? "This Bot is waiting for you. Open its screen"
-                    : "Watch this Bot's screen"
+                    ? t("workspace.channel.waitingOpenScreen")
+                    : t("workspace.channel.watchScreen")
                 }
                 aria-pressed={isWatching}
                 className={`relative ${isWatching ? "bg-foreground/5" : ""}`}
@@ -261,7 +266,7 @@ function RouteComponent() {
               </Button>
             ) : null}
             <Button
-              aria-label="Channel Bot"
+              aria-label={t("workspace.channel.channelBot")}
               aria-pressed={isSettingsOpen}
               className={isSettingsOpen ? "bg-foreground/5" : undefined}
               disabled={agentId === undefined}
@@ -296,12 +301,13 @@ function ChannelBody({
   isPending: boolean;
   hasError: boolean;
 }) {
+  const t = useT();
   // Nothing while the channel loads: a placeholder inside a local round-trip is a flicker.
   if (isPending) return null;
   if (hasError || !channel) {
     return (
       <p className="p-8 text-sm text-destructive" role="alert">
-        Could not load this channel.
+        {t("workspace.channel.loadFailed")}
       </p>
     );
   }
@@ -311,7 +317,7 @@ function ChannelBody({
   if (!runtimeAgentId) {
     return (
       <p className="p-8 text-sm text-muted-foreground">
-        This channel has more than one Bot, which is not supported yet.
+        {t("workspace.channel.multipleBots")}
       </p>
     );
   }

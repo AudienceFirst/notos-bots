@@ -27,10 +27,13 @@ export const isLocale = (value: unknown): value is Locale =>
 /** The browser's preference: Dutch when it says so, English otherwise. */
 export function detectLocale(): Locale {
   if (typeof navigator === "undefined") return "en";
-  const candidates = navigator.languages?.length
+  // Outside a browser (tests, server rendering) navigator exists but carries no languages,
+  // so every candidate is checked before it is read.
+  const candidates: readonly unknown[] = navigator.languages?.length
     ? navigator.languages
     : [navigator.language];
   for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
     if (candidate.toLowerCase().startsWith("nl")) return "nl";
     if (candidate.toLowerCase().startsWith("en")) return "en";
   }
@@ -61,6 +64,18 @@ export function getLocale(): Locale {
 /** Translate outside a component: `tr("lib.channels.loadFailed")`. Reads the locale in force. */
 export function tr(key: string, vars?: Vars): string {
   return lookup(currentLocale, key, vars);
+}
+
+/**
+ * Translate a key that may not exist, with the caller's own text as the answer when it does not.
+ *
+ * For text that reaches the app from somewhere else, such as the connector catalogue the server
+ * keeps in English: the shipped connectors have a key here, and one added later still reads as the
+ * sentence the server sent rather than as a key nobody wrote a translation for.
+ */
+export function trOr(key: string, fallback: string, vars?: Vars): string {
+  const text = dictionaries[currentLocale][key] ?? dictionaries.en[key];
+  return text === undefined ? fallback : interpolate(text, vars);
 }
 
 const LocaleContext = createContext<Locale>(currentLocale);
@@ -96,6 +111,24 @@ export function useT(): (key: string, vars?: Vars) => string {
   const locale = useLocale();
   return useMemo(
     () => (key: string, vars?: Vars) => lookup(locale, key, vars),
+    [locale],
+  );
+}
+
+/**
+ * The same as {@link trOr}, inside a component, so a language change redraws the text.
+ */
+export function useTOr(): (
+  key: string,
+  fallback: string,
+  vars?: Vars,
+) => string {
+  const locale = useLocale();
+  return useMemo(
+    () => (key: string, fallback: string, vars?: Vars) => {
+      const text = dictionaries[locale][key] ?? dictionaries.en[key];
+      return text === undefined ? fallback : interpolate(text, vars);
+    },
     [locale],
   );
 }

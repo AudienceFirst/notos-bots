@@ -24,6 +24,7 @@ import { useStartChannel } from "@/lib/channels/start";
 import { campaignListQueryOptions } from "@/lib/campaigns/queries";
 import { useSkillCommands } from "@/lib/plugins/skill-commands";
 import { newId } from "@/lib/new-id";
+import { useT } from "@/i18n";
 
 /**
  * Creates the channel on first send. The selected coworker stays in the URL so profile links and
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/channel/new")({
 function RouteComponent() {
   const { agent, campaign } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const t = useT();
   const { startChosen, pending } = useStartChannel();
   const { data: profiles } = useQuery(agentListQueryOptions());
 
@@ -78,7 +80,9 @@ function RouteComponent() {
     <div className="flex h-full flex-col">
       <div className="h-12 border-b border-border sticky top-0 flex flex-row px-2 items-center">
         <SidebarToggle className="mr-1" />
-        <span className="text-sm text-muted-foreground">To:</span>
+        <span className="text-sm text-muted-foreground">
+          {t("workspace.channelNew.to")}
+        </span>
         <Combobox
           // Do not auto-open when the recipient came from the URL; the field is already answered.
           defaultOpen={!agent}
@@ -107,13 +111,13 @@ function RouteComponent() {
             // the caret starts here whenever the recipient question is still open. Same condition
             // as `defaultOpen` — a recipient from the URL means the composer takes focus instead.
             autoFocus={!agent}
-            placeholder="Choose a Bot…"
+            placeholder={t("workspace.channelNew.chooseBot")}
             // InputGroup owns focus rings via `has-[…:focus-visible]`; disable that wrapper ring here.
             className="border-none w-full bg-transparent! text-sm has-[[data-slot=input-group-control]:focus-visible]:ring-0"
           />
           {/* Allow max-w to constrain the popup even though its anchor is full-width. */}
           <ComboboxContent className="min-w-0 max-w-lg" sideOffset={12}>
-            <ComboboxEmpty>No Bots found.</ComboboxEmpty>
+            <ComboboxEmpty>{t("workspace.channelNew.noneFound")}</ComboboxEmpty>
             <ComboboxList>
               {(item: AgentProfile) => (
                 <ComboboxItem key={item.id} value={item} className="h-10">
@@ -130,14 +134,16 @@ function RouteComponent() {
       </div>
       {inCampaign && (campaigns.data?.length ?? 0) > 0 ? (
         <div className="h-10 border-b border-border flex flex-row px-3 items-center gap-2">
-          <span className="text-sm text-muted-foreground">In:</span>
+          <span className="text-sm text-muted-foreground">
+            {t("workspace.channelNew.in")}
+          </span>
           <select
-            aria-label="Campaign"
+            aria-label={t("workspace.channelNew.campaignLabel")}
             className="bg-transparent text-sm outline-none cursor-pointer max-w-full truncate"
             onChange={(event) => setPicked(event.target.value || null)}
             value={campaignId ?? ""}
           >
-            <option value="">No campaign (whole workspace)</option>
+            <option value="">{t("workspace.channelNew.noCampaign")}</option>
             {campaigns.data?.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.name}
@@ -184,7 +190,7 @@ function RouteComponent() {
             setError(
               caught instanceof Error
                 ? caught.message
-                : "Could not start the conversation.",
+                : t("workspace.channelNew.startFailed"),
             );
             throw caught;
           }

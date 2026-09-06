@@ -1,0 +1,180 @@
+// NOTOS i18n: de zinnen die de server zelf terugstuurt, in het Nederlands.
+//
+// Namen van velden en waarden die een aanroeper letterlijk moet meesturen (public, private, admin,
+// user, granted, denied, true, false, nl, en, null) blijven staan zoals ze zijn: een vertaalde
+// waarde zou een waarde noemen die niet bestaat (Mitch, 6 september 2026).
+const server: Record<string, string> = {
+  "server:A Bot, an instruction and a schedule are required.":
+    "Een Bot, een instructie en een schema zijn verplicht.",
+  "server:A Vertex model runs in europe-west4 or global.":
+    "Een Vertex-model draait in europe-west4 of global.",
+  "server:A catalogue key is required.": "Een catalogussleutel is verplicht.",
+  "server:A client id and a client secret are both required.":
+    "Een client-ID en een client secret zijn allebei verplicht.",
+  "server:A command is required.": "Een commando is verplicht.",
+  "server:A decision of granted or denied is required.":
+    "Een beslissing granted of denied is verplicht.",
+  "server:A description is required.": "Een beschrijving is verplicht.",
+  "server:A file path is required.": "Een bestandspad is verplicht.",
+  "server:A function this deployment ships is required.":
+    "Een functie die deze omgeving meelevert, is verplicht.",
+  "server:A key is required.": "Een sleutel is verplicht.",
+  "server:A key name is required, such as Enter or Tab.":
+    "Een toetsnaam is verplicht, bijvoorbeeld Enter of Tab.",
+  "server:A kind, a ref and a Bot are required.":
+    "Een soort, een ref en een Bot zijn verplicht.",
+  "server:A list of components is required.":
+    "Een lijst met componenten is verplicht.",
+  "server:A message is required.": "Een bericht is verplicht.",
+  "server:A name and a title are required.":
+    "Een naam en een titel zijn verplicht.",
+  "server:A name is required.": "Een naam is verplicht.",
+  "server:A name, a title and a URL are required.":
+    "Een naam, een titel en een URL zijn verplicht.",
+  "server:A policy must be an object.": "Een beleid moet een object zijn.",
+  "server:A prompt is required.": "Een prompt is verplicht.",
+  "server:A reason is required.": "Een reden is verplicht.",
+  "server:A ref and the snapshotId it came from are both required. Take a snapshot first.":
+    "Een ref en de snapshotId waar die vandaan komt, zijn allebei verplicht. Maak eerst een snapshot.",
+  "server:A role of admin or user is required.":
+    "Een rol admin of user is verplicht.",
+  "server:A routineRunId is required.": "Een routineRunId is verplicht.",
+  "server:A slug is lower-case letters, numbers and hyphens.":
+    "Een slug bestaat uit kleine letters, cijfers en streepjes.",
+  "server:A slug, a title and instructions are required.":
+    "Een slug, een titel en instructies zijn verplicht.",
+  "server:A tool and a Bot are required.":
+    "Een tool en een Bot zijn verplicht.",
+  "server:A tool is required.": "Een tool is verplicht.",
+  "server:A value is required.": "Een waarde is verplicht.",
+  "server:A web address is required.": "Een webadres is verplicht.",
+  "server:Access has been removed.": "Toegang is verwijderd.",
+  "server:Activity must be a JSON object.":
+    "Activiteit moet een JSON-object zijn.",
+  "server:Administrator access required.": "Beheerderstoegang verplicht.",
+  "server:Agent ID must be a string or null.":
+    "Agent ID moet een string of null zijn.",
+  "server:Agent IDs must be a non-empty array.":
+    "Agent IDs moeten een niet-lege array zijn.",
+  "server:Agent IDs must be non-empty strings.":
+    "Agent IDs moeten niet-lege strings zijn.",
+  "server:Agent IDs must be unique.": "Agent IDs moeten uniek zijn.",
+  "server:Agent input must be a JSON object.":
+    "Bot-invoer moet een JSON-object zijn.",
+  "server:Agent not found.": "Bot niet gevonden.",
+  "server:An e-mail address and a role are required.":
+    "Een e-mailadres en een rol zijn verplicht.",
+  "server:Audit logging is not configured.":
+    "Audit-logging is niet geconfigureerd.",
+  "server:Authentication required.": "Inloggen verplicht.",
+  "server:Channel input must be a JSON object.":
+    "Kanaalinvoer moet een JSON-object zijn.",
+  "server:Channel not found.": "Kanaal niet gevonden.",
+  "server:Could not check thread status.":
+    "Kon de status van het gesprek niet controleren.",
+  "server:Credential input is invalid.": "Toegangsgegevens zijn ongeldig.",
+  "server:Credential storage is not configured.":
+    "Opslag voor toegangsgegevens is niet geconfigureerd.",
+  "server:Identity providers are not available.":
+    "Inlogaanbieders zijn niet beschikbaar.",
+  "server:Locale must be nl, en or null.":
+    "Taalinstelling moet nl, en of null zijn.",
+  "server:Model input must be a JSON object.":
+    "Modelinvoer moet een JSON-object zijn.",
+  "server:Model must be an object or null.":
+    "Model moet een object of null zijn.",
+  "server:Name a model.": "Geef een model op.",
+  "server:No coworker is available.": "Er is geen Bot beschikbaar.",
+  "server:No key for that provider is reachable here, so it cannot run.":
+    "Er is hier geen API-sleutel voor die aanbieder bereikbaar, dus dit kan niet draaien.",
+  "server:No such Bot in this workspace.":
+    "Deze Bot bestaat niet in deze workspace.",
+  "server:No such approval.": "Deze goedkeuring bestaat niet.",
+  "server:No such campaign.": "Deze campagne bestaat niet.",
+  "server:No such channel with this Bot for you.":
+    "Er is geen kanaal met deze Bot voor jou.",
+  "server:No such workspace.": "Deze workspace bestaat niet.",
+  "server:No workspace.": "Geen workspace.",
+  "server:Not a thread id.": "Dit is geen gespreks-ID.",
+  "server:Not authorised.": "Niet bevoegd.",
+  "server:Not your thread.": "Dit is niet jouw gesprek.",
+  "server:Onboarding is not available.": "Onboarding is niet beschikbaar.",
+  "server:Only an administrator writes a skill for the deployment.":
+    "Alleen een beheerder schrijft een skill voor de omgeving.",
+  "server:Only somebody from ZUID or the client's lead can approve this.":
+    "Alleen iemand van ZUID of de lead van de klant kan dit goedkeuren.",
+  "server:Only somebody from ZUID or the client's lead can change a campaign.":
+    "Alleen iemand van ZUID of de lead van de klant kan een campagne wijzigen.",
+  "server:Only somebody from ZUID or the client's lead can start a campaign.":
+    "Alleen iemand van ZUID of de lead van de klant kan een campagne starten.",
+  "server:People are not available.": "Mensen zijn niet beschikbaar.",
+  "server:Pin input must be a JSON object.":
+    "Pin-invoer moet een JSON-object zijn.",
+  "server:Pinned must be true or false.": "Pinned moet true of false zijn.",
+  "server:Say which field the value goes in, using a ref from your snapshot.":
+    "Geef aan in welk veld de waarde moet komen, met een ref uit je snapshot.",
+  "server:Send the step to move to, or completed: true.":
+    "Stuur de stap waar je naartoe wilt, of completed: true.",
+  "server:System-owned agents are protected.":
+    "Bots van het systeem zijn beschermd.",
+  "server:Tenant package is not configured.":
+    "Tenantpakket is niet geconfigureerd.",
+  "server:Text is required.": "Tekst is verplicht.",
+  "server:That coworker is not on your roster.":
+    "Die Bot staat niet op jouw lijst.",
+  "server:That data could not be read.":
+    "Die gegevens konden niet worden gelezen.",
+  "server:That is not a model provider.": "Dat is geen modelaanbieder.",
+  "server:That is not a valid header name.": "Dat is geen geldige headernaam.",
+  "server:That person is not here.": "Die persoon is er niet.",
+  "server:That rule could not be saved, so it has not been applied. The previous boundary is still in force.":
+    "Die regel kon niet worden opgeslagen en is dus niet toegepast. De vorige grens geldt nog.",
+  "server:The Bot is required.": "De Bot is verplicht.",
+  "server:The contents to write are required.":
+    "De inhoud om te schrijven is verplicht.",
+  "server:The function and the Bot are both required.":
+    "De functie en de Bot zijn allebei verplicht.",
+  "server:The snapshotId the ref came from is required.":
+    "De snapshotId waar de ref vandaan komt, is verplicht.",
+  "server:The text to enter is required.":
+    "De tekst om in te voeren is verplicht.",
+  "server:There is no such Bot.": "Deze Bot bestaat niet.",
+  "server:There is no such provider.": "Deze aanbieder bestaat niet.",
+  "server:This channel is defined by the deployment package, so it cannot be deleted here.":
+    "Dit kanaal is vastgelegd in het omgevingspakket, dus het kan hier niet worden verwijderd.",
+  "server:This deployment has no public URL configured, so it cannot complete a consent flow. Set OPENBOT_PUBLIC_URL.":
+    "Deze omgeving heeft geen publieke URL ingesteld, dus een toestemmingsflow kan niet worden afgerond. Stel OPENBOT_PUBLIC_URL in.",
+  "server:This deployment names that address in INITIAL_ADMIN_EMAILS, so they cannot be removed here. Change the configuration instead.":
+    "Deze omgeving noemt dat adres in INITIAL_ADMIN_EMAILS, dus die persoon kan hier niet worden verwijderd. Pas in plaats daarvan de configuratie aan.",
+  "server:This deployment names that address in INITIAL_ADMIN_EMAILS, so they stay an administrator. Change the configuration instead.":
+    "Deze omgeving noemt dat adres in INITIAL_ADMIN_EMAILS, dus die persoon blijft beheerder. Pas in plaats daarvan de configuratie aan.",
+  "server:This deployment records no readable trail, so there is no history to test against.":
+    "Deze omgeving legt geen leesbaar spoor vast, dus er is geen geschiedenis om te toetsen.",
+  "server:This endpoint is the worker's.": "Dit endpoint is van de worker.",
+  "server:Timestamp is required.": "Timestamp is verplicht.",
+  "server:Timestamp must be an ISO-8601 date.":
+    "Timestamp moet een ISO-8601-datum zijn.",
+  "server:Tools are a list of serverId/toolName references.":
+    "Tools zijn een lijst met serverId/toolName-referenties.",
+  "server:Unknown input.": "Onbekende invoer.",
+  "server:Visibility must be public or private.":
+    "Zichtbaarheid moet public of private zijn.",
+  "server:Workspaces are not configured.":
+    "Workspaces zijn niet geconfigureerd.",
+  "server:You cannot remove your own access.":
+    "Je kunt je eigen toegang niet verwijderen.",
+  "server:You cannot remove your own administrator role.":
+    "Je kunt je eigen beheerdersrol niet verwijderen.",
+  "server:You do not have permission to manage this agent.":
+    "Je hebt geen rechten om deze Bot te beheren.",
+  "server:busy must be true or false": "busy moet true of false zijn",
+  "server:enabled must be true or false.": "enabled moet true of false zijn.",
+  "server:folders must be a list of Drive folder links or ids.":
+    "folders moet een lijst met Drive-maplinks of ids zijn.",
+  "server:geen toegang tot deze workspace": "geen toegang tot deze workspace",
+  "server:revoked must be true or false.": "revoked moet true of false zijn.",
+  "server:vertexLocation must be europe-west4 or global, and defaultModel must be named.":
+    "vertexLocation moet europe-west4 of global zijn, en defaultModel moet een naam hebben.",
+};
+
+export default server;

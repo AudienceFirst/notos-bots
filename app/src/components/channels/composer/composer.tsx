@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { Button } from "../../ui/button";
 import {
@@ -118,6 +119,7 @@ export function Composer({
   stoppable,
   initialValue,
 }: ComposerProps) {
+  const t = useT();
   const [value, setValue] = useState<Segment[]>(
     initialValue ? [{ type: "text", text: initialValue }] : [],
   );
@@ -131,8 +133,8 @@ export function Composer({
 
   const isBusy = pending || isSubmitting;
   const triggers = useMemo(
-    () => buildTriggers({ agents, commands }),
-    [agents, commands],
+    () => buildTriggers({ agents, commands, t }),
+    [agents, commands, t],
   );
   const draft = useMemo(() => toDraft(value), [value]);
 
@@ -269,7 +271,9 @@ export function Composer({
    * the two it is about to do. "Send" on a button that will not send for another minute is a small
    * lie told to exactly the people who cannot see the queue it lands in.
    */
-  const sendLabel = parking ? "Queue message" : "Send message";
+  const sendLabel = parking
+    ? t("channels.composer.queueMessage")
+    : t("channels.composer.sendMessage");
 
   if (compact) {
     return (
@@ -292,7 +296,7 @@ export function Composer({
         onSubmit={handleFormSubmit}
       >
         <Button
-          aria-label="More message options unavailable"
+          aria-label={t("channels.composer.moreOptionsUnavailable")}
           className="disabled:opacity-100"
           disabled
           size="icon"
@@ -302,7 +306,7 @@ export function Composer({
           <IconPlus className="size-5" />
         </Button>
         <PromptArea
-          aria-label="Message"
+          aria-label={t("channels.composer.messageLabel")}
           className={cn(
             "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm shadow-none",
             editorClassName,
@@ -312,14 +316,14 @@ export function Composer({
           minHeight={COMPACT_MIN_HEIGHT_PX}
           onChange={handleChange}
           onSubmit={submitDraft}
-          placeholder="Ask anything"
+          placeholder={t("channels.composer.placeholder")}
           ref={promptAreaRef}
           triggers={triggers}
           value={value}
         />
         {canStop ? (
           <Button
-            aria-label="Stop the Bot"
+            aria-label={t("channels.composer.stopBot")}
             className="size-8 rounded-full p-0"
             data-testid="composer-stop"
             onClick={onStop}
@@ -354,7 +358,7 @@ export function Composer({
 
         <div className="grow px-3 pt-3 pb-2">
           <PromptArea
-            aria-label="Message"
+            aria-label={t("channels.composer.messageLabel")}
             autoGrow
             className={cn(
               "w-full border-0 bg-transparent p-0 text-sm shadow-none",
@@ -364,7 +368,7 @@ export function Composer({
             maxHeight={MAX_HEIGHT_PX}
             onChange={handleChange}
             onSubmit={submitDraft}
-            placeholder="Ask anything"
+            placeholder={t("channels.composer.placeholder")}
             ref={promptAreaRef}
             triggers={triggers}
             value={value}
@@ -377,7 +381,7 @@ export function Composer({
           <div>
             {canStop ? (
               <Button
-                aria-label="Stop the Bot"
+                aria-label={t("channels.composer.stopBot")}
                 className="size-7 rounded-full bg-primary p-0"
                 data-testid="composer-stop"
                 onClick={onStop}

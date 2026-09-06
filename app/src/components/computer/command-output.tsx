@@ -8,6 +8,8 @@
  * A command that printed nothing says so. Blank space under an expanded line reads as a component
  * that failed to render, and "it printed nothing" is a real and common answer.
  */
+import { useT } from "@/i18n";
+
 export function CommandOutput({
   output,
   exitCode,
@@ -22,13 +24,14 @@ export function CommandOutput({
   /** The command ran too long and was stopped, so what is here is not the whole story. */
   timedOut?: boolean;
 }) {
+  const t = useT();
   const failed = typeof exitCode === "number" && exitCode !== 0;
 
   return (
     <div className="space-y-1.5">
       {truncated ? (
         <p className="text-muted-foreground text-xs">
-          Output was cut short at the start. What follows is the end of it.
+          {t("channels.command-output.truncated")}
         </p>
       ) : null}
       {output ? (
@@ -37,17 +40,17 @@ export function CommandOutput({
         </pre>
       ) : (
         <p className="text-muted-foreground text-xs italic">
-          It printed nothing.
+          {t("channels.command-output.nothingPrinted")}
         </p>
       )}
       {timedOut ? (
         <p className="text-destructive text-xs">
-          It ran too long and was stopped.
+          {t("channels.command-output.timedOut")}
         </p>
       ) : null}
       {failed ? (
         <p className="text-amber-600 text-xs dark:text-amber-500">
-          Exit code {exitCode}.
+          {t("channels.command-output.exitCode", { code: exitCode })}
         </p>
       ) : null}
     </div>

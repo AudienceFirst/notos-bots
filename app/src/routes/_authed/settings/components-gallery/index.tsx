@@ -9,7 +9,9 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { useT } from "@/i18n";
 import { componentListQueryOptions } from "@/lib/components/queries";
+import { componentBlurb, componentTitle } from "@/lib/copilot/gallery-registry";
 
 /**
  * What a Bot can draw, for the person it draws for.
@@ -24,24 +26,27 @@ export const Route = createFileRoute("/_authed/settings/components-gallery/")({
 });
 
 function RouteComponent() {
+  const t = useT();
   const components = useQuery(componentListQueryOptions());
   const published = components.data?.filter((component) => component.published);
 
   return (
     <PageShell
-      description="The pieces a Bot can draw in a conversation instead of describing something in prose. Which of them any one Bot may use is an administrator's decision."
-      title="Components gallery"
+      description={t("settings.componentsGallery.description")}
+      title={t("settings.componentsGallery.title")}
     >
       {components.isPending ? null : components.error ? (
         <p className="mt-12 text-destructive text-sm" role="alert">
-          Could not load components.
+          {t("settings.componentsGallery.loadFailed")}
         </p>
       ) : published?.length === 0 ? (
         <Empty className="mt-12 min-h-[30dvh] border border-dashed">
           <EmptyHeader>
-            <EmptyTitle>Nothing published yet</EmptyTitle>
+            <EmptyTitle>
+              {t("settings.componentsGallery.emptyTitle")}
+            </EmptyTitle>
             <EmptyDescription className="text-pretty">
-              When an administrator publishes a component, it will show up here.
+              {t("settings.componentsGallery.emptyDescription")}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -61,10 +66,13 @@ function RouteComponent() {
             >
               <div className="min-h-28 p-4">
                 <h4 className="line-clamp-1 font-medium text-sm">
-                  {component.title}
+                  {componentTitle(component.name, component.title)}
                 </h4>
                 <p className="mt-2 line-clamp-2 text-muted-foreground text-xs">
-                  {component.publishedDescription}
+                  {componentBlurb(
+                    component.name,
+                    component.publishedDescription,
+                  )}
                 </p>
               </div>
               <div className="relative flex-1">

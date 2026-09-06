@@ -12,6 +12,8 @@
  * different things to be told, and only the thing that ended the turn knows which one it was.
  */
 
+import { tr } from "@/i18n";
+
 /**
  * The sentence to show, in the words of whatever ended the turn.
  *
@@ -26,5 +28,5 @@ export function stoppedReason(reported: unknown): string {
       : typeof reported === "string"
         ? reported
         : "";
-  return said.trim() || "The Bot stopped without saying why.";
+  return said.trim() || tr("lib.copilot.stoppedNoReason");
 }

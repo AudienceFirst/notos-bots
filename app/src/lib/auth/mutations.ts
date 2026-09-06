@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { signOut } from "./client";
 import { authKeys } from "./queries";
 
@@ -18,7 +19,7 @@ export function setLocaleMutationOptions(queryClient: QueryClient) {
       await client("/api/me/locale", {
         method: "PUT",
         body: { locale },
-        fallback: "Could not save the language",
+        fallback: tr("lib.auth.localeSaveFailed"),
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: authKeys.all }),

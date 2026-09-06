@@ -12,6 +12,7 @@ import {
   setThreadModelMutationOptions,
   threadModelQueryOptions,
 } from "@/lib/model-keys/queries";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/bot")({
   component: RouteComponent,
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/bot")({
  */
 function RouteComponent() {
   const { agent } = Route.useSearch();
+  const t = useT();
   const { data: agents, isPending } = useQuery(agentListQueryOptions());
   const agentId = agent ?? agents?.[0]?.id;
   const bot = agents?.find((candidate) => candidate.id === agentId);
@@ -45,8 +47,8 @@ function RouteComponent() {
       <div className="flex h-screen items-center justify-center p-6">
         <p className="text-muted-foreground text-sm">
           {agent
-            ? `This deployment has no Bot called "${agent}".`
-            : "This deployment has no Bots yet."}
+            ? t("workspace.bot.unknownBot", { agent })
+            : t("workspace.bot.noBots")}
         </p>
       </div>
     );
@@ -60,6 +62,7 @@ function RouteComponent() {
 }
 
 function BotChat({ agentId, name }: { agentId: string; name: string }) {
+  const t = useT();
   // Tool calls here act on this Bot's own computer.
   useActiveBot(agentId);
   /*
@@ -113,12 +116,12 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
             ) : null}
             <Button onClick={startNew} size="sm" variant="ghost">
               <IconPlus />
-              New chat
+              {t("workspace.bot.newChat")}
             </Button>
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
-          Ask it to open a page and watch it work.
+          {t("workspace.bot.hint")}
         </p>
       </header>
       {/*
@@ -132,8 +135,7 @@ function BotChat({ agentId, name }: { agentId: string; name: string }) {
           data-testid="bot-chat-history-unavailable"
           role="alert"
         >
-          Earlier messages in this conversation could not be loaded, and the Bot
-          is answering without them.
+          {t("workspace.bot.historyUnavailable")}
         </p>
       ) : null}
       {/*

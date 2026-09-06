@@ -1,8 +1,9 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { identityProviderKeys } from "./queries";
 
-const FALLBACK = "Could not change that identity provider";
+const failed = () => tr("lib.identityProviders.changeFailed");
 
 function invalidateProviders(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: identityProviderKeys.all });
@@ -71,7 +72,7 @@ export function registerIdentityProviderMutationOptions(
       await client("/api/auth/sso/register", {
         method: "POST",
         body: registerBody(input),
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateProviders(queryClient),
@@ -92,7 +93,7 @@ export function deleteIdentityProviderMutationOptions(
     mutationFn: async (providerId: string): Promise<void> => {
       await client(
         `/api/admin/identity-providers/${encodeURIComponent(providerId)}`,
-        { method: "DELETE", fallback: FALLBACK },
+        { method: "DELETE", fallback: failed() },
       );
     },
     onSuccess: () => invalidateProviders(queryClient),

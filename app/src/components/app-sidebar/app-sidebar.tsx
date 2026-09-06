@@ -47,6 +47,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { tr, useT } from "@/i18n";
 import { signOutMutationOptions } from "@/lib/auth/mutations";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
 import { campaignListQueryOptions } from "@/lib/campaigns/queries";
@@ -164,7 +165,8 @@ export function groupedByCampaign(
   if (loose.length > 0) {
     groups.push({
       key: "workspace",
-      label: groups.length > 0 ? "Workspace" : null,
+      label:
+        groups.length > 0 ? tr("components.app-sidebar.workspaceGroup") : null,
       channels: loose,
     });
   }
@@ -251,6 +253,7 @@ function ChannelRow({
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const t = useT();
   const { data: currentUser } = useQuery(currentUserQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -316,9 +319,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <InputGroup className="bg-background text-sm rounded-lg h-9">
                 <InputGroupInput
-                  aria-label="Search channels"
+                  aria-label={t("components.app-sidebar.searchChannels")}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search..."
+                  placeholder={t("components.app-sidebar.searchPlaceholder")}
                   value={search}
                 />
                 <InputGroupAddon>
@@ -337,10 +340,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="py-4">
                 <Empty className="border border-dashed min-h-[40dvh]">
                   <EmptyHeader>
-                    <EmptyTitle>No channels match your search</EmptyTitle>
+                    <EmptyTitle>
+                      {t("components.app-sidebar.noMatchTitle")}
+                    </EmptyTitle>
                     <EmptyDescription className="text-pretty">
-                      Nothing here is named “{search.trim()}”, and nobody has
-                      said it recently either.
+                      {t("components.app-sidebar.noMatchDescription", {
+                        query: search.trim(),
+                      })}
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -349,8 +355,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {!searching && channels.data?.length === 0 ? (
               /* NOTOS: a quiet line, not a dashed box of 40dvh; a new workspace starts empty by design. */
               <p className="px-3 py-4 text-muted-foreground text-sm text-pretty">
-                No channels in this workspace yet. Your channels appear here
-                once you start one.
+                {t("components.app-sidebar.noChannels")}
               </p>
             ) : null}
             {groupedByCampaign(visibleChannels, campaigns.data ?? []).map(
@@ -396,7 +401,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="size-[28px] flex items-center justify-center">
                 <IconFlag />
               </div>
-              <span className="text-sm trackint-tight">Campaigns</span>
+              <span className="text-sm trackint-tight">
+                {t("components.app-sidebar.campaigns")}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -417,7 +424,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="size-[28px] flex items-center justify-center">
                 <IconBox />
               </div>
-              <span className="text-sm trackint-tight">Skills</span>
+              <span className="text-sm trackint-tight">
+                {t("components.app-sidebar.skills")}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -437,7 +446,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="size-[28px] flex items-center justify-center">
                 <IconBolt />
               </div>
-              <span className="text-sm trackint-tight">Bots</span>
+              <span className="text-sm trackint-tight">
+                {t("components.app-sidebar.bots")}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -458,7 +469,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="size-[28px] flex items-center justify-center">
                 <IconPlug />
               </div>
-              <span className="text-sm trackint-tight">Connectors</span>
+              <span className="text-sm trackint-tight">
+                {t("components.app-sidebar.connectors")}
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           {/* Routines live on each coworker's own dialog now, not as a nav destination: the
@@ -489,7 +502,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     render={<Link {...adminLinkOptions} />}
                   >
                     <IconShieldLock />
-                    Admin
+                    {t("components.app-sidebar.admin")}
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem
@@ -497,7 +510,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   render={<Link {...settingsLinkOptions} />}
                 >
                   <IconSettings />
-                  Settings
+                  {t("components.app-sidebar.settings")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className={userMenuItemClassName}
@@ -506,7 +519,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   variant="destructive"
                 >
                   <IconLogout />
-                  Log out
+                  {t("components.app-sidebar.logOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

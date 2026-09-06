@@ -8,6 +8,7 @@ import {
   PageShell,
 } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
+import { formatDateTime, useT } from "@/i18n";
 import { useBotNames } from "@/lib/agents/bot-names";
 import {
   DID_NOT_HAPPEN_EVENT_TYPES,
@@ -45,17 +46,26 @@ type AuditEvent = {
  * answered.
  */
 const FILTERS = [
-  { label: "Everything", search: "" },
-  { label: "Computer actions", search: "?eventType=computer.action_allowed" },
-  { label: "Blocked", search: eventTypeFilter(REFUSED_EVENT_TYPES) },
+  { labelKey: "admin-a.audit.filterEverything", search: "" },
   {
-    label: "Did not happen",
+    labelKey: "admin-a.audit.filterComputerActions",
+    search: "?eventType=computer.action_allowed",
+  },
+  {
+    labelKey: "admin-a.audit.blocked",
+    search: eventTypeFilter(REFUSED_EVENT_TYPES),
+  },
+  {
+    labelKey: "admin-a.audit.didNotHappen",
     search: eventTypeFilter(DID_NOT_HAPPEN_EVENT_TYPES),
   },
   // NOTOS (stap 5): every write a Bot wanted, and who said yes or no.
-  { label: "Needs approval", search: "?eventType=approval.requested" },
   {
-    label: "Approvals",
+    labelKey: "admin-a.audit.filterNeedsApproval",
+    search: "?eventType=approval.requested",
+  },
+  {
+    labelKey: "admin-a.audit.filterApprovals",
     search: eventTypeFilter([
       "approval.requested",
       "approval.granted",
@@ -65,6 +75,7 @@ const FILTERS = [
 ] as const;
 
 function AuditPage() {
+  const t = useT();
   const [search, setSearch] = useState<string>(FILTERS[0].search);
   const events = useQuery(auditEventsQueryOptions(search));
   const rows = (events.data?.events ?? []) as AuditEvent[];
@@ -81,45 +92,55 @@ function AuditPage() {
       action={
         <Button onClick={() => events.refetch()} size="sm" variant="ghost">
           <IconRefresh />
-          Refresh
+          {t("admin-a.audit.refresh")}
         </Button>
       }
-      description="Every action a Bot took, and every one this deployment's policy refused."
-      title="Audit"
+      description={t("admin-a.audit.description")}
+      title={t("admin-a.audit.title")}
       width="wide"
     >
       <PageSection>
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((filter) => (
             <Button
-              key={filter.label}
+              key={filter.labelKey}
               onClick={() => setSearch(filter.search)}
               size="sm"
               type="button"
               /* The fill is the state, as on every other set of switches in the app. */
               variant={search === filter.search ? "default" : "outline"}
             >
-              {filter.label}
+              {t(filter.labelKey)}
             </Button>
           ))}
         </div>
 
         {events.isPending ? null : events.isError ? (
           <p className="mt-4 text-destructive text-sm" role="alert">
-            The audit trail could not be loaded.
+            {t("admin-a.audit.loadFailed")}
           </p>
         ) : rows.length === 0 ? (
-          <PageEmpty>No events match this filter yet.</PageEmpty>
+          <PageEmpty>{t("admin-a.audit.empty")}</PageEmpty>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full text-left text-sm">
               <thead className="text-muted-foreground text-xs uppercase">
                 <tr className="border-border border-b">
-                  <th className="px-4 py-2 font-medium">When</th>
-                  <th className="px-4 py-2 font-medium">What</th>
-                  <th className="px-4 py-2 font-medium">On</th>
-                  <th className="px-4 py-2 font-medium">Bot</th>
-                  <th className="px-4 py-2 font-medium">Decision</th>
+                  <th className="px-4 py-2 font-medium">
+                    {t("admin-a.audit.colWhen")}
+                  </th>
+                  <th className="px-4 py-2 font-medium">
+                    {t("admin-a.audit.colWhat")}
+                  </th>
+                  <th className="px-4 py-2 font-medium">
+                    {t("admin-a.audit.colOn")}
+                  </th>
+                  <th className="px-4 py-2 font-medium">
+                    {t("admin-a.audit.colBot")}
+                  </th>
+                  <th className="px-4 py-2 font-medium">
+                    {t("admin-a.audit.colDecision")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -142,6 +163,7 @@ function Row({
   event: AuditEvent;
   nameFor: (botId: string) => string;
 }) {
+  const t = useT();
   const payload = event.payload ?? {};
   const decision = (payload.decision ?? {}) as {
     allowed?: boolean;
@@ -167,22 +189,23 @@ function Row({
   const routed =
     event.eventType === "channel.routed"
       ? payload.viaMention === true
-        ? "The person chose this Bot"
+        ? t("admin-a.audit.routedByPerson")
         : payload.fallback === true
-          ? "Sent to the default Bot"
-          : "Sent to the Bot it is for"
+          ? t("admin-a.audit.routedFallback")
+          : t("admin-a.audit.routedMatched")
       : null;
   // Allowed by policy but not carried out. A stalled turn belongs in the same family: the Bot was
   // asked and the answer never arrived. Colour is how this table is read, and a row left in the
   // muted foreground reads as "Allowed", which a turn nobody ever got an answer to was not.
   const failed = outcome === "did-not-happen";
   const silence = stalled ? silenceOf(payload) : null;
+  const decisionKey = DECISION_KEYS[event.eventType];
 
   return (
     <tr className="border-border border-t align-top">
       <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
         {/* The day as well as the time: a trail that is not only today's cannot be read from times alone. */}
-        {new Date(event.createdAt).toLocaleString("en-GB", {
+        {formatDateTime(event.createdAt, {
           dateStyle: "medium",
           timeStyle: "medium",
         })}
@@ -212,7 +235,10 @@ function Row({
           <span className="font-mono text-xs">
             {typeof payload.offered === "number" &&
             typeof payload.granted === "number"
-              ? `${payload.offered} of ${payload.granted} tools`
+              ? t("admin-a.audit.toolsOffered", {
+                  offered: payload.offered,
+                  granted: payload.granted,
+                })
               : "-"}
           </span>
         ) : /* NOTOS (stap 5): an approval row is about the tool the person was asked about. */
@@ -277,8 +303,13 @@ function Row({
           }
         >
           {routed ??
-            DECISIONS[event.eventType] ??
-            (refused ? "Blocked" : failed ? "Did not happen" : "Allowed")}
+            (decisionKey
+              ? t(decisionKey)
+              : refused
+                ? t("admin-a.audit.blocked")
+                : failed
+                  ? t("admin-a.audit.didNotHappen")
+                  : t("admin-a.audit.allowed"))}
         </span>
         {/* Refusal reasons mirror the conversation-facing reason. */}
         {(event.eventType === "component.refused" ||
@@ -297,7 +328,9 @@ function Row({
         {event.eventType === "mcp.tools_discovered" &&
         typeof payload.reason === "string" ? (
           <div className="mt-0.5 text-xs text-muted-foreground">
-            {DISCOVERY_REASONS[payload.reason] ?? payload.reason}
+            {DISCOVERY_REASON_KEYS[payload.reason]
+              ? t(DISCOVERY_REASON_KEYS[payload.reason])
+              : payload.reason}
             {Array.isArray(payload.skills) && payload.skills.length > 0
               ? `: ${payload.skills.join(", ")}`
               : ""}
@@ -331,7 +364,7 @@ function Row({
         typeof payload.reason === "string" ? (
           <div className="mt-0.5 text-xs text-muted-foreground">
             {payload.reason}
-            <span className="italic">, reported by the Bot itself</span>
+            <span className="italic">{t("admin-a.audit.reportedByBot")}</span>
           </div>
         ) : null}
         {failed && typeof payload.failure === "string" ? (
@@ -355,7 +388,7 @@ function Row({
         ) : null}
         {decision.mode === "dry-run" && decision.carriedOut ? (
           <div className="text-xs text-muted-foreground">
-            dry-run: recorded, not enforced
+            {t("admin-a.audit.dryRunNote")}
           </div>
         ) : null}
       </td>
@@ -374,13 +407,15 @@ function Row({
  * Every one of these looks the same from outside: the Bot was handed some tools. The distinction is
  * the difference between a deployment that narrowed on purpose, one that has never declared a skill,
  * and one whose selector could not be reached, and only the last is a fault.
+ *
+ * Dictionary keys, translated as the row is drawn.
  */
-const DISCOVERY_REASONS: Record<string, string> = {
-  "under-floor": "Few enough tools to offer them all",
-  "nothing-declared": "No skill declares any of these tools",
-  unavailable: "Could not choose, so all were offered",
-  "nothing-chosen": "No skill applied, so all were offered",
-  selected: "Chosen by skill",
+const DISCOVERY_REASON_KEYS: Record<string, string> = {
+  "under-floor": "admin-a.audit.discoveryUnderFloor",
+  "nothing-declared": "admin-a.audit.discoveryNothingDeclared",
+  unavailable: "admin-a.audit.discoveryUnavailable",
+  "nothing-chosen": "admin-a.audit.discoveryNothingChosen",
+  selected: "admin-a.audit.discoverySelected",
 };
 
 const NAMED_TARGETS = new Set([
@@ -391,49 +426,50 @@ const NAMED_TARGETS = new Set([
   "credential",
 ]);
 
-const DECISIONS: Record<string, string> = {
-  "bot.declined": "The Bot declined",
+/** What each event type says in the Decision column, as dictionary keys. */
+const DECISION_KEYS: Record<string, string> = {
+  "bot.declined": "admin-a.audit.decisionBotDeclined",
   // Not a refusal, so not the refusal colour: nothing was blocked. The Bot was asked and never
   // answered, which is the same complaint as an action that was allowed and then did not happen.
-  "agent.stream_stalled": "The Bot stopped responding",
-  "computer.policy_loaded": "Boundary at start-up",
-  "computer.isolation_loaded": "Isolation at start-up",
-  "computer.control_taken": "A person took the wheel",
-  "computer.control_released": "The wheel was handed back",
-  "computer.help_requested": "The Bot asked for help",
-  "computer.secret_requested": "The Bot asked for a secret",
-  "computer.secret_supplied": "A person supplied a secret",
-  "computer.reset": "The computer was reset",
-  "computer.stopped": "A person pressed stop",
+  "agent.stream_stalled": "admin-a.audit.decisionStreamStalled",
+  "computer.policy_loaded": "admin-a.audit.decisionPolicyLoaded",
+  "computer.isolation_loaded": "admin-a.audit.decisionIsolationLoaded",
+  "computer.control_taken": "admin-a.audit.decisionControlTaken",
+  "computer.control_released": "admin-a.audit.decisionControlReleased",
+  "computer.help_requested": "admin-a.audit.decisionHelpRequested",
+  "computer.secret_requested": "admin-a.audit.decisionSecretRequested",
+  "computer.secret_supplied": "admin-a.audit.decisionSecretSupplied",
+  "computer.reset": "admin-a.audit.decisionReset",
+  "computer.stopped": "admin-a.audit.decisionStopped",
 
-  "component.granted": "Granted to this Bot",
-  "component.revoked": "Taken away from this Bot",
-  "component.published": "Published, so every Bot may use it",
-  "component.unpublished": "Unpublished, so no Bot may use it",
-  "component.draft_saved": "Draft saved, not yet published",
-  "component.refused": "Refused",
-  "component.function_granted": "May read this",
-  "component.function_revoked": "May no longer read this",
-  "component.function_called": "Read real data",
-  "component.function_refused": "Refused",
+  "component.granted": "admin-a.audit.decisionComponentGranted",
+  "component.revoked": "admin-a.audit.decisionComponentRevoked",
+  "component.published": "admin-a.audit.decisionComponentPublished",
+  "component.unpublished": "admin-a.audit.decisionComponentUnpublished",
+  "component.draft_saved": "admin-a.audit.decisionDraftSaved",
+  "component.refused": "admin-a.audit.decisionRefused",
+  "component.function_granted": "admin-a.audit.decisionFunctionGranted",
+  "component.function_revoked": "admin-a.audit.decisionFunctionRevoked",
+  "component.function_called": "admin-a.audit.decisionFunctionCalled",
+  "component.function_refused": "admin-a.audit.decisionRefused",
   // A function failure is execution failure, not a policy refusal.
-  "component.function_failed": "Could not be read",
+  "component.function_failed": "admin-a.audit.decisionFunctionFailed",
 
   // Not a call and not a decision: the tools this run was allowed to see. Worded so nobody reads it
   // as permission, which it is not — everything named was already granted.
-  "mcp.tools_discovered": "Tools offered for one run",
-  "mcp.call_succeeded": "Called on this Bot's behalf",
-  "mcp.call_rejected": "Blocked",
+  "mcp.tools_discovered": "admin-a.audit.decisionToolsDiscovered",
+  "mcp.call_succeeded": "admin-a.audit.decisionCallSucceeded",
+  "mcp.call_rejected": "admin-a.audit.blocked",
   // NOTOS (stap 5): a write that waited for a person, and what the person said.
-  "approval.requested": "Waiting for a person",
-  "approval.granted": "Approved by a person",
-  "approval.denied": "Declined by a person",
-  "mcp.call_failed": "The server did not answer",
+  "approval.requested": "admin-a.audit.decisionApprovalRequested",
+  "approval.granted": "admin-a.audit.decisionApprovalGranted",
+  "approval.denied": "admin-a.audit.decisionApprovalDenied",
+  "mcp.call_failed": "admin-a.audit.decisionCallFailed",
   // Not "Blocked": nothing about the Bot was judged, because nothing proved which Bot it was.
-  "mcp.callback_refused": "Could not prove which Bot it was",
+  "mcp.callback_refused": "admin-a.audit.decisionCallbackRefused",
 
-  "configuration.changed": "Configuration changed",
-  "credential.created": "Credential saved",
+  "configuration.changed": "admin-a.audit.decisionConfigurationChanged",
+  "credential.created": "admin-a.audit.decisionCredentialCreated",
 };
 
 function hostOf(url: string): string {

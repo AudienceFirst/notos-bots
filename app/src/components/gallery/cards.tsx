@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tr, useT } from "@/i18n";
 import type { GalleryComponent } from "@/lib/copilot/gallery-registry";
 import { Badge, GalleryFrame, type Tone } from "./frame";
 
@@ -131,6 +132,7 @@ export function ChecklistCard({
   caption,
   items: given,
 }: Partial<z.infer<typeof ChecklistCardProps>>) {
+  const t = useT();
   const items = given ?? [];
   const done = items.filter((item) => item.done).length;
   return (
@@ -141,7 +143,7 @@ export function ChecklistCard({
             done === items.length && items.length > 0 ? "positive" : "neutral"
           }
         >
-          {done} of {items.length}
+          {t("components.cards.countOf", { done, total: items.length })}
         </Badge>
       }
       caption={caption}
@@ -197,11 +199,18 @@ export function NoticeCard({
   tone: noticeTone,
   points,
 }: Partial<z.infer<typeof NoticeCardProps>>) {
+  const t = useT();
   return (
     <GalleryFrame
       action={
         noticeTone && noticeTone !== "neutral" ? (
-          <Badge tone={noticeTone}>{noticeTone}</Badge>
+          <Badge tone={noticeTone}>
+            {noticeTone === "positive"
+              ? t("components.cards.tonePositive")
+              : noticeTone === "caution"
+                ? t("components.cards.toneCaution")
+                : t("components.cards.toneNegative")}
+          </Badge>
         ) : undefined
       }
       title={title}
@@ -221,86 +230,126 @@ export function NoticeCard({
   );
 }
 
+/*
+ * `title` and `preview` are getters: both are what a person sees, so they follow the interface
+ * language at the moment they are read. `description` and `confirmation` are read by the model and
+ * stay as written.
+ */
 export const GALLERY: GalleryComponent[] = [
   {
     name: "showRecord",
-    title: "Record",
+    get title() {
+      return tr("components.cards.recordTitle");
+    },
     kind: "card",
     description:
       "Show one thing and its fields, an order, a person, a ticket. Use instead of describing a record in prose.",
     parameters: RecordCardProps,
     Component: RecordCard as GalleryComponent["Component"],
-    preview: {
-      title: "Invoice 2043",
-      subtitle: "Northwind Traders",
-      status: "Approved",
-      fields: [
-        { label: "Amount", value: "$4,280.00" },
-        { label: "Raised", value: "12 March" },
-        { label: "Owner", value: "Priya Raman" },
-      ],
+    get preview() {
+      return {
+        title: tr("components.cards.previewRecordTitle"),
+        subtitle: tr("components.cards.previewRecordSubtitle"),
+        status: tr("components.cards.previewRecordStatus"),
+        fields: [
+          {
+            label: tr("components.cards.previewRecordAmountLabel"),
+            value: tr("components.cards.previewRecordAmountValue"),
+          },
+          {
+            label: tr("components.cards.previewRecordRaisedLabel"),
+            value: tr("components.cards.previewRecordRaisedValue"),
+          },
+          {
+            label: tr("components.cards.previewRecordOwnerLabel"),
+            value: tr("components.cards.previewRecordOwnerValue"),
+          },
+        ],
+      };
     },
     confirmation: "The record is now on screen for the person.",
   },
   {
     name: "showMetrics",
-    title: "Headline figures",
+    get title() {
+      return tr("components.cards.metricsTitle");
+    },
     kind: "card",
     description:
       "Show up to six headline figures, each with an optional movement. Use for a summary somebody reads at a glance.",
     parameters: MetricsCardProps,
     Component: MetricsCard as GalleryComponent["Component"],
-    preview: {
-      title: "This month",
-      metrics: [
-        {
-          label: "Revenue",
-          value: "$412k",
-          change: "+12% on last month",
-          changeTone: "positive",
-        },
-        { label: "Open deals", value: "38" },
-        {
-          label: "Churn",
-          value: "1.4%",
-          change: "+0.3pt",
-          changeTone: "caution",
-        },
-      ],
+    get preview() {
+      return {
+        title: tr("components.cards.previewMetricsTitle"),
+        metrics: [
+          {
+            label: tr("components.cards.previewMetricsRevenueLabel"),
+            value: tr("components.cards.previewMetricsRevenueValue"),
+            change: tr("components.cards.previewMetricsRevenueChange"),
+            changeTone: "positive",
+          },
+          {
+            label: tr("components.cards.previewMetricsDealsLabel"),
+            value: "38",
+          },
+          {
+            label: tr("components.cards.previewMetricsChurnLabel"),
+            value: tr("components.cards.previewMetricsChurnValue"),
+            change: tr("components.cards.previewMetricsChurnChange"),
+            changeTone: "caution",
+          },
+        ],
+      };
     },
     confirmation: "The figures are now on screen for the person.",
   },
   {
     name: "showChecklist",
-    title: "Checklist",
+    get title() {
+      return tr("components.cards.checklistTitle");
+    },
     kind: "card",
     description:
       "Show a list of things and which are done. Reporting only, the person cannot tick these, so do not use it to ask for anything.",
     parameters: ChecklistCardProps,
     Component: ChecklistCard as GalleryComponent["Component"],
-    preview: {
-      title: "Before the release",
-      items: [
-        { text: "Migrations applied", done: true },
-        { text: "Changelog written", done: true },
-        { text: "Load test", done: false, note: "Waiting on staging" },
-      ],
+    get preview() {
+      return {
+        title: tr("components.cards.previewChecklistTitle"),
+        items: [
+          { text: tr("components.cards.previewChecklistItem1"), done: true },
+          { text: tr("components.cards.previewChecklistItem2"), done: true },
+          {
+            text: tr("components.cards.previewChecklistItem3"),
+            done: false,
+            note: tr("components.cards.previewChecklistItem3Note"),
+          },
+        ],
+      };
     },
     confirmation: "The checklist is now on screen for the person.",
   },
   {
     name: "showNotice",
-    title: "Notice",
+    get title() {
+      return tr("components.cards.noticeTitle");
+    },
     kind: "card",
     description:
       "Show a headline, a short explanation and optional supporting points. Use instead of writing several paragraphs of prose.",
     parameters: NoticeCardProps,
     Component: NoticeCard as GalleryComponent["Component"],
-    preview: {
-      title: "Certificate expires in 30 days",
-      body: "The checkout certificate has an owner now, and this is the first of the new alerts.",
-      tone: "caution",
-      points: ["Owner: Platform", "Renews automatically once approved"],
+    get preview() {
+      return {
+        title: tr("components.cards.previewNoticeTitle"),
+        body: tr("components.cards.previewNoticeBody"),
+        tone: "caution",
+        points: [
+          tr("components.cards.previewNoticePoint1"),
+          tr("components.cards.previewNoticePoint2"),
+        ],
+      };
     },
     confirmation: "The notice is now on screen for the person.",
   },

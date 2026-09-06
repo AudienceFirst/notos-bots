@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { credentialKeys } from "./queries";
 
 export type CredentialInput = {
@@ -16,7 +17,7 @@ export function createCredentialMutationOptions(queryClient: QueryClient) {
       client("/api/admin/credentials", {
         method: "POST",
         body: input,
-        fallback: "Credential operation failed",
+        fallback: tr("lib.credentials.operationFailed"),
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: credentialKeys.all }),
@@ -28,7 +29,7 @@ export function revokeCredentialMutationOptions(queryClient: QueryClient) {
     mutationFn: (credentialId: string) =>
       client(`/api/admin/credentials/${credentialId}/revoke`, {
         method: "POST",
-        fallback: "Credential operation failed",
+        fallback: tr("lib.credentials.operationFailed"),
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: credentialKeys.all }),
@@ -62,7 +63,7 @@ export async function storeMcpToken(
         plaintext: token.trim(),
         metadata: { server: serverId },
       },
-      fallback: "The token could not be stored.",
+      fallback: tr("lib.credentials.tokenStoreFailed"),
     },
   );
   return credential?.id;

@@ -11,6 +11,7 @@ import { StaggerItem } from "@/components/layout/stagger";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { type AgentProfile, agentListQueryOptions } from "@/lib/agents/queries";
+import { useT } from "@/i18n";
 
 /**
  * Creating and inspecting a coworker are search-parameter states so the roster remains mounted and
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/agents/")({
 function AgentsScreen() {
   const { new: isCreating, agent: selectedAgentId } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const t = useT();
   const { data: agents } = useQuery(agentListQueryOptions());
   const mine = agents?.filter((a) => a.mine);
   const explore = agents?.filter((a) => !a.mine && a.visibility === "public");
@@ -82,7 +84,9 @@ function AgentsScreen() {
          */}
         <div className="mt-12 w-full">
           <div className="flex flex-row w-full items-center justify-between">
-            <h2 className="font-bold text-lg">Bots in this workspace</h2>
+            <h2 className="font-bold text-lg">
+              {t("workspace.agents.inWorkspace")}
+            </h2>
             <Button
               variant="ghost"
               size="sm"
@@ -96,13 +100,13 @@ function AgentsScreen() {
               )}
             >
               <IconPlus />
-              New Bot
+              {t("workspace.agents.newBot")}
             </Button>
           </div>
           {campaignBots.length > 0 && (
             <>
               <p className="mt-4 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Campaign Bots
+                {t("workspace.agents.campaignBots")}
               </p>
               <div className="mt-2 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
                 {cards(campaignBots)}
@@ -112,7 +116,7 @@ function AgentsScreen() {
           {workspaceBots.length > 0 && (
             <>
               <p className="mt-6 text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Workspace Bots
+                {t("workspace.agents.workspaceBots")}
               </p>
               <div className="mt-2 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
                 {cards(workspaceBots, campaignBots.length)}
@@ -123,7 +127,7 @@ function AgentsScreen() {
             <Empty className="border border-dashed h-[180px]">
               <EmptyHeader>
                 <EmptyTitle className="text-muted-foreground">
-                  This workspace has no Bots yet. Create one with New Bot.
+                  {t("workspace.agents.empty")}
                 </EmptyTitle>
               </EmptyHeader>
             </Empty>
@@ -131,7 +135,9 @@ function AgentsScreen() {
         </div>
         {!!mine?.length && (
           <div className="mt-8 w-full">
-            <h2 className="font-bold text-lg">Your Bots</h2>
+            <h2 className="font-bold text-lg">
+              {t("workspace.agents.yourBots")}
+            </h2>
             <div className="mt-4 grid grid-cols-[repeat(auto-fill,144px)] gap-4">
               {mine.map((agent, index) => {
                 return (

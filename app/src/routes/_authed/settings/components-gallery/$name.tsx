@@ -24,13 +24,9 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/i18n";
 import { componentListQueryOptions } from "@/lib/components/queries";
-
-/** The same way back from every state this route can be in. */
-const BACK = {
-  label: "Components gallery",
-  linkProps: { to: "/settings/components-gallery" },
-} as const;
+import { componentBlurb, componentTitle } from "@/lib/copilot/gallery-registry";
 
 /**
  * One component, drawn as large as this column allows, and nothing to change.
@@ -69,16 +65,26 @@ function FactRow({
 }
 
 function RouteComponent() {
+  const t = useT();
   const { name } = Route.useParams();
   const components = useQuery(componentListQueryOptions());
+
+  /** The same way back from every state this route can be in. */
+  const back = {
+    label: t("settings.componentsGalleryDetail.backLabel"),
+    linkProps: { to: "/settings/components-gallery" as const },
+  };
 
   if (components.isPending) return null;
 
   if (components.error) {
     return (
-      <PageShell backButton={BACK} title="Components gallery">
+      <PageShell
+        backButton={back}
+        title={t("settings.componentsGalleryDetail.backLabel")}
+      >
         <p className="mt-8 text-destructive text-sm" role="alert">
-          Could not load components.
+          {t("settings.componentsGalleryDetail.loadFailed")}
         </p>
       </PageShell>
     );
@@ -95,16 +101,15 @@ function RouteComponent() {
   if (!component) {
     return (
       <PageShell
-        backButton={BACK}
-        description="Nothing here answers to that name."
-        title="No such component"
+        backButton={back}
+        description={t("settings.componentsGalleryDetail.noSuchDescription")}
+        title={t("settings.componentsGalleryDetail.noSuchTitle")}
       >
         <Empty className="mt-12 min-h-[30dvh] border border-dashed">
           <EmptyHeader>
             <EmptyTitle>{name}</EmptyTitle>
             <EmptyDescription className="text-pretty">
-              It may have been withdrawn, or this deployment may no longer ship
-              it.
+              {t("settings.componentsGalleryDetail.withdrawn")}
             </EmptyDescription>
           </EmptyHeader>
           <Button
@@ -112,7 +117,7 @@ function RouteComponent() {
             size="sm"
             variant="outline"
           >
-            Back to the gallery
+            {t("settings.componentsGalleryDetail.backToGallery")}
           </Button>
         </Empty>
       </PageShell>
@@ -121,9 +126,12 @@ function RouteComponent() {
 
   return (
     <PageShell
-      backButton={BACK}
-      description={component.publishedDescription ?? undefined}
-      title={component.title}
+      backButton={back}
+      description={
+        componentBlurb(component.name, component.publishedDescription) ||
+        undefined
+      }
+      title={componentTitle(component.name, component.title)}
     >
       <div className="relative mt-8 aspect-[2/1] overflow-hidden rounded-lg border border-border bg-card">
         <div className="absolute inset-0">
@@ -134,13 +142,19 @@ function RouteComponent() {
         </div>
       </div>
 
-      <PageSection title="Details">
+      <PageSection title={t("settings.componentsGalleryDetail.details")}>
         <PageRows>
-          <FactRow icon={<IconTag />} label="Kind">
+          <FactRow
+            icon={<IconTag />}
+            label={t("settings.componentsGalleryDetail.kind")}
+          >
             {component.kind}
           </FactRow>
           <Separator />
-          <FactRow icon={<IconCode />} label="Called as">
+          <FactRow
+            icon={<IconCode />}
+            label={t("settings.componentsGalleryDetail.calledAs")}
+          >
             <code className="rounded bg-foreground/5 px-1.5 py-0.5 text-xs">
               {component.name}
             </code>

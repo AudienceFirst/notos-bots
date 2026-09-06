@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { setPluginGrantMutationOptions } from "@/lib/plugins/mutations";
 
@@ -23,6 +24,7 @@ export function SkillAgents({
   slug: string;
   grantedTo: string[];
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const { data: agents } = useQuery(agentListQueryOptions());
   const mine = (agents ?? []).filter((agent) => agent.mine);
@@ -36,10 +38,12 @@ export function SkillAgents({
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="text-sm font-medium">Bots</h2>
+      <h2 className="text-sm font-medium">
+        {t("components.skill-agents.title")}
+      </h2>
       {mine.length === 0 ? (
         <p className="text-muted-foreground text-xs">
-          You do not own a Bot to put this on yet.
+          {t("components.skill-agents.noBot")}
         </p>
       ) : (
         <>
@@ -66,7 +70,8 @@ export function SkillAgents({
             })}
           </div>
           <p className="text-muted-foreground text-xs">
-            An Agent carrying this offers <code>/{slug}</code> in its composer.
+            {t("components.skill-agents.hintBefore")} <code>/{slug}</code>{" "}
+            {t("components.skill-agents.hintAfter")}
           </p>
         </>
       )}

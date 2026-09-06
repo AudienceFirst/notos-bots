@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /** A component authored in the browser, as the playground edits it. */
 export type SandboxedRecord = {
@@ -44,7 +45,7 @@ export function sandboxedListQueryOptions() {
     queryFn: async (): Promise<SandboxedRecord[]> => {
       return (
         (await client("/api/sandboxed", "components", {
-          fallback: "The playground's components could not be loaded.",
+          fallback: tr("lib.sandboxed.loadFailed"),
         })) ?? []
       );
     },
@@ -65,7 +66,7 @@ export function publishedSandboxedQueryOptions() {
     queryFn: async (): Promise<PublishedSandboxed[]> => {
       return (
         (await client("/api/sandboxed/published", "components", {
-          fallback: "The published components could not be loaded.",
+          fallback: tr("lib.sandboxed.publishedLoadFailed"),
         })) ?? []
       );
     },

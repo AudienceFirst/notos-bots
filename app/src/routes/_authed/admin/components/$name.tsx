@@ -47,6 +47,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime, useT } from "@/i18n";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import {
   saveComponentDraftMutationOptions,
@@ -60,25 +61,27 @@ import {
   type DataFunctionSummary,
   dataFunctionsQueryOptions,
 } from "@/lib/components/queries";
-import { RENDERABLE_NAMES } from "@/lib/copilot/gallery-registry";
+import {
+  componentTitle,
+  RENDERABLE_NAMES,
+} from "@/lib/copilot/gallery-registry";
 import { queryClient } from "@/query-client";
 
 /**
  * Governance for one compiled component: publication, per-Bot grants, the model-facing description,
  * and which data functions it may read.
  */
-/** The same way back from every state this route can be in. */
-const BACK = {
-  label: "UI Components",
-  linkProps: { to: "/admin/components" },
-} as const;
+/** The same way back from every state this route can be in; the label is translated where used. */
+const BACK_LINK = { to: "/admin/components" } as const;
 
 export const Route = createFileRoute("/_authed/admin/components/$name")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
+  const t = useT();
   const { name } = Route.useParams();
+  const back = { label: t("admin-b.component.back"), linkProps: BACK_LINK };
   const components = useQuery(componentListQueryOptions());
   const agents = useQuery(agentListQueryOptions());
   const dataFunctions = useQuery(dataFunctionsQueryOptions());
@@ -106,9 +109,9 @@ function RouteComponent() {
 
   if (components.error) {
     return (
-      <PageShell backButton={BACK} title="Components">
+      <PageShell backButton={back} title={t("admin-b.component.errorTitle")}>
         <p className="mt-8 text-destructive text-sm" role="alert">
-          Could not load components.
+          {t("admin-b.component.loadFailed")}
         </p>
       </PageShell>
     );
@@ -121,16 +124,15 @@ function RouteComponent() {
      */
     return (
       <PageShell
-        backButton={BACK}
-        description="Nothing here answers to that name."
-        title="No such component"
+        backButton={back}
+        description={t("admin-b.component.notFoundDescription")}
+        title={t("admin-b.component.notFoundTitle")}
       >
         <Empty className="mt-12 min-h-[30dvh] border border-dashed">
           <EmptyHeader>
             <EmptyTitle>{name}</EmptyTitle>
             <EmptyDescription className="text-pretty">
-              It may have been renamed, or this deployment may no longer ship
-              it.
+              {t("admin-b.component.notFoundHint")}
             </EmptyDescription>
           </EmptyHeader>
           <Button
@@ -138,7 +140,7 @@ function RouteComponent() {
             size="sm"
             variant="outline"
           >
-            Back to components
+            {t("admin-b.component.backToComponents")}
           </Button>
         </Empty>
       </PageShell>
@@ -263,6 +265,7 @@ function ComponentDetail({
   onPublish: (published: boolean) => void;
   onSaveDraft: (description: string) => void;
 }) {
+  const t = useT();
   const [sheet, setSheet] = useState<Sheet>(null);
   const [draft, setDraft] = useState(component.draftDescription);
   const withheld = new Set(component.withheldFrom);
@@ -274,28 +277,34 @@ function ComponentDetail({
 
   const grantSummary =
     bots.length === 0
-      ? "There are no Bots yet"
+      ? t("admin-b.component.noBotsYet")
       : granted.length === bots.length
-        ? `All ${bots.length} Bots`
+        ? t("admin-b.component.allBots", { count: bots.length })
         : granted.length === 0
-          ? "No Bots"
-          : `${granted.length} of ${bots.length} Bots`;
+          ? t("admin-b.component.noBots")
+          : t("admin-b.component.someBots", {
+              granted: granted.length,
+              total: bots.length,
+            });
 
   const functionSummary =
     dataFunctions.length === 0
-      ? "This deployment grants no data functions"
+      ? t("admin-b.component.noDataFunctions")
       : held.length === 0
-        ? "Nothing — it draws only what the model hands it"
+        ? t("admin-b.component.noFunctionsHeld")
         : held.map((fn) => fn.name).join(", ");
 
   return (
     <PageShell
-      backButton={BACK}
+      backButton={{
+        label: t("admin-b.component.back"),
+        linkProps: BACK_LINK,
+      }}
       description={
         component.publishedDescription ??
-        "Nothing is published, so no Bot is told about this."
+        t("admin-b.component.nothingPublished")
       }
-      title={component.title}
+      title={componentTitle(component.name, component.title)}
     >
       {/*
        * The render at the top of the page. Bordered and rounded rather than bleeding to the edges:
@@ -311,8 +320,8 @@ function ComponentDetail({
       </div>
 
       <PageSection
-        description="What this component is for, and which Bots are allowed to answer with it."
-        title="Configuration"
+        description={t("admin-b.component.configurationDescription")}
+        title={t("admin-b.component.configuration")}
       >
         <PageRows>
           {/*
@@ -326,9 +335,9 @@ function ComponentDetail({
                   <IconAlertTriangle className="text-amber-600 dark:text-amber-400" />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle>Not in this build</ItemTitle>
+                  <ItemTitle>{t("admin-b.component.notInBuild")}</ItemTitle>
                   <ItemDescription>
-                    Nothing here can draw it, whatever else is set.
+                    {t("admin-b.component.notInBuildDescription")}
                   </ItemDescription>
                 </ItemContent>
               </Item>
@@ -341,19 +350,19 @@ function ComponentDetail({
               <IconWorld />
             </ItemMedia>
             <ItemContent>
-              <ItemTitle>Published</ItemTitle>
+              <ItemTitle>{t("admin-b.component.published")}</ItemTitle>
               <ItemDescription>
                 {component.published
-                  ? "Bots may answer with it."
-                  : "No Bot may use it."}
+                  ? t("admin-b.component.publishedOn")
+                  : t("admin-b.component.publishedOff")}
                 {component.hasUnpublishedChanges
-                  ? " The description has changes that are not published."
+                  ? ` ${t("admin-b.component.unpublishedChanges")}`
                   : null}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
               <Switch
-                aria-label="Published"
+                aria-label={t("admin-b.component.published")}
                 checked={component.published}
                 data-testid={`publish-${component.name}`}
                 onCheckedChange={onPublish}
@@ -365,9 +374,11 @@ function ComponentDetail({
 
           <SheetRow
             icon={<IconFileText />}
-            label="Description"
+            label={t("admin-b.component.descriptionLabel")}
             onOpen={() => setSheet("description")}
-            summary={component.draftDescription || "Nothing yet"}
+            summary={
+              component.draftDescription || t("admin-b.component.nothingYet")
+            }
             testId={`description-${component.name}`}
           />
 
@@ -375,7 +386,7 @@ function ComponentDetail({
 
           <SheetRow
             icon={<IconUsers />}
-            label="Available to"
+            label={t("admin-b.component.availableTo")}
             onOpen={() => setSheet("grants")}
             summary={grantSummary}
             testId={`grants-${component.name}`}
@@ -385,7 +396,7 @@ function ComponentDetail({
 
           <SheetRow
             icon={<IconDatabase />}
-            label="May read"
+            label={t("admin-b.component.mayRead")}
             onOpen={() => setSheet("functions")}
             summary={functionSummary}
             testId={`functions-${component.name}`}
@@ -393,21 +404,26 @@ function ComponentDetail({
         </PageRows>
       </PageSection>
 
-      <PageSection title="Details">
+      <PageSection title={t("admin-b.component.details")}>
         <PageRows>
-          <FactRow icon={<IconTag />} label="Kind">
+          <FactRow icon={<IconTag />} label={t("admin-b.component.kind")}>
             {component.kind}
           </FactRow>
           <Separator />
-          <FactRow icon={<IconCode />} label="Called as">
+          <FactRow icon={<IconCode />} label={t("admin-b.component.calledAs")}>
             <code className="rounded bg-foreground/5 px-1.5 py-0.5 text-xs">
               {component.name}
             </code>
           </FactRow>
           <Separator />
-          <FactRow icon={<IconClock />} label="Last changed">
-            {new Date(component.updatedAt).toLocaleString()}
-            {component.updatedBy ? ` by ${component.updatedBy}` : null}
+          <FactRow
+            icon={<IconClock />}
+            label={t("admin-b.component.lastChanged")}
+          >
+            {formatDateTime(component.updatedAt)}
+            {component.updatedBy
+              ? ` ${t("admin-b.component.by", { name: component.updatedBy })}`
+              : null}
           </FactRow>
         </PageRows>
       </PageSection>
@@ -428,15 +444,14 @@ function ComponentDetail({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Description</DialogTitle>
+            <DialogTitle>{t("admin-b.component.descriptionLabel")}</DialogTitle>
             <DialogDescription>
-              What the model reads when deciding to call this. It changes
-              nothing until the component is published.
+              {t("admin-b.component.descriptionDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="mt-4">
             <Textarea
-              aria-label="Description"
+              aria-label={t("admin-b.component.descriptionLabel")}
               onChange={(event) => setDraft(event.target.value)}
               rows={6}
               value={draft}
@@ -451,7 +466,7 @@ function ComponentDetail({
               size="sm"
               variant="ghost"
             >
-              Cancel
+              {t("admin-b.component.cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -460,7 +475,7 @@ function ComponentDetail({
               }}
               size="sm"
             >
-              Save
+              {t("admin-b.component.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -473,17 +488,15 @@ function ComponentDetail({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Available to</DialogTitle>
+            <DialogTitle>{t("admin-b.component.availableTo")}</DialogTitle>
             <DialogDescription>
-              Switch a Bot off and it is never told this component exists, so it
-              cannot ask for it and does not apologise for not having it. Each
-              change takes effect immediately.
+              {t("admin-b.component.grantsDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="mt-4">
             {bots.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                There are no Bots yet.
+                {t("admin-b.component.noBotsYetSentence")}
               </p>
             ) : (
               /* Grouped by workspace and searchable: five rows reading "Expense Manager" are not a choice. */
@@ -497,7 +510,7 @@ function ComponentDetail({
           </DialogBody>
           <DialogFooter className="mt-4">
             <Button onClick={() => setSheet(null)} size="sm">
-              Done
+              {t("admin-b.component.done")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -509,19 +522,15 @@ function ComponentDetail({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>May read</DialogTitle>
+            <DialogTitle>{t("admin-b.component.mayRead")}</DialogTitle>
             <DialogDescription>
-              A separate grant from Available to, and not implied by it: that
-              one decides who may draw this, and this decides what it may go and
-              fetch in order to draw itself. Until one of these is on it shows
-              only what the Bot passes it, and every read it does make is a row
-              in Audit. Each change takes effect immediately.
+              {t("admin-b.component.functionsDialogDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="mt-4">
             {dataFunctions.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                This deployment grants no data functions.
+                {t("admin-b.component.noDataFunctionsSentence")}
               </p>
             ) : (
               <div className="flex flex-col">
@@ -554,7 +563,7 @@ function ComponentDetail({
           </DialogBody>
           <DialogFooter className="mt-4">
             <Button onClick={() => setSheet(null)} size="sm">
-              Done
+              {t("admin-b.component.done")}
             </Button>
           </DialogFooter>
         </DialogContent>

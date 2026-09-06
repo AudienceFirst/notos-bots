@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { sandboxedKeys } from "./queries";
 
 /**
@@ -20,7 +21,7 @@ export type SandboxedDraftInput = {
   sampleArguments: Record<string, unknown>;
 };
 
-const FALLBACK = "That did not work.";
+const failed = () => tr("lib.sandboxed.failed");
 
 function invalidateSandboxed(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: sandboxedKeys.all });
@@ -37,7 +38,7 @@ export function saveSandboxedDraftMutationOptions(queryClient: QueryClient) {
       await client("/api/sandboxed", {
         method: "POST",
         body: input,
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateSandboxed(queryClient),
@@ -58,11 +59,11 @@ export function publishSandboxedMutationOptions(queryClient: QueryClient) {
       await client("/api/sandboxed", {
         method: "POST",
         body: input,
-        fallback: FALLBACK,
+        fallback: failed(),
       });
       await client(
         `/api/sandboxed/${encodeURIComponent(sandboxedName(input.slug))}/publish`,
-        { method: "POST", fallback: FALLBACK },
+        { method: "POST", fallback: failed() },
       );
     },
     onSuccess: () => invalidateSandboxed(queryClient),
@@ -74,7 +75,7 @@ export function deleteSandboxedMutationOptions(queryClient: QueryClient) {
     mutationFn: async (name: string) => {
       await client(`/api/sandboxed/${encodeURIComponent(name)}`, {
         method: "DELETE",
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateSandboxed(queryClient),

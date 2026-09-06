@@ -2,6 +2,7 @@
 import { apiUrl } from "@/notos/base";
 import { withAccessToken } from "@/notos/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { tr, useT } from "@/i18n";
 import { pageCoordinates } from "./take-the-wheel";
 
 /**
@@ -46,6 +47,7 @@ type Props = {
 };
 
 export function LiveScreen({ computerId, driving, onProblem }: Props) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   /** The size of the frames Chrome is sending, which is what input coordinates are relative to. */
@@ -85,7 +87,9 @@ export function LiveScreen({ computerId, driving, onProblem }: Props) {
         return;
       }
       if (message.type === "error") {
-        onProblem?.(message.error ?? "The screen could not be shown.");
+        // `tr` rather than `t`: read at the moment the message arrives, and no socket restart on a
+        // language change.
+        onProblem?.(message.error ?? tr("channels.live-screen.couldNotShow"));
         return;
       }
       if (message.type !== "frame" || !message.data) return;
@@ -125,7 +129,8 @@ export function LiveScreen({ computerId, driving, onProblem }: Props) {
       }
     };
 
-    socket.onerror = () => onProblem?.("The live screen could not be reached.");
+    socket.onerror = () =>
+      onProblem?.(tr("channels.live-screen.couldNotReach"));
     socket.onclose = () => setConnected(false);
 
     return () => {
@@ -260,8 +265,8 @@ export function LiveScreen({ computerId, driving, onProblem }: Props) {
         : {})}
       aria-label={
         driving
-          ? "The assistant's screen. You have control: click and type here."
-          : "The assistant's screen, live"
+          ? t("channels.live-screen.screenLabelDriving")
+          : t("channels.live-screen.screenLabelLive")
       }
       data-connected={connected}
     />

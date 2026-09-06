@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client, tryClient } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /** A component as the Admin surface sees it: its state, its versions and who is held back from it. */
 export type ComponentRecord = {
@@ -37,7 +38,7 @@ export function componentListQueryOptions() {
     queryFn: async (): Promise<ComponentRecord[]> => {
       return (
         (await client("/api/components", "components", {
-          fallback: "The components could not be loaded.",
+          fallback: tr("lib.components.loadFailed"),
         })) ?? []
       );
     },
@@ -63,7 +64,7 @@ export function agentComponentsQueryOptions(agentId: string | undefined) {
         (await client(
           `/api/components/for-agent/${encodeURIComponent(agentId ?? "")}`,
           "components",
-          { fallback: "This Bot's components could not be loaded." },
+          { fallback: tr("lib.components.botLoadFailed") },
         )) ?? []
       );
     },
@@ -104,7 +105,7 @@ export function dataFunctionsQueryOptions() {
     queryFn: async (): Promise<DataFunctionSummary[]> => {
       return (
         (await client("/api/components/functions", "functions", {
-          fallback: "The data functions could not be loaded.",
+          fallback: tr("lib.components.functionsLoadFailed"),
         })) ?? []
       );
     },
@@ -139,12 +140,12 @@ export async function callComponentFunction(
     }
     return {
       allowed: false,
-      reason: "This deployment could not be asked for that data.",
+      reason: tr("lib.components.dataAskFailed"),
     };
   } catch {
     return {
       allowed: false,
-      reason: "This deployment could not be reached to read that data.",
+      reason: tr("lib.components.dataReachFailed"),
     };
   }
 }
@@ -168,16 +169,14 @@ export async function decideComponent(
     if (!response.ok) {
       return {
         allowed: false,
-        reason:
-          "This deployment could not be asked whether that component is allowed, so it was not shown.",
+        reason: tr("lib.components.decisionAskFailed"),
       };
     }
     return await response.json();
   } catch {
     return {
       allowed: false,
-      reason:
-        "This deployment could not be reached to check whether that component is allowed, so it was not shown.",
+      reason: tr("lib.components.decisionReachFailed"),
     };
   }
 }

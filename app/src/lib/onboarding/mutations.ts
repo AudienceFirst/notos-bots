@@ -2,9 +2,10 @@ import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { authKeys, type OnboardingStatus } from "@/lib/auth/queries";
 import { channelKeys } from "@/lib/channels/queries";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /** The sentence for every write here, since they all fail the same way to a reader. */
-const FALLBACK = "Onboarding could not be saved";
+const failed = () => tr("lib.onboarding.saveFailed");
 
 /**
  * The status lives on the current user, so that is what a write refreshes.
@@ -30,7 +31,7 @@ export function advanceOnboardingMutationOptions(queryClient: QueryClient) {
       client("/api/me/onboarding", "onboarding", {
         method: "POST",
         body: { step },
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidateCurrentUser(queryClient),
   });
@@ -42,7 +43,7 @@ export function completeOnboardingMutationOptions(queryClient: QueryClient) {
       client("/api/me/onboarding", "onboarding", {
         method: "POST",
         body: { completed: true },
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     /*
      * The roster too, not just the user: finishing the wizard navigates straight into the app, and

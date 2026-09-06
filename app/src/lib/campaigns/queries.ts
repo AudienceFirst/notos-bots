@@ -5,6 +5,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export type Campaign = {
   id: string;
@@ -29,7 +30,7 @@ export function campaignListQueryOptions(archived = false) {
     queryFn: async (): Promise<Campaign[]> => {
       const response = await client(
         `/api/campaigns${archived ? "?archived=1" : ""}`,
-        { fallback: "The campaigns could not be loaded." },
+        { fallback: tr("lib.campaigns.loadFailed") },
       );
       return ((await response.json()) as { campaigns: Campaign[] }).campaigns;
     },
@@ -42,7 +43,7 @@ export function createCampaignMutationOptions(queryClient: QueryClient) {
       const response = await client("/api/campaigns", {
         method: "POST",
         body: input,
-        fallback: "The campaign could not be created.",
+        fallback: tr("lib.campaigns.createFailed"),
       });
       return ((await response.json()) as { campaign: Campaign }).campaign;
     },
@@ -65,7 +66,7 @@ export function updateCampaignMutationOptions(queryClient: QueryClient) {
         {
           method: "PUT",
           body: patch,
-          fallback: "The campaign could not be changed.",
+          fallback: tr("lib.campaigns.changeFailed"),
         },
       );
       return ((await response.json()) as { campaign: Campaign }).campaign;

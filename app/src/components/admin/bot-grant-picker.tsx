@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/i18n";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
 import { cn } from "@/lib/utils";
 
@@ -65,9 +66,6 @@ export function workspaceOf(botId: string): string | null {
 
 type Group = { key: string; label: string; bots: PickerBot[] };
 
-/** Bots without a workspace go last, under this heading. */
-const NO_WORKSPACE = "No workspace";
-
 export function BotGrantPicker({
   bots,
   held,
@@ -80,6 +78,7 @@ export function BotGrantPicker({
   testIdFor,
   className,
 }: Props) {
+  const t = useT();
   const { data: user } = useQuery(currentUserQueryOptions());
   const [query, setQuery] = useState("");
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
@@ -91,6 +90,9 @@ export function BotGrantPicker({
     ]),
   );
 
+  /* Bots without a workspace go last, under this heading. */
+  const noWorkspace = t("admin-a.bot-grant-picker.noWorkspace");
+
   const groups: Group[] = [];
   const byKey = new Map<string, Group>();
   for (const bot of bots) {
@@ -100,7 +102,7 @@ export function BotGrantPicker({
     if (!group) {
       group = {
         key,
-        label: slug === null ? NO_WORKSPACE : (displayName.get(slug) ?? slug),
+        label: slug === null ? noWorkspace : (displayName.get(slug) ?? slug),
         bots: [],
       };
       byKey.set(key, group);
@@ -145,10 +147,10 @@ export function BotGrantPicker({
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-center gap-3">
         <Input
-          aria-label="Search Bots"
+          aria-label={t("admin-a.bot-grant-picker.searchAria")}
           className="h-8 min-w-0 flex-1 text-sm"
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search Bots…"
+          placeholder={t("admin-a.bot-grant-picker.searchPlaceholder")}
           type="search"
           value={query}
         />
@@ -156,13 +158,18 @@ export function BotGrantPicker({
           className="shrink-0 text-muted-foreground text-xs tabular-nums"
           role="status"
         >
-          {heldCount} of {bots.length} {bots.length === 1 ? "Bot" : "Bots"}
+          {t(
+            bots.length === 1
+              ? "admin-a.bot-grant-picker.countOne"
+              : "admin-a.bot-grant-picker.countOther",
+            { held: heldCount, total: bots.length },
+          )}
         </span>
       </div>
 
       {shown.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No Bot matches “{query.trim()}”.
+          {t("admin-a.bot-grant-picker.noMatch", { query: query.trim() })}
         </p>
       ) : (
         <PageRows className="mt-0">
@@ -174,7 +181,10 @@ export function BotGrantPicker({
                 {groupIndex !== 0 && <Separator />}
                 {headed ? (
                   <GroupHeader
-                    count={`${heldHere} of ${group.bots.length}`}
+                    count={t("admin-a.bot-grant-picker.groupCount", {
+                      held: heldHere,
+                      total: group.bots.length,
+                    })}
                     label={group.label}
                     onToggle={
                       needle === "" ? () => toggle(group.key) : undefined

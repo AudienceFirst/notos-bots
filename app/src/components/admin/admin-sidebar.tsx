@@ -25,6 +25,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useT } from "@/i18n";
 import { deploymentCapabilitiesQueryOptions } from "@/lib/deployment/queries";
 
 const appLinkOptions = { to: "/" } satisfies LinkOptions;
@@ -46,6 +47,21 @@ export type AdminNavGroup = {
   items: AdminNavItem[];
 };
 
+/*
+ * The list as it is written down: dictionary keys rather than words, because the words depend on
+ * the person's language and are looked up at render time in `useAdminGroups`.
+ */
+type AdminNavItemSpec = Omit<AdminNavItem, "title" | "description"> & {
+  titleKey: string;
+  descriptionKey: string;
+};
+
+type AdminNavGroupSpec = {
+  labelKey: string;
+  descriptionKey?: string;
+  items: AdminNavItemSpec[];
+};
+
 /**
  * The four groups, in one place, for the rail and the overview both.
  *
@@ -55,28 +71,27 @@ export type AdminNavGroup = {
  * screen the rail had dropped, and lacked two the rail had. The descriptions live here as well,
  * so the overview is this list drawn with more words, not a second list.
  */
-export const GROUPS: AdminNavGroup[] = [
+export const GROUPS: AdminNavGroupSpec[] = [
   {
-    label: "What Bots can reach",
-    description:
-      "Everything a Bot can touch outside this app, and the limits on it.",
+    labelKey: "admin-a.admin-sidebar.groupReachLabel",
+    descriptionKey: "admin-a.admin-sidebar.groupReachDescription",
     items: [
       {
-        title: "Credentials",
-        description: "Keys and tokens held for this deployment.",
+        titleKey: "admin-a.admin-sidebar.credentialsTitle",
+        descriptionKey: "admin-a.admin-sidebar.credentialsDescription",
         icon: IconKey,
         linkOptions: { to: "/admin/credentials" },
       },
       {
-        title: "Boundaries",
-        description: "Rules that decide what a Bot may never do.",
+        titleKey: "admin-a.admin-sidebar.boundariesTitle",
+        descriptionKey: "admin-a.admin-sidebar.boundariesDescription",
         icon: IconShieldCheck,
         linkOptions: { to: "/admin/boundaries" },
         needsComputers: true,
       },
       {
-        title: "Computers",
-        description: "The machines Bots run their tools on.",
+        titleKey: "admin-a.admin-sidebar.computersTitle",
+        descriptionKey: "admin-a.admin-sidebar.computersDescription",
         icon: IconDeviceDesktop,
         linkOptions: { to: "/admin/computers" },
         needsComputers: true,
@@ -84,59 +99,55 @@ export const GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    label: "What Bots can do",
-    description: "Capabilities and interface pieces available across Bots.",
+    labelKey: "admin-a.admin-sidebar.groupDoLabel",
+    descriptionKey: "admin-a.admin-sidebar.groupDoDescription",
     items: [
       {
-        title: "Plugins",
-        description:
-          "The services this deployment can reach, and which Bots may.",
+        titleKey: "admin-a.admin-sidebar.pluginsTitle",
+        descriptionKey: "admin-a.admin-sidebar.pluginsDescription",
         icon: IconPuzzle,
         linkOptions: { to: "/admin/plugins" },
       },
       {
         // NOTOS: API keys for the keyed model providers (5 September 2026).
-        title: "Models",
-        description:
-          "API keys for the model providers that need one; Gemini on Vertex needs none.",
+        titleKey: "admin-a.admin-sidebar.modelsTitle",
+        descriptionKey: "admin-a.admin-sidebar.modelsDescription",
         icon: IconSparkles,
         linkOptions: { to: "/admin/models" },
       },
       {
-        title: "Skills",
-        description: "Named instructions anybody can invoke with a slash.",
+        titleKey: "admin-a.admin-sidebar.skillsTitle",
+        descriptionKey: "admin-a.admin-sidebar.skillsDescription",
         icon: IconFileText,
         linkOptions: { to: "/admin/skills" },
       },
       {
-        title: "UI Components",
-        description: "Custom pieces a Bot can draw in a conversation.",
+        titleKey: "admin-a.admin-sidebar.componentsTitle",
+        descriptionKey: "admin-a.admin-sidebar.componentsDescription",
         icon: IconLayoutGrid,
         linkOptions: { to: "/admin/components" },
       },
       {
-        title: "Playground",
-        description: "Write a component and watch it render as you type.",
+        titleKey: "admin-a.admin-sidebar.playgroundTitle",
+        descriptionKey: "admin-a.admin-sidebar.playgroundDescription",
         icon: IconCode,
         linkOptions: { to: "/admin/playground" },
       },
     ],
   },
   {
-    label: "Who can get in",
+    labelKey: "admin-a.admin-sidebar.groupAccessLabel",
     items: [
       {
-        title: "People",
-        description:
-          "Everybody who has signed in, who administers this deployment, and whose access has been removed.",
+        titleKey: "admin-a.admin-sidebar.peopleTitle",
+        descriptionKey: "admin-a.admin-sidebar.peopleDescription",
         icon: IconUsers,
         linkOptions: { to: "/admin/people" },
       },
       {
         // NOTOS: which model each workspace runs on, and where (stap 3).
-        title: "Workspaces",
-        description:
-          "Every NOTOS client, the model it runs on, its Drive folders and who is in it.",
+        titleKey: "admin-a.admin-sidebar.workspacesTitle",
+        descriptionKey: "admin-a.admin-sidebar.workspacesDescription",
         icon: IconLayoutGrid,
         linkOptions: { to: "/admin/workspaces" },
       },
@@ -148,11 +159,11 @@ export const GROUPS: AdminNavGroup[] = [
     ],
   },
   {
-    label: "What happened",
+    labelKey: "admin-a.admin-sidebar.groupHappenedLabel",
     items: [
       {
-        title: "Audit",
-        description: "Every action taken in this deployment, and by whom.",
+        titleKey: "admin-a.admin-sidebar.auditTitle",
+        descriptionKey: "admin-a.admin-sidebar.auditDescription",
         icon: IconListDetails,
         linkOptions: { to: "/admin/audit" },
       },
@@ -161,7 +172,7 @@ export const GROUPS: AdminNavGroup[] = [
 ];
 
 /**
- * The groups as this deployment can offer them.
+ * The groups as this deployment can offer them, in the person's language.
  *
  * Boundaries and Computers are about a Bot's computer, and a deployment without computers has no
  * policy route and no fleet route: both screens could only show an error. They are left out of the
@@ -170,17 +181,26 @@ export const GROUPS: AdminNavGroup[] = [
  * screens behind say what happened.
  */
 export function useAdminGroups(): AdminNavGroup[] {
+  const t = useT();
   const capabilities = useQuery(deploymentCapabilitiesQueryOptions());
-  if (capabilities.data?.computers !== false) return GROUPS;
+  const computersOff = capabilities.data?.computers === false;
   return GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !item.needsComputers),
+    label: t(group.labelKey),
+    description: group.descriptionKey ? t(group.descriptionKey) : undefined,
+    items: group.items
+      .filter((item) => !(computersOff && item.needsComputers))
+      .map(({ titleKey, descriptionKey, ...item }) => ({
+        ...item,
+        title: t(titleKey),
+        description: t(descriptionKey),
+      })),
   })).filter((group) => group.items.length > 0);
 }
 
 export function AdminSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const t = useT();
   const groups = useAdminGroups();
   return (
     <Sidebar {...props}>
@@ -200,7 +220,7 @@ export function AdminSidebar({
               render={(props) => (
                 <Link {...appLinkOptions} {...props}>
                   <IconArrowLeft className="mr-2 h-4 w-4" />
-                  Back to app
+                  {t("admin-a.admin-sidebar.backToApp")}
                 </Link>
               )}
             />
@@ -223,7 +243,7 @@ export function AdminSidebar({
                     activeProps={{ className: "bg-foreground/5" }}
                     {...props}
                   >
-                    Overview
+                    {t("admin-a.admin-sidebar.overview")}
                   </Link>
                 )}
               />

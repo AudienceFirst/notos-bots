@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * A channel as the browser sees it.
@@ -74,7 +75,7 @@ export function channelListQueryOptions() {
         ? `?cursor=${encodeURIComponent(pageParam as string)}`
         : "";
       const response = await client(`/api/channels${suffix}`, {
-        fallback: "Could not load channels",
+        fallback: tr("lib.channels.loadFailed"),
       });
       return (await response.json()) as ChannelPage;
     },
@@ -89,7 +90,7 @@ export function channelQueryOptions(channelId: string) {
     queryKey: channelKeys.detail(channelId),
     queryFn: async (): Promise<AgentChannel> => {
       return client(`/api/channels/${channelId}`, "channel", {
-        fallback: "Could not load this channel",
+        fallback: tr("lib.channels.loadOneFailed"),
       });
     },
   });

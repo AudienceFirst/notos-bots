@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n";
 import {
   type AgentFormValues,
   agentFormSchema,
@@ -106,18 +107,44 @@ export function AgentDialog({
   );
 }
 
+/* The section names are dictionary keys, translated where they are drawn. */
 const SECTIONS = [
-  { id: "general", name: "General", icon: IconUser },
-  { id: "access", name: "Access", icon: IconPuzzle },
-  { id: "connection", name: "Connection", icon: IconPlugConnected },
-  { id: "handoff", name: "Handoff", icon: IconArrowsExchange },
-  { id: "routines", name: "Routines", icon: IconClock },
-  { id: "manage", name: "Manage", icon: IconAdjustments },
+  {
+    id: "general",
+    nameKey: "components.agent-dialog.sectionGeneral",
+    icon: IconUser,
+  },
+  {
+    id: "access",
+    nameKey: "components.agent-dialog.sectionAccess",
+    icon: IconPuzzle,
+  },
+  {
+    id: "connection",
+    nameKey: "components.agent-dialog.sectionConnection",
+    icon: IconPlugConnected,
+  },
+  {
+    id: "handoff",
+    nameKey: "components.agent-dialog.sectionHandoff",
+    icon: IconArrowsExchange,
+  },
+  {
+    id: "routines",
+    nameKey: "components.agent-dialog.sectionRoutines",
+    icon: IconClock,
+  },
+  {
+    id: "manage",
+    nameKey: "components.agent-dialog.sectionManage",
+    icon: IconAdjustments,
+  },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 function AgentDialogBody({ agentId }: { agentId: string }) {
+  const t = useT();
   const [section, setSection] = useState<SectionId>("general");
   const agent = useQuery(agentQueryOptions(agentId));
 
@@ -133,7 +160,7 @@ function AgentDialogBody({ agentId }: { agentId: string }) {
   if (agent.error || !agent.data) {
     return (
       <p className="p-6 text-sm text-destructive" role="alert">
-        Could not load this Bot.
+        {t("components.agent-dialog.loadFailed")}
       </p>
     );
   }
@@ -173,7 +200,7 @@ function AgentDialogBody({ agentId }: { agentId: string }) {
                         onClick={() => setSection(item.id)}
                       >
                         <item.icon />
-                        <span>{item.name}</span>
+                        <span>{t(item.nameKey)}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
@@ -213,13 +240,15 @@ function AgentDialogBody({ agentId }: { agentId: string }) {
                   variant={item.id === section ? "secondary" : "ghost"}
                 >
                   <item.icon />
-                  {item.name}
+                  {t(item.nameKey)}
                 </Button>
               ))}
             </div>
           </div>
           <header className="flex h-14 shrink-0 items-center gap-2 px-6">
-            <h2 className="text-sm font-medium">{active?.name}</h2>
+            <h2 className="text-sm font-medium">
+              {active ? t(active.nameKey) : null}
+            </h2>
           </header>
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6">
             {section === "general" ? (
@@ -249,6 +278,7 @@ function GeneralSection({
   agentId: string;
   profile: AgentProfile;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const updateAgent = useMutation(updateAgentMutationOptions(queryClient));
@@ -278,21 +308,21 @@ function GeneralSection({
       <div className="flex flex-col gap-2">
         <EditableTextItem
           canManage={profile.canManage}
-          label="Name"
+          label={t("components.agent-dialog.nameLabel")}
           onSave={(name) => save({ name })}
           schema={agentFormSchema.shape.name}
           value={profile.name}
         />
         <EditableTextItem
           canManage={profile.canManage}
-          label="Title"
+          label={t("components.agent-dialog.titleLabel")}
           onSave={(title) => save({ title })}
           schema={agentFormSchema.shape.title}
           value={profile.title}
         />
         <EditableTextItem
           canManage={profile.canManage}
-          label="Role"
+          label={t("components.agent-dialog.roleLabel")}
           multiline
           onSave={(roleDescription) => save({ roleDescription })}
           schema={agentFormSchema.shape.roleDescription}
@@ -306,9 +336,11 @@ function GeneralSection({
         {profile.systemOwned ? (
           <Item variant="muted">
             <ItemContent>
-              <ItemTitle>System owned</ItemTitle>
+              <ItemTitle>
+                {t("components.agent-dialog.systemOwnedTitle")}
+              </ItemTitle>
               <ItemDescription>
-                Ships with this deployment rather than belonging to a person.
+                {t("components.agent-dialog.systemOwnedDescription")}
               </ItemDescription>
             </ItemContent>
           </Item>
@@ -317,8 +349,12 @@ function GeneralSection({
 
       <Item variant="muted">
         <ItemContent>
-          <ItemTitle>Start channel</ItemTitle>
-          <ItemDescription>Open a new channel with this Bot.</ItemDescription>
+          <ItemTitle>
+            {t("components.agent-dialog.startChannelTitle")}
+          </ItemTitle>
+          <ItemDescription>
+            {t("components.agent-dialog.startChannelDescription")}
+          </ItemDescription>
         </ItemContent>
         <ItemActions>
           <Button
@@ -331,7 +367,7 @@ function GeneralSection({
             }
             size="sm"
           >
-            Start
+            {t("components.agent-dialog.start")}
           </Button>
         </ItemActions>
       </Item>
@@ -362,6 +398,7 @@ function EditableTextItem({
   schema: ZodType<string>;
   onSave: (draft: string) => Promise<unknown>;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -374,7 +411,10 @@ function EditableTextItem({
   const submit = async () => {
     const parsed = schema.safeParse(draft);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "That value does not fit.");
+      setError(
+        parsed.error.issues[0]?.message ??
+          t("components.agent-dialog.valueDoesNotFit"),
+      );
       return;
     }
     setSaving(true);
@@ -382,7 +422,11 @@ function EditableTextItem({
       await onSave(parsed.data);
       close();
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not save.");
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : t("components.agent-dialog.saveFailed"),
+      );
     } finally {
       setSaving(false);
     }
@@ -404,7 +448,9 @@ function EditableTextItem({
           </span>
           {canManage ? (
             <Button
-              aria-label={`Edit ${label.toLowerCase()}`}
+              aria-label={t("components.agent-dialog.editField", {
+                field: label.toLowerCase(),
+              })}
               onClick={() => {
                 setDraft(value);
                 setEditing(true);
@@ -451,10 +497,12 @@ function EditableTextItem({
         ) : null}
         <div className="mt-1 flex gap-2">
           <Button disabled={saving} onClick={() => void submit()} size="sm">
-            {saving ? "Saving…" : "Save"}
+            {saving
+              ? t("components.agent-dialog.saving")
+              : t("components.agent-dialog.save")}
           </Button>
           <Button disabled={saving} onClick={close} size="sm" variant="outline">
-            Cancel
+            {t("components.agent-dialog.cancel")}
           </Button>
         </div>
       </ItemContent>
@@ -475,17 +523,18 @@ function VisibilityItem({
   canManage: boolean;
   onSave: (visibility: AgentProfile["visibility"]) => Promise<unknown>;
 }) {
+  const t = useT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   return (
     <Item variant="muted">
       <ItemContent>
-        <ItemTitle>Visibility</ItemTitle>
+        <ItemTitle>{t("components.agent-dialog.visibilityTitle")}</ItemTitle>
         <ItemDescription>
           {value === "private"
-            ? "Only you can see it and start channels with it."
-            : "Everyone in the deployment can find and use it."}
+            ? t("components.agent-dialog.visibilityPrivateDescription")
+            : t("components.agent-dialog.visibilityPublicDescription")}
         </ItemDescription>
         {error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -498,7 +547,10 @@ function VisibilityItem({
           <Select
             disabled={saving}
             // The label map, so the closed trigger says "Private" rather than the raw value.
-            items={{ private: "Private", public: "Public" }}
+            items={{
+              private: t("components.agent-dialog.private"),
+              public: t("components.agent-dialog.public"),
+            }}
             onValueChange={async (next) => {
               if (next === value) return;
               setError(null);
@@ -509,7 +561,7 @@ function VisibilityItem({
                 setError(
                   failure instanceof Error
                     ? failure.message
-                    : "Could not save.",
+                    : t("components.agent-dialog.saveFailed"),
                 );
               } finally {
                 setSaving(false);
@@ -521,13 +573,19 @@ function VisibilityItem({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="public">Public</SelectItem>
+              <SelectItem value="private">
+                {t("components.agent-dialog.private")}
+              </SelectItem>
+              <SelectItem value="public">
+                {t("components.agent-dialog.public")}
+              </SelectItem>
             </SelectContent>
           </Select>
         ) : (
           <span className="text-sm text-muted-foreground">
-            {value === "private" ? "Private" : "Public"}
+            {value === "private"
+              ? t("components.agent-dialog.private")
+              : t("components.agent-dialog.public")}
           </span>
         )}
       </ItemActions>
@@ -552,13 +610,14 @@ function connectorName(key: string): string {
  * the Plugins screens, and a row of switches here would be a second place for the same decision.
  */
 function AccessSection({ agentId }: { agentId: string }) {
+  const t = useT();
   const plugins = useQuery(agentPluginsQueryOptions(agentId));
 
   if (plugins.isPending) return null;
   if (plugins.error || !plugins.data) {
     return (
       <p className="text-sm text-destructive" role="alert">
-        What this Bot may reach could not be loaded.
+        {t("components.agent-dialog.accessLoadFailed")}
       </p>
     );
   }
@@ -589,11 +648,10 @@ function AccessSection({ agentId }: { agentId: string }) {
       <Empty className="h-[180px] border border-dashed">
         <EmptyHeader>
           <EmptyTitle className="text-muted-foreground">
-            Nothing granted yet
+            {t("components.agent-dialog.nothingGrantedTitle")}
           </EmptyTitle>
           <EmptyDescription>
-            An administrator grants connectors and skills from the Plugins
-            screens. Until then this Bot can converse, and nothing more.
+            {t("components.agent-dialog.nothingGrantedDescription")}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -603,8 +661,7 @@ function AccessSection({ agentId }: { agentId: string }) {
   return (
     <>
       <p className="text-sm text-muted-foreground">
-        What this Bot may reach when it works. Granted by an administrator on
-        the Plugins screens; anything not listed is refused when called.
+        {t("components.agent-dialog.accessIntro")}
       </p>
       <div className="flex flex-col gap-2">
         {[...connectors.entries()].map(([key, labels]) => (
@@ -613,12 +670,24 @@ function AccessSection({ agentId }: { agentId: string }) {
               <ItemTitle>{connectorName(key)}</ItemTitle>
               <ItemDescription>
                 {labels.slice(0, 4).join(", ")}
-                {labels.length > 4 ? ` and ${labels.length - 4} more` : ""}
+                {labels.length > 4
+                  ? ` ${t(
+                      labels.length - 4 === 1
+                        ? "components.agent-dialog.andMoreOne"
+                        : "components.agent-dialog.andMoreOther",
+                      { count: labels.length - 4 },
+                    )}`
+                  : ""}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
               <span className="text-sm text-muted-foreground tabular-nums">
-                {labels.length} {labels.length === 1 ? "tool" : "tools"}
+                {t(
+                  labels.length === 1
+                    ? "components.agent-dialog.toolsOne"
+                    : "components.agent-dialog.toolsOther",
+                  { count: labels.length },
+                )}
               </span>
             </ItemActions>
           </Item>
@@ -630,7 +699,9 @@ function AccessSection({ agentId }: { agentId: string }) {
               <ItemDescription>{skill.summary}</ItemDescription>
             </ItemContent>
             <ItemActions>
-              <span className="text-sm text-muted-foreground">Skill</span>
+              <span className="text-sm text-muted-foreground">
+                {t("components.agent-dialog.skillBadge")}
+              </span>
             </ItemActions>
           </Item>
         ))}
@@ -646,6 +717,7 @@ function ConnectionSection({
   agentId: string;
   profile: AgentProfile;
 }) {
+  const t = useT();
   /*
    * A built-in coworker is done the moment it exists: it runs on the deployment's own Bot, whose
    * process already holds the deployment's tool credential, so its tool calls authenticate with no
@@ -655,9 +727,7 @@ function ConnectionSection({
   if (!profile.endpoint || profile.builtIn) {
     return (
       <p className="text-sm text-muted-foreground">
-        Runs on this deployment's own Bot. Nothing to connect and nothing to
-        authenticate: its tool calls are covered by the deployment's own
-        credential.
+        {t("components.agent-dialog.builtInConnection")}
       </p>
     );
   }
@@ -665,7 +735,7 @@ function ConnectionSection({
     <>
       <section className="grid gap-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Endpoint
+          {t("components.agent-dialog.endpoint")}
         </h2>
         <p className="break-all font-mono text-sm">{profile.endpoint}</p>
       </section>
@@ -686,6 +756,7 @@ function ManageSection({
   agentId: string;
   profile: AgentProfile;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -702,11 +773,15 @@ function ManageSection({
       <div className="flex flex-col gap-2">
         <Item variant="muted">
           <ItemContent>
-            <ItemTitle>{profile.hidden ? "Hidden" : "Hide"}</ItemTitle>
+            <ItemTitle>
+              {profile.hidden
+                ? t("components.agent-dialog.hiddenTitle")
+                : t("components.agent-dialog.hide")}
+            </ItemTitle>
             <ItemDescription>
               {profile.hidden
-                ? "Hidden from your Bots list. This changes nothing for anyone else."
-                : "Take it off your Bots list. This changes nothing for anyone else."}
+                ? t("components.agent-dialog.hiddenDescription")
+                : t("components.agent-dialog.hideDescription")}
             </ItemDescription>
           </ItemContent>
           <ItemActions>
@@ -729,20 +804,20 @@ function ManageSection({
             >
               {setHidden.isPending
                 ? profile.hidden
-                  ? "Unhiding…"
-                  : "Hiding…"
+                  ? t("components.agent-dialog.unhiding")
+                  : t("components.agent-dialog.hiding")
                 : profile.hidden
-                  ? "Unhide"
-                  : "Hide"}
+                  ? t("components.agent-dialog.unhide")
+                  : t("components.agent-dialog.hide")}
             </Button>
           </ItemActions>
         </Item>
 
         <Item variant="muted">
           <ItemContent>
-            <ItemTitle>Duplicate</ItemTitle>
+            <ItemTitle>{t("components.agent-dialog.duplicate")}</ItemTitle>
             <ItemDescription>
-              A copy of your own, with no key and no channels.
+              {t("components.agent-dialog.duplicateDescription")}
             </ItemDescription>
           </ItemContent>
           <ItemActions>
@@ -759,7 +834,9 @@ function ManageSection({
               size="sm"
               variant="outline"
             >
-              {duplicateAgent.isPending ? "Duplicating…" : "Duplicate"}
+              {duplicateAgent.isPending
+                ? t("components.agent-dialog.duplicating")
+                : t("components.agent-dialog.duplicate")}
             </Button>
           </ItemActions>
         </Item>
@@ -767,8 +844,10 @@ function ManageSection({
         {profile.canManage ? (
           <Item variant="muted">
             <ItemContent>
-              <ItemTitle>Delete</ItemTitle>
-              <ItemDescription>This cannot be undone.</ItemDescription>
+              <ItemTitle>{t("components.agent-dialog.delete")}</ItemTitle>
+              <ItemDescription>
+                {t("components.agent-dialog.cannotBeUndone")}
+              </ItemDescription>
             </ItemContent>
             <ItemActions>
               <Button
@@ -776,7 +855,7 @@ function ManageSection({
                 size="sm"
                 variant="destructive"
               >
-                Delete
+                {t("components.agent-dialog.delete")}
               </Button>
             </ItemActions>
           </Item>
@@ -800,8 +879,14 @@ function ManageSection({
           overlayClassName="bg-black/20 supports-backdrop-filter:backdrop-blur-sm"
         >
           <DialogHeader>
-            <DialogTitle>Delete {profile.name}?</DialogTitle>
-            <DialogDescription>This cannot be undone.</DialogDescription>
+            <DialogTitle>
+              {t("components.agent-dialog.deleteConfirmTitle", {
+                name: profile.name,
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("components.agent-dialog.cannotBeUndone")}
+            </DialogDescription>
           </DialogHeader>
           {deleteAgent.error ? (
             <p className="mt-4 text-sm text-destructive" role="alert">
@@ -814,7 +899,7 @@ function ManageSection({
               size="sm"
               variant="outline"
             >
-              Cancel
+              {t("components.agent-dialog.cancel")}
             </Button>
             <Button
               disabled={deleteAgent.isPending}
@@ -829,7 +914,9 @@ function ManageSection({
               size="sm"
               variant="destructive"
             >
-              {deleteAgent.isPending ? "Deleting…" : "Delete"}
+              {deleteAgent.isPending
+                ? t("components.agent-dialog.deleting")
+                : t("components.agent-dialog.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

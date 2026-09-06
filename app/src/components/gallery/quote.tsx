@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tr, useT } from "@/i18n";
 import type { GalleryComponent } from "@/lib/copilot/gallery-registry";
 import { GalleryFrame } from "./frame";
 
@@ -22,18 +23,19 @@ export const QuoteCardProps = z.object({
 type QuoteArgs = z.infer<typeof QuoteCardProps>;
 
 export function QuoteCard({ quote, attribution, context }: Partial<QuoteArgs>) {
+  const t = useT();
   if (!quote) {
     return (
-      <GalleryFrame title="Quotation">
+      <GalleryFrame title={t("components.quote.title")}>
         <p className="text-sm text-muted-foreground">
-          There is nothing to quote.
+          {t("components.quote.nothing")}
         </p>
       </GalleryFrame>
     );
   }
 
   return (
-    <GalleryFrame caption={context} title="Quotation">
+    <GalleryFrame caption={context} title={t("components.quote.title")}>
       <blockquote className="border-l-2 border-border pl-4">
         <p className="text-sm leading-relaxed">{quote}</p>
         {attribution ? (
@@ -46,20 +48,28 @@ export function QuoteCard({ quote, attribution, context }: Partial<QuoteArgs>) {
   );
 }
 
+/*
+ * `title` and `preview` are getters: both are what a person sees, so they follow the interface
+ * language at the moment they are read. `description` and `confirmation` are read by the model and
+ * stay as written.
+ */
 export const GALLERY: GalleryComponent[] = [
   {
     name: "showQuote",
-    title: "Quotation",
+    get title() {
+      return tr("components.quote.galleryTitle");
+    },
     kind: "card",
     description:
       "Show a quotation with its attribution. Use when the exact words matter, something a person said, or a line from a document you were given.",
     parameters: QuoteCardProps,
     Component: QuoteCard as GalleryComponent["Component"],
-    preview: {
-      quote:
-        "Meals under $75 need no receipt. Anything above needs one, and anything above $500 needs your manager before you spend it.",
-      attribution: "the expense policy",
-      context: "Last changed in March.",
+    get preview() {
+      return {
+        quote: tr("components.quote.previewQuote"),
+        attribution: tr("components.quote.previewAttribution"),
+        context: tr("components.quote.previewContext"),
+      };
     },
     confirmation: "The quotation is now on screen for the person.",
   },

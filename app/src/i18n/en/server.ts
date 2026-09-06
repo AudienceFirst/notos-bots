@@ -1,0 +1,168 @@
+// NOTOS i18n: de zinnen die de server zelf terugstuurt, in het Engels.
+//
+// De sleutel is de Engelse zin zelf, precies zoals de server hem stuurt. Deze lijst staat er zodat
+// de bron op één plek te lezen en te reviewen is, en zodat tests/server-messages.test.ts kan zien
+// dat er geen zin is toegevoegd of herschreven zonder vertaling (Mitch, 6 september 2026).
+const server: Record<string, string> = {
+  "server:A Bot, an instruction and a schedule are required.":
+    "A Bot, an instruction and a schedule are required.",
+  "server:A Vertex model runs in europe-west4 or global.":
+    "A Vertex model runs in europe-west4 or global.",
+  "server:A catalogue key is required.": "A catalogue key is required.",
+  "server:A client id and a client secret are both required.":
+    "A client id and a client secret are both required.",
+  "server:A command is required.": "A command is required.",
+  "server:A decision of granted or denied is required.":
+    "A decision of granted or denied is required.",
+  "server:A description is required.": "A description is required.",
+  "server:A file path is required.": "A file path is required.",
+  "server:A function this deployment ships is required.":
+    "A function this deployment ships is required.",
+  "server:A key is required.": "A key is required.",
+  "server:A key name is required, such as Enter or Tab.":
+    "A key name is required, such as Enter or Tab.",
+  "server:A kind, a ref and a Bot are required.":
+    "A kind, a ref and a Bot are required.",
+  "server:A list of components is required.":
+    "A list of components is required.",
+  "server:A message is required.": "A message is required.",
+  "server:A name and a title are required.": "A name and a title are required.",
+  "server:A name is required.": "A name is required.",
+  "server:A name, a title and a URL are required.":
+    "A name, a title and a URL are required.",
+  "server:A policy must be an object.": "A policy must be an object.",
+  "server:A prompt is required.": "A prompt is required.",
+  "server:A reason is required.": "A reason is required.",
+  "server:A ref and the snapshotId it came from are both required. Take a snapshot first.":
+    "A ref and the snapshotId it came from are both required. Take a snapshot first.",
+  "server:A role of admin or user is required.":
+    "A role of admin or user is required.",
+  "server:A routineRunId is required.": "A routineRunId is required.",
+  "server:A slug is lower-case letters, numbers and hyphens.":
+    "A slug is lower-case letters, numbers and hyphens.",
+  "server:A slug, a title and instructions are required.":
+    "A slug, a title and instructions are required.",
+  "server:A tool and a Bot are required.": "A tool and a Bot are required.",
+  "server:A tool is required.": "A tool is required.",
+  "server:A value is required.": "A value is required.",
+  "server:A web address is required.": "A web address is required.",
+  "server:Access has been removed.": "Access has been removed.",
+  "server:Activity must be a JSON object.": "Activity must be a JSON object.",
+  "server:Administrator access required.": "Administrator access required.",
+  "server:Agent ID must be a string or null.":
+    "Agent ID must be a string or null.",
+  "server:Agent IDs must be a non-empty array.":
+    "Agent IDs must be a non-empty array.",
+  "server:Agent IDs must be non-empty strings.":
+    "Agent IDs must be non-empty strings.",
+  "server:Agent IDs must be unique.": "Agent IDs must be unique.",
+  "server:Agent input must be a JSON object.":
+    "Agent input must be a JSON object.",
+  "server:Agent not found.": "Agent not found.",
+  "server:An e-mail address and a role are required.":
+    "An e-mail address and a role are required.",
+  "server:Audit logging is not configured.": "Audit logging is not configured.",
+  "server:Authentication required.": "Authentication required.",
+  "server:Channel input must be a JSON object.":
+    "Channel input must be a JSON object.",
+  "server:Channel not found.": "Channel not found.",
+  "server:Could not check thread status.": "Could not check thread status.",
+  "server:Credential input is invalid.": "Credential input is invalid.",
+  "server:Credential storage is not configured.":
+    "Credential storage is not configured.",
+  "server:Identity providers are not available.":
+    "Identity providers are not available.",
+  "server:Locale must be nl, en or null.": "Locale must be nl, en or null.",
+  "server:Model input must be a JSON object.":
+    "Model input must be a JSON object.",
+  "server:Model must be an object or null.": "Model must be an object or null.",
+  "server:Name a model.": "Name a model.",
+  "server:No coworker is available.": "No coworker is available.",
+  "server:No key for that provider is reachable here, so it cannot run.":
+    "No key for that provider is reachable here, so it cannot run.",
+  "server:No such Bot in this workspace.": "No such Bot in this workspace.",
+  "server:No such approval.": "No such approval.",
+  "server:No such campaign.": "No such campaign.",
+  "server:No such channel with this Bot for you.":
+    "No such channel with this Bot for you.",
+  "server:No such workspace.": "No such workspace.",
+  "server:No workspace.": "No workspace.",
+  "server:Not a thread id.": "Not a thread id.",
+  "server:Not authorised.": "Not authorised.",
+  "server:Not your thread.": "Not your thread.",
+  "server:Onboarding is not available.": "Onboarding is not available.",
+  "server:Only an administrator writes a skill for the deployment.":
+    "Only an administrator writes a skill for the deployment.",
+  "server:Only somebody from ZUID or the client's lead can approve this.":
+    "Only somebody from ZUID or the client's lead can approve this.",
+  "server:Only somebody from ZUID or the client's lead can change a campaign.":
+    "Only somebody from ZUID or the client's lead can change a campaign.",
+  "server:Only somebody from ZUID or the client's lead can start a campaign.":
+    "Only somebody from ZUID or the client's lead can start a campaign.",
+  "server:People are not available.": "People are not available.",
+  "server:Pin input must be a JSON object.": "Pin input must be a JSON object.",
+  "server:Pinned must be true or false.": "Pinned must be true or false.",
+  "server:Say which field the value goes in, using a ref from your snapshot.":
+    "Say which field the value goes in, using a ref from your snapshot.",
+  "server:Send the step to move to, or completed: true.":
+    "Send the step to move to, or completed: true.",
+  "server:System-owned agents are protected.":
+    "System-owned agents are protected.",
+  "server:Tenant package is not configured.":
+    "Tenant package is not configured.",
+  "server:Text is required.": "Text is required.",
+  "server:That coworker is not on your roster.":
+    "That coworker is not on your roster.",
+  "server:That data could not be read.": "That data could not be read.",
+  "server:That is not a model provider.": "That is not a model provider.",
+  "server:That is not a valid header name.": "That is not a valid header name.",
+  "server:That person is not here.": "That person is not here.",
+  "server:That rule could not be saved, so it has not been applied. The previous boundary is still in force.":
+    "That rule could not be saved, so it has not been applied. The previous boundary is still in force.",
+  "server:The Bot is required.": "The Bot is required.",
+  "server:The contents to write are required.":
+    "The contents to write are required.",
+  "server:The function and the Bot are both required.":
+    "The function and the Bot are both required.",
+  "server:The snapshotId the ref came from is required.":
+    "The snapshotId the ref came from is required.",
+  "server:The text to enter is required.": "The text to enter is required.",
+  "server:There is no such Bot.": "There is no such Bot.",
+  "server:There is no such provider.": "There is no such provider.",
+  "server:This channel is defined by the deployment package, so it cannot be deleted here.":
+    "This channel is defined by the deployment package, so it cannot be deleted here.",
+  "server:This deployment has no public URL configured, so it cannot complete a consent flow. Set OPENBOT_PUBLIC_URL.":
+    "This deployment has no public URL configured, so it cannot complete a consent flow. Set OPENBOT_PUBLIC_URL.",
+  "server:This deployment names that address in INITIAL_ADMIN_EMAILS, so they cannot be removed here. Change the configuration instead.":
+    "This deployment names that address in INITIAL_ADMIN_EMAILS, so they cannot be removed here. Change the configuration instead.",
+  "server:This deployment names that address in INITIAL_ADMIN_EMAILS, so they stay an administrator. Change the configuration instead.":
+    "This deployment names that address in INITIAL_ADMIN_EMAILS, so they stay an administrator. Change the configuration instead.",
+  "server:This deployment records no readable trail, so there is no history to test against.":
+    "This deployment records no readable trail, so there is no history to test against.",
+  "server:This endpoint is the worker's.": "This endpoint is the worker's.",
+  "server:Timestamp is required.": "Timestamp is required.",
+  "server:Timestamp must be an ISO-8601 date.":
+    "Timestamp must be an ISO-8601 date.",
+  "server:Tools are a list of serverId/toolName references.":
+    "Tools are a list of serverId/toolName references.",
+  "server:Unknown input.": "Unknown input.",
+  "server:Visibility must be public or private.":
+    "Visibility must be public or private.",
+  "server:Workspaces are not configured.": "Workspaces are not configured.",
+  "server:You cannot remove your own access.":
+    "You cannot remove your own access.",
+  "server:You cannot remove your own administrator role.":
+    "You cannot remove your own administrator role.",
+  "server:You do not have permission to manage this agent.":
+    "You do not have permission to manage this agent.",
+  "server:busy must be true or false": "busy must be true or false",
+  "server:enabled must be true or false.": "enabled must be true or false.",
+  "server:folders must be a list of Drive folder links or ids.":
+    "folders must be a list of Drive folder links or ids.",
+  "server:geen toegang tot deze workspace": "geen toegang tot deze workspace",
+  "server:revoked must be true or false.": "revoked must be true or false.",
+  "server:vertexLocation must be europe-west4 or global, and defaultModel must be named.":
+    "vertexLocation must be europe-west4 or global, and defaultModel must be named.",
+};
+
+export default server;

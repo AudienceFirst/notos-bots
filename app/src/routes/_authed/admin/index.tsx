@@ -15,6 +15,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/admin/")({
   component: RouteComponent,
@@ -29,11 +30,12 @@ export const Route = createFileRoute("/_authed/admin/")({
  * offer is left out of both at once.
  */
 function RouteComponent() {
+  const t = useT();
   const groups = useAdminGroups();
   return (
     <PageShell
-      description="Settings that apply to everybody in this deployment. Anything here affects every person and every Bot, which is what separates it from your own preferences."
-      title="Admin"
+      description={t("admin-a.index.description")}
+      title={t("admin-a.index.title")}
     >
       {groups.map((group) => (
         <PageSection

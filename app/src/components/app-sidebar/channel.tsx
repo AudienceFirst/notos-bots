@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useT } from "@/i18n";
 import {
   deleteChannelMutationOptions,
   setChannelPinnedMutationOptions,
@@ -55,6 +56,7 @@ export const Channel = memo(function Channel({
   unread: boolean;
   busy: boolean;
 }) {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   // Whether this row's channel is the one on screen, as a boolean, so navigating between
@@ -158,7 +160,9 @@ export const Channel = memo(function Channel({
             }}
           >
             {pinned ? <IconPinnedOff /> : <IconPin />}
-            {pinned ? "Unpin channel" : "Pin channel"}
+            {pinned
+              ? t("components.channel.unpin")
+              : t("components.channel.pin")}
           </ContextMenuItem>
           <ContextMenuItem
             variant="destructive"
@@ -169,7 +173,7 @@ export const Channel = memo(function Channel({
             }}
           >
             <IconTrash />
-            Delete channel…
+            {t("components.channel.deleteChannel")}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -186,9 +190,11 @@ export const Channel = memo(function Channel({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {name}?</DialogTitle>
+            <DialogTitle>
+              {t("components.channel.deleteConfirmTitle", { name })}
+            </DialogTitle>
             <DialogDescription>
-              The conversation will no longer appear for anyone in it.
+              {t("components.channel.deleteDescription")}
             </DialogDescription>
           </DialogHeader>
           {deleteChannel.error ? (
@@ -202,7 +208,7 @@ export const Channel = memo(function Channel({
               size="sm"
               variant="ghost"
             >
-              Cancel
+              {t("components.channel.cancel")}
             </Button>
             <Button
               disabled={deleteChannel.isPending}
@@ -212,7 +218,9 @@ export const Channel = memo(function Channel({
               size="sm"
               variant="destructive"
             >
-              {deleteChannel.isPending ? "Deleting…" : "Delete"}
+              {deleteChannel.isPending
+                ? t("components.channel.deleting")
+                : t("components.channel.delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

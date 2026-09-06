@@ -9,6 +9,7 @@ import { agentListQueryOptions } from "@/lib/agents/queries";
 import { routeMessage } from "@/lib/channels/route";
 import { useStartChannel } from "@/lib/channels/start";
 import { appConfig } from "@/lib/generated/application-config";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/")({
   component: RouteComponent,
@@ -29,6 +30,7 @@ function RouteComponent() {
   const explore = agents?.filter((a) => !a.mine && a.visibility === "public");
   const { start, startChosen, pending } = useStartChannel();
   const [error, setError] = useState<string | null>(null);
+  const t = useT();
 
   /** Default recipient when the composer draft has no mention. */
   const fallback = explore?.[0] ?? agents?.[0];
@@ -42,7 +44,7 @@ function RouteComponent() {
             {appConfig.brand.productName}
           </h2>
           <h1 className="text-2xl font-bold tracking-tight mt-1.5 text-center">
-            Start a new channel
+            {t("workspace.index.title")}
           </h1>
         </div>
         <div className="mt-8 w-full flex flex-col items-center">
@@ -75,7 +77,7 @@ function RouteComponent() {
                 setError(
                   caught instanceof Error
                     ? caught.message
-                    : "Could not start the conversation.",
+                    : t("workspace.index.startFailed"),
                 );
                 throw caught;
               }
@@ -86,8 +88,9 @@ function RouteComponent() {
             // Said out loud: a message that silently reaches somebody you did not choose is the
             // kind of surprise that costs trust the first time it happens.
             <p className="mt-2 w-full max-w-2xl text-xs text-muted-foreground text-center">
-              Sent to the Bot it is for. Type <code>@</code> to choose one
-              yourself.
+              {t("workspace.index.routedHintBefore")}
+              <code>@</code>
+              {t("workspace.index.routedHintAfter")}
             </p>
           ) : null}
           {error ? (
@@ -102,13 +105,13 @@ function RouteComponent() {
         {!!explore?.length && (
           <div className="mt-10 w-full max-w-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="font-bold text-lg">Bots</h2>
+              <h2 className="font-bold text-lg">{t("workspace.index.bots")}</h2>
               <Link
                 className="text-sm text-muted-foreground hover:text-foreground"
                 params={keepWorkspace}
                 to="/w/$workspace/agents"
               >
-                All Bots
+                {t("workspace.index.allBots")}
               </Link>
             </div>
             {/* The roster's grid: fixed cards, `gap-4`, wrapping on the width it actually has. */}

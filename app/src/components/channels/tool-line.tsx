@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useT } from "@/i18n";
 
 /**
  * One line for one thing a Bot did.
@@ -30,6 +31,7 @@ export function ToolLine({
   /** Shown when the line is expanded. Without it the line is not expandable. */
   children?: ReactNode;
 }) {
+  const t = useT();
   const tone = refused
     ? "text-destructive"
     : failed
@@ -43,7 +45,11 @@ export function ToolLine({
       }`}
     >
       <span className="shrink-0">
-        {refused ? "Blocked" : failed ? `${label}, didn't work` : label}
+        {refused
+          ? t("channels.tool-line.blocked")
+          : failed
+            ? t("channels.tool-line.failed", { label })
+            : label}
       </span>
       {detail ? <span className="truncate opacity-70">{detail}</span> : null}
     </span>

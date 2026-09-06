@@ -1,4 +1,17 @@
 import { Component, type ReactNode } from "react";
+import { useT } from "@/i18n";
+
+/** The failure line, as its own component so it can read the interface language. */
+function ToolRenderFailed({ name }: { name: string }) {
+  const t = useT();
+  return (
+    <p className="my-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+      <span className="font-medium">{name}</span>{" "}
+      {t("channels.tool-boundary.couldNotDraw")}{" "}
+      {t("channels.tool-boundary.restUnaffected")}
+    </p>
+  );
+}
 
 /**
  * A component that throws must not take the conversation with it.
@@ -28,12 +41,7 @@ export class ToolRenderBoundary extends Component<
 
   render() {
     if (this.state.failed) {
-      return (
-        <p className="my-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          <span className="font-medium">{this.props.name}</span> could not be
-          drawn. The rest of this conversation is unaffected.
-        </p>
-      );
+      return <ToolRenderFailed name={this.props.name} />;
     }
     return this.props.children;
   }

@@ -17,6 +17,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
+import { useT } from "@/i18n";
 import {
   addWorkspaceMemberMutationOptions,
   adminWorkspacesQueryOptions,
@@ -35,29 +36,28 @@ export const Route = createFileRoute("/_authed/admin/workspaces")({
 });
 
 function WorkspacesPage() {
+  const t = useT();
   const workspaces = useQuery(adminWorkspacesQueryOptions());
   const setModel = useMutation(setWorkspaceModelMutationOptions(queryClient));
   const setDrive = useMutation(setWorkspaceDriveMutationOptions(queryClient));
   const rows = workspaces.data?.workspaces ?? null;
   const problem = workspaces.error
-    ? "The workspaces could not be loaded."
+    ? t("admin-b.workspaces.loadFailed")
     : setModel.error
       ? setModel.error.message
       : null;
 
   return (
     <PageShell
-      description="Every NOTOS client is a workspace. The model stays in the EU by default; global is a deliberate choice per workspace, because that traffic leaves the EU."
-      title="Workspaces"
+      description={t("admin-b.workspaces.description")}
+      title={t("admin-b.workspaces.title")}
     >
       {problem ? <p className="text-sm text-destructive">{problem}</p> : null}
       <PageSection>
         {rows === null ? (
-          <PageEmpty>Loading…</PageEmpty>
+          <PageEmpty>{t("admin-b.workspaces.loading")}</PageEmpty>
         ) : rows.length === 0 ? (
-          <PageEmpty>
-            No workspaces yet: the NOTOS sync has not fetched anything.
-          </PageEmpty>
+          <PageEmpty>{t("admin-b.workspaces.empty")}</PageEmpty>
         ) : (
           <PageRows>
             {rows.map((workspace) => {
@@ -73,19 +73,29 @@ function WorkspacesPage() {
                   <ItemContent>
                     <ItemTitle>
                       {workspace.displayName}
-                      {workspace.kind === "demo" ? " (demo)" : ""}
+                      {workspace.kind === "demo"
+                        ? ` ${t("admin-b.workspaces.demoSuffix")}`
+                        : ""}
                     </ItemTitle>
                     <ItemDescription>
                       {workspace.notosClientId}
                       {!chosen
-                        ? ` · ${workspace.defaultModel} on ${workspace.modelProvider === "vertex" ? workspace.vertexLocation : workspace.modelProvider} (own setting)`
+                        ? ` · ${t("admin-b.workspaces.ownSettingDetail", {
+                            model: workspace.defaultModel,
+                            where:
+                              workspace.modelProvider === "vertex"
+                                ? workspace.vertexLocation
+                                : workspace.modelProvider,
+                          })}`
                         : ""}
                     </ItemDescription>
                   </ItemContent>
                   {/* Stacked: model, Drive folder and members each get a full line of their own. */}
                   <ItemActions className="w-[340px] shrink-0 flex-col items-stretch gap-2">
                     <select
-                      aria-label={`Model for ${workspace.displayName}`}
+                      aria-label={t("admin-b.workspaces.modelFor", {
+                        name: workspace.displayName,
+                      })}
                       className="text-sm bg-transparent border rounded-md px-2 py-1"
                       disabled={setModel.isPending}
                       value={
@@ -106,7 +116,11 @@ function WorkspacesPage() {
                         });
                       }}
                     >
-                      {!chosen ? <option value="">Own setting</option> : null}
+                      {!chosen ? (
+                        <option value="">
+                          {t("admin-b.workspaces.ownSetting")}
+                        </option>
+                      ) : null}
                       {MODEL_CHOICES.map((choice) => (
                         <option
                           key={`${choice.provider}|${choice.defaultModel}`}
@@ -159,6 +173,7 @@ function DriveFolderField({
   disabled: boolean;
   onSave: (folders: string[]) => void;
 }) {
+  const t = useT();
   const [value, setValue] = useState(roots.join("\n"));
   const [editing, setEditing] = useState(false);
   if (!editing) {
@@ -169,8 +184,13 @@ function DriveFolderField({
         type="button"
       >
         {roots.length === 0
-          ? "No Drive folder"
-          : `Drive: ${roots.length} folder${roots.length === 1 ? "" : "s"}`}
+          ? t("admin-b.workspaces.noDriveFolder")
+          : t(
+              roots.length === 1
+                ? "admin-b.workspaces.driveFoldersOne"
+                : "admin-b.workspaces.driveFoldersOther",
+              { count: roots.length },
+            )}
       </button>
     );
   }
@@ -189,17 +209,17 @@ function DriveFolderField({
       }}
     >
       <textarea
-        aria-label="Drive folder links"
+        aria-label={t("admin-b.workspaces.driveFolderLinks")}
         className="w-64 rounded-md border bg-transparent px-2 py-1 font-mono text-xs"
         disabled={disabled}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="https://drive.google.com/drive/folders/…"
+        placeholder={t("admin-b.workspaces.driveFolderPlaceholder")}
         rows={2}
         value={value}
       />
       <div className="flex gap-2">
         <Button disabled={disabled} size="sm" type="submit">
-          Save
+          {t("admin-b.workspaces.save")}
         </Button>
         <Button
           onClick={() => {
@@ -210,7 +230,7 @@ function DriveFolderField({
           type="button"
           variant="ghost"
         >
-          Cancel
+          {t("admin-b.workspaces.cancel")}
         </Button>
       </div>
     </form>
@@ -223,6 +243,7 @@ function DriveFolderField({
  * role that decides what the person may approve.
  */
 function MembersField({ workspaceId }: { workspaceId: string }) {
+  const t = useT();
   const members = useQuery(workspaceMembersQueryOptions(workspaceId));
   const add = useMutation(addWorkspaceMemberMutationOptions(queryClient));
   const remove = useMutation(removeWorkspaceMemberMutationOptions(queryClient));
@@ -238,14 +259,15 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
         onClick={() => setOpen((value) => !value)}
         type="button"
       >
-        {open ? "Hide members" : `Members (${rows.length})`}
+        {open
+          ? t("admin-b.workspaces.hideMembers")
+          : t("admin-b.workspaces.members", { count: rows.length })}
       </button>
       {open ? (
         <div className="mt-2 flex flex-col gap-2">
           {rows.length === 0 ? (
             <p className="text-muted-foreground text-xs">
-              Nobody added here yet. People NOTOS already lets in keep their
-              access.
+              {t("admin-b.workspaces.noMembers")}
             </p>
           ) : null}
           {rows.map((member) => (
@@ -262,7 +284,7 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
                 size="sm"
                 variant="ghost"
               >
-                Remove
+                {t("admin-b.workspaces.remove")}
               </Button>
             </div>
           ))}
@@ -279,15 +301,15 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
           >
             {/* Takes a row of its own when the role and the button would leave it too narrow to read an address in. */}
             <Input
-              aria-label="Email address"
+              aria-label={t("admin-b.workspaces.emailAddress")}
               className="h-8 min-w-0 flex-[1_1_12rem] text-sm"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@company.com"
+              placeholder={t("admin-b.workspaces.emailPlaceholder")}
               type="email"
               value={email}
             />
             <select
-              aria-label="Role"
+              aria-label={t("admin-b.workspaces.role")}
               className="h-8 rounded-md border border-border bg-background px-2 text-sm"
               onChange={(event) =>
                 setRole(event.target.value as WorkspaceMember["role"])
@@ -303,7 +325,7 @@ function MembersField({ workspaceId }: { workspaceId: string }) {
               ))}
             </select>
             <Button disabled={add.isPending} size="sm" type="submit">
-              Add
+              {t("admin-b.workspaces.add")}
             </Button>
           </form>
           {add.error ? (

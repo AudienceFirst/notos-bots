@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export const packageKeys = { active: ["tenant-package", "active"] as const };
 
@@ -8,7 +9,7 @@ export function activePackageQueryOptions() {
     queryKey: packageKeys.active,
     queryFn: async () => {
       const response = await client("/api/admin/package", {
-        fallback: "Could not load the active package",
+        fallback: tr("lib.package.loadFailed"),
       });
       return response.json();
     },

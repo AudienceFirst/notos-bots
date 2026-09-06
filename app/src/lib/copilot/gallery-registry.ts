@@ -1,5 +1,6 @@
-import type { ToolParameters as AguiToolParameters } from "@/notos/agui/core";
 import type { ReactElement } from "react";
+import { trOr } from "@/i18n";
+import type { ToolParameters as AguiToolParameters } from "@/notos/agui/core";
 
 /**
  * Discover gallery components from files that export `GALLERY`; deployment state owns publication,
@@ -117,4 +118,29 @@ const BY_NAME: ReadonlyMap<string, GalleryComponent> = new Map(
  */
 export function galleryComponent(name: string): GalleryComponent | undefined {
   return BY_NAME.get(name);
+}
+
+/**
+ * The name a person reads for a component, in the language they chose.
+ *
+ * A deployment stores its own title beside every component row, seeded from the build. For a
+ * component this build ships, the built-in title is the translated one, so that wins; anything a
+ * deployment added itself keeps the title it was given, because nobody wrote a translation for it.
+ */
+export function componentTitle(name: string, stored: string): string {
+  return BY_NAME.get(name)?.title ?? stored;
+}
+
+/**
+ * The line a person reads under a component, in the language they chose.
+ *
+ * The description stored beside a component is written for the model deciding whether to draw it,
+ * and a deployment may rewrite it. So: a deployment that wrote its own keeps it, word for word, in
+ * whatever language it wrote. One still carrying the shipped default gets the line written for a
+ * reader instead, which is the same sentence in shorter form and in their own language.
+ */
+export function componentBlurb(name: string, stored: string | null): string {
+  const built = BY_NAME.get(name);
+  if (!built || stored !== built.description) return stored ?? "";
+  return trOr(`gallery.${name}.blurb`, built.description);
 }

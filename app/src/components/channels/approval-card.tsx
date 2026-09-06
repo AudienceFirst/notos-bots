@@ -8,6 +8,7 @@ import {
 } from "@/lib/approvals/queries";
 import { sayFromCard } from "@/lib/copilot/turn-bus";
 import { readToolName } from "@/lib/plugins/tool-name";
+import { useT } from "@/i18n";
 
 /** The refusal text a write comes back with when a person has to say yes first. */
 export const NEEDS_APPROVAL_PREFIX = "needs_approval:";
@@ -36,6 +37,7 @@ export function ApprovalCard({
   const queryClient = useQueryClient();
   const approval = useQuery(approvalQueryOptions(id));
   const decide = useMutation(decideApprovalMutationOptions(queryClient));
+  const t = useT();
   const { label } = readToolName(toolName);
 
   const row = decide.data ?? approval.data;
@@ -47,9 +49,7 @@ export function ApprovalCard({
       {
         onSuccess: (decided) => {
           if (decided.decision === "granted") {
-            sayFromCard(
-              `Approved: go ahead with ${label}, with the same details.`,
-            );
+            sayFromCard(t("channels.approval-card.goAhead", { label }));
           }
         },
       },
@@ -58,23 +58,27 @@ export function ApprovalCard({
 
   return (
     <div className="my-2 max-w-xl rounded-lg border bg-muted/40 p-3 text-sm">
-      <p className="font-medium">May this Bot {label}?</p>
+      <p className="font-medium">
+        {t("channels.approval-card.question", { label })}
+      </p>
       {row ? (
         <Arguments args={row.args} />
       ) : approval.isError ? (
         <p className="mt-1 text-muted-foreground">
-          The details of this call could not be loaded.
+          {t("channels.approval-card.loadFailed")}
         </p>
       ) : null}
       {row?.decision === "granted" ? (
         <p className="mt-2 text-muted-foreground">
-          Approved{row.decidedBy ? ` by ${row.decidedBy}` : ""}. The Bot may do
-          this once.
+          {row.decidedBy
+            ? t("channels.approval-card.approvedBy", { name: row.decidedBy })
+            : t("channels.approval-card.approved")}
         </p>
       ) : row?.decision === "denied" ? (
         <p className="mt-2 text-muted-foreground">
-          Declined{row.decidedBy ? ` by ${row.decidedBy}` : ""}. Nothing was
-          changed.
+          {row.decidedBy
+            ? t("channels.approval-card.declinedBy", { name: row.decidedBy })
+            : t("channels.approval-card.declined")}
         </p>
       ) : (
         <div className="mt-3 flex gap-2">
@@ -83,7 +87,7 @@ export function ApprovalCard({
             onClick={() => answer("granted")}
             size="sm"
           >
-            Yes, do it
+            {t("channels.approval-card.yes")}
           </Button>
           <Button
             disabled={busy || !row}
@@ -91,7 +95,7 @@ export function ApprovalCard({
             size="sm"
             variant="outline"
           >
-            No
+            {t("channels.approval-card.no")}
           </Button>
         </div>
       )}
@@ -99,7 +103,7 @@ export function ApprovalCard({
         <p className="mt-2 text-destructive" role="alert">
           {decide.error instanceof Error
             ? decide.error.message
-            : "The decision could not be recorded."}
+            : t("channels.approval-card.decideFailed")}
         </p>
       ) : null}
     </div>
@@ -108,11 +112,16 @@ export function ApprovalCard({
 
 /** The arguments as a short list; a person decides on what is sent, not on a summary of it. */
 function Arguments({ args }: { args: Approval["args"] }) {
+  const t = useT();
   const entries = Object.entries(args).filter(
     ([, value]) => value !== undefined,
   );
   if (entries.length === 0) {
-    return <p className="mt-1 text-muted-foreground">Without any details.</p>;
+    return (
+      <p className="mt-1 text-muted-foreground">
+        {t("channels.approval-card.noDetails")}
+      </p>
+    );
   }
   return (
     <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">

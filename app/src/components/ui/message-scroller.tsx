@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { IconArrowDown } from "@tabler/icons-react"
+import { useT } from "@/i18n"
 
 function MessageScrollerProvider(
   props: React.ComponentProps<typeof MessageScrollerPrimitive.Provider>
@@ -91,6 +92,7 @@ function MessageScrollerButton({
   ...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Button> &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
+  const t = useT()
   return (
     <MessageScrollerPrimitive.Button
       data-slot="message-scroller-button"
@@ -110,7 +112,9 @@ function MessageScrollerButton({
           <IconArrowDown
           />
           <span className="sr-only">
-            {direction === "end" ? "Scroll to end" : "Scroll to start"}
+            {direction === "end"
+              ? t("components.message-scroller.scrollToEnd")
+              : t("components.message-scroller.scrollToStart")}
           </span>
         </>
       )}

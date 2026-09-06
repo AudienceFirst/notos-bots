@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,6 +36,7 @@ const SHORTCUT_LABEL = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
  * contradict the label below. The state still belongs to the primitive: `toggleSidebar` is its hook.
  */
 export function SidebarToggle({ className }: { className?: string }) {
+  const t = useT();
   const sidebar = useOptionalSidebar();
   // No sidebar in scope, so nothing to toggle and nothing to draw.
   if (!sidebar) return null;
@@ -45,8 +47,8 @@ export function SidebarToggle({ className }: { className?: string }) {
    * would name the wrong action.
    */
   const label = (isMobile ? openMobile : open)
-    ? "Hide sidebar"
-    : "Show sidebar";
+    ? t("components.sidebar-toggle.hide")
+    : t("components.sidebar-toggle.show");
 
   return (
     <Tooltip>

@@ -22,6 +22,8 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/i18n";
+import { useConnectorSummary } from "@/lib/plugins/catalogue-text";
 import {
   type CatalogueItem,
   connectionsQueryOptions,
@@ -60,6 +62,8 @@ const MARKS: Record<string, React.ComponentType<{ className?: string }>> = {
 
 const markFor = (key: string) => MARKS[key] ?? IconPlug;
 
+type Translate = ReturnType<typeof useT>;
+
 /**
  * What a connected row says on the right.
  *
@@ -73,6 +77,7 @@ const markFor = (key: string) => MARKS[key] ?? IconPlug;
  * of them: a vendor with one tool held by 264 Bots used to read as one nobody had set up.
  */
 function summaryFor(
+  t: Translate,
   server: PluginServer,
   /**
    * The vendor's auth kind, from the catalogue rather than the server record.
@@ -86,25 +91,41 @@ function summaryFor(
 ): string {
   const facts: string[] = [];
   if (server.tools.length === 0) {
-    facts.push("No tools yet");
+    facts.push(t("admin-b.plugins.noToolsYet"));
   } else {
     const bots = new Set(server.tools.flatMap((tool) => tool.grantedTo)).size;
     facts.push(
-      `${server.tools.length} ${server.tools.length === 1 ? "tool" : "tools"}`,
+      t(
+        server.tools.length === 1
+          ? "admin-b.plugins.toolsOne"
+          : "admin-b.plugins.toolsOther",
+        { count: server.tools.length },
+      ),
     );
     facts.push(
-      bots === 0 ? "no Bots" : `${bots} ${bots === 1 ? "Bot" : "Bots"}`,
+      bots === 0
+        ? t("admin-b.plugins.noBots")
+        : t(
+            bots === 1
+              ? "admin-b.plugins.botsOne"
+              : "admin-b.plugins.botsOther",
+            { count: bots },
+          ),
     );
   }
   if (auth === "user-oauth") {
     facts.push(
-      youConnected ? "your account connected" : "connect your account",
+      youConnected
+        ? t("admin-b.plugins.yourAccountConnected")
+        : t("admin-b.plugins.connectYourAccount"),
     );
   }
   return facts.join(" · ");
 }
 
 function RouteComponent() {
+  const t = useT();
+  const summaryOf = useConnectorSummary();
   const plugins = useQuery(pluginsPageQueryOptions());
   const connections = useQuery(connectionsQueryOptions());
 
@@ -122,24 +143,22 @@ function RouteComponent() {
 
   return (
     <PageShell
-      description="What this deployment can reach, and which Bots may reach it. Adding a plugin is account-wide; which Bots hold its tools is decided on its own page."
-      title="Plugins"
+      description={t("admin-b.plugins.description")}
+      title={t("admin-b.plugins.title")}
     >
       {/* Pending, error, empty, rows — pending first, so no sentence asserts anything mid-fetch. */}
       {plugins.isPending ? null : plugins.error ? (
         <p className="mt-12 text-destructive text-sm" role="alert">
-          Plugins could not be loaded.
+          {t("admin-b.plugins.loadFailed")}
         </p>
       ) : (
         <>
           <PageSection
-            description="Added for the whole deployment. Open one to set what it needs and which Bots hold its tools."
-            title="Added"
+            description={t("admin-b.plugins.addedDescription")}
+            title={t("admin-b.plugins.added")}
           >
             {plugins.data?.servers.length === 0 ? (
-              <PageEmpty>
-                Nothing added yet. Everything available is below.
-              </PageEmpty>
+              <PageEmpty>{t("admin-b.plugins.addedEmpty")}</PageEmpty>
             ) : (
               <PageRows>
                 {plugins.data?.servers.map((server, index) => {
@@ -176,12 +195,14 @@ function RouteComponent() {
                               server.lastError ? "text-destructive" : undefined
                             }
                           >
-                            {server.lastError ?? server.summary}
+                            {server.lastError ??
+                              summaryOf(server.id, server.summary)}
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions>
                           <span className="text-muted-foreground text-xs">
                             {summaryFor(
+                              t,
                               server,
                               authByKey.get(server.id),
                               connected.has(server.id),
@@ -201,11 +222,11 @@ function RouteComponent() {
           </PageSection>
 
           <PageSection
-            description="Reviewed, first-party servers this build will talk to. Open one to add it."
-            title="Explore plugins"
+            description={t("admin-b.plugins.exploreDescription")}
+            title={t("admin-b.plugins.explore")}
           >
             {explore.length === 0 ? (
-              <PageEmpty>Everything in the catalogue is added.</PageEmpty>
+              <PageEmpty>{t("admin-b.plugins.exploreEmpty")}</PageEmpty>
             ) : (
               <PageRows>
                 {explore.map((entry: CatalogueItem, index) => {
@@ -227,11 +248,13 @@ function RouteComponent() {
                         </RowMark>
                         <ItemContent>
                           <ItemTitle>{entry.title}</ItemTitle>
-                          <ItemDescription>{entry.summary}</ItemDescription>
+                          <ItemDescription>
+                            {summaryOf(entry.key, entry.summary)}
+                          </ItemDescription>
                         </ItemContent>
                         <ItemActions>
                           <span className="text-muted-foreground text-xs">
-                            Not added
+                            {t("admin-b.plugins.notAdded")}
                           </span>
                           <IconChevronRight className="size-4 shrink-0 text-muted-foreground" />
                         </ItemActions>

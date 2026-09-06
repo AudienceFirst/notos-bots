@@ -1,4 +1,5 @@
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * Which coworker a message should go to.
@@ -28,7 +29,7 @@ export async function routeMessage(
   const response = await client("/api/route", {
     method: "POST",
     body: agentId ? { text, agentId } : { text },
-    fallback: "Could not choose a coworker.",
+    fallback: tr("lib.channels.routeFailed"),
   });
   return (await response.json()) as RoutingDecision;
 }

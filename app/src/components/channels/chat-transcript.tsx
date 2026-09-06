@@ -24,6 +24,7 @@ import {
   useMessageScroller,
 } from "@/components/ui/message-scroller";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/i18n";
 import { markdownComponents } from "@/lib/markdown";
 import { EASE_OUT, ENTRANCE_SECONDS } from "@/lib/motion";
 import { readToolName } from "@/lib/plugins/tool-name";
@@ -106,9 +107,10 @@ const RESTORING_ANSWER_LINES = [
 ] as const;
 
 function RestoringTranscript() {
+  const t = useT();
   return (
     // One announcement, with every bar hidden from it: nine empty shapes read aloud is worse.
-    <div aria-label="Loading this conversation" role="status">
+    <div aria-label={t("channels.chat-transcript.loading")} role="status">
       <div aria-hidden="true" className="flex justify-end pb-7">
         <Skeleton className="h-10 w-64 rounded-xl bg-muted/40 motion-reduce:animate-none" />
       </div>
@@ -136,6 +138,7 @@ function RestoringTranscript() {
  * work is a tool call or a model that has not spoken yet.
  */
 function Thinking() {
+  const t = useT();
   return (
     <p
       className="tool-line-running text-muted-foreground text-sm"
@@ -143,7 +146,7 @@ function Thinking() {
       // is doing. The text says it, so a screen reader is told the same thing the shimmer implies.
       role="status"
     >
-      Thinking
+      {t("channels.chat-transcript.thinking")}
     </p>
   );
 }
@@ -193,6 +196,7 @@ function Queued({
   text: string;
   onRemove?: (() => void) | undefined;
 }) {
+  const t = useT();
   return (
     <MessageRow align="end">
       <MessageContent>
@@ -207,7 +211,7 @@ function Queued({
            * `status` rather than `alert`, matching the thinking line: a person who has just chosen
            * to queue something is not being interrupted by the news that it is queued.
            */}
-          <span role="status">Queued</span>
+          <span role="status">{t("channels.chat-transcript.queued")}</span>
           {onRemove ? (
             <button
               /*
@@ -216,12 +220,14 @@ function Queued({
                * do and nothing about which one it would happen to. The visible word stays short
                * because the bubble it sits under is the answer for everybody who can see it.
                */
-              aria-label={`Remove queued message: ${text}`}
+              aria-label={t("channels.chat-transcript.removeQueuedLabel", {
+                text,
+              })}
               className="ml-2 underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               onClick={onRemove}
               type="button"
             >
-              Remove
+              {t("channels.chat-transcript.remove")}
             </button>
           ) : null}
         </MessageFooter>
@@ -492,9 +498,12 @@ const TranscriptMessage = memo(function TranscriptMessage({
  * a person can read instead. An unknown type falls back to its own name rather than to something
  * vague: whoever registered it will recognise it, and nobody else can act on either wording.
  */
-function activityName(activityType: string): string {
+function activityName(
+  activityType: string,
+  t: (key: string) => string,
+): string {
   return activityType === "open-generative-ui"
-    ? "This Bot's generated interface"
+    ? t("channels.chat-transcript.generatedInterface")
     : activityType;
 }
 
@@ -518,13 +527,14 @@ const TranscriptActivity = memo(function TranscriptActivity({
   delay: number;
   message: ActivityMessage;
 }) {
+  const t = useT();
   const { renderActivityMessage } = useRenderActivityMessage();
   const drawn = renderActivityMessage(message);
   if (!drawn) return null;
 
   return (
     <Arriving delay={delay}>
-      <ToolRenderBoundary name={activityName(message.activityType)}>
+      <ToolRenderBoundary name={activityName(message.activityType, t)}>
         {drawn}
       </ToolRenderBoundary>
     </Arriving>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n";
 import { galleryComponent } from "@/lib/copilot/gallery-registry";
 
 /**
@@ -47,6 +48,7 @@ export function ComponentPreview({
   name: string;
   fill?: number;
 }) {
+  const t = useT();
   const entry = galleryComponent(name);
   const box = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -99,8 +101,8 @@ export function ComponentPreview({
          */}
         <p className="text-center text-neutral-700 text-xs">
           {entry
-            ? "This one is only drawn in a conversation."
-            : "This build cannot draw this."}
+            ? t("components.component-preview.conversationOnly")
+            : t("components.component-preview.cannotDraw")}
         </p>
       </div>
     );

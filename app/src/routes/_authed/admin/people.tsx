@@ -20,6 +20,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { formatDateTime, useT } from "@/i18n";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
 import { setPersonAccessMutationOptions } from "@/lib/people/mutations";
 import { type Person, peopleListQueryOptions } from "@/lib/people/queries";
@@ -40,24 +41,32 @@ const PROVIDER_NAMES: Record<string, string> = {
  * The second line of a person's row: how they got here, and when they were last here.
  *
  * The address is the title, so this is everything else worth knowing at a glance while deciding
- * whether somebody should still have access.
+ * whether somebody should still have access. Takes the translator rather than calling the hook, so
+ * it stays a plain function the row can call.
  */
-function describe(person: Person): string {
-  const providers = person.providers
-    .map((provider) => PROVIDER_NAMES[provider] ?? provider)
-    .join(", ");
+function describe(
+  person: Person,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const providers =
+    person.providers
+      .map((provider) => PROVIDER_NAMES[provider] ?? provider)
+      .join(", ") || t("admin-a.people.noProvider");
   const when = person.lastSignedInAt
-    ? `last signed in ${new Date(person.lastSignedInAt).toLocaleDateString()}`
-    : "never signed in";
+    ? t("admin-a.people.lastSignedIn", {
+        date: formatDateTime(person.lastSignedInAt, { dateStyle: "medium" }),
+      })
+    : t("admin-a.people.neverSignedIn");
 
-  if (person.revoked) return `Access removed · ${providers || "no provider"}`;
+  if (person.revoked) return t("admin-a.people.accessRemoved", { providers });
   if (person.configuredAdmin) {
-    return `Administrator by configuration · ${when}`;
+    return t("admin-a.people.adminByConfig", { when });
   }
-  return `${providers || "no provider"} · ${when}`;
+  return t("admin-a.people.providerWhen", { providers, when });
 }
 
 function PeoplePage() {
+  const t = useT();
   const [search, setSearch] = useState("");
   /*
    * Debounced, so typing a name is one request rather than one per keystroke against an aggregate
@@ -80,12 +89,12 @@ function PeoplePage() {
 
   return (
     <PageShell
-      description="Everybody who has signed in. Administrators reach these screens; everybody else talks to Bots."
-      title="People"
+      description={t("admin-a.people.description")}
+      title={t("admin-a.people.title")}
     >
       <PageSection
-        description="Who is an administrator is decided in NOTOS (Team), not here. Remove blocks an address in Bots even while NOTOS still lets it in."
-        title="Who is here"
+        description={t("admin-a.people.sectionDescription")}
+        title={t("admin-a.people.sectionTitle")}
       >
         {failure ? (
           <p className="mt-4 text-destructive text-sm" role="alert">
@@ -97,22 +106,22 @@ function PeoplePage() {
           is the opposite of what somebody looking for a colleague needs.
         */}
         <Input
-          aria-label="Search people"
+          aria-label={t("admin-a.people.searchAria")}
           className="mt-4"
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name or address"
+          placeholder={t("admin-a.people.searchPlaceholder")}
           value={search}
         />
 
         {people.isPending ? null : people.error ? (
           <p className="mt-4 text-destructive text-sm" role="alert">
-            Could not load people.
+            {t("admin-a.people.loadFailed")}
           </p>
         ) : rows.length === 0 ? (
           <PageEmpty>
             {query
-              ? `Nobody here matches "${query}".`
-              : "Nobody has signed in yet. People appear here once they do."}
+              ? t("admin-a.people.noMatch", { query })
+              : t("admin-a.people.empty")}
           </PageEmpty>
         ) : (
           <PageRows>
@@ -136,7 +145,7 @@ function PeoplePage() {
                       <ItemTitle>{person.name ?? person.email}</ItemTitle>
                       <ItemDescription>
                         {person.name ? `${person.email} · ` : ""}
-                        {describe(person)}
+                        {describe(person, t)}
                       </ItemDescription>
                     </ItemContent>
                     <ItemActions>
@@ -156,7 +165,9 @@ function PeoplePage() {
                         size="sm"
                         variant={person.revoked ? "outline" : "destructive"}
                       >
-                        {person.revoked ? "Restore" : "Remove"}
+                        {person.revoked
+                          ? t("admin-a.people.restore")
+                          : t("admin-a.people.remove")}
                       </Button>
                       {/* NOTOS: no role switch; the admin role comes from team_members (stap 1). */}
                     </ItemActions>
@@ -180,7 +191,9 @@ function PeoplePage() {
             size="sm"
             variant="outline"
           >
-            {people.isFetchingNextPage ? "Loading…" : "Show more"}
+            {people.isFetchingNextPage
+              ? t("admin-a.people.loading")
+              : t("admin-a.people.showMore")}
           </Button>
         ) : null}
       </PageSection>

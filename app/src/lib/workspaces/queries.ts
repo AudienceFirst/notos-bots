@@ -5,6 +5,7 @@ import {
   queryOptions,
 } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export type AdminWorkspace = {
   id: string;
@@ -32,44 +33,68 @@ export const MODEL_CHOICES: readonly {
     provider: "vertex",
     vertexLocation: "europe-west4",
     defaultModel: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro on Vertex, europe-west4 (stays in the EU, no key)",
-    short: "Gemini 2.5 Pro (EU)",
+    get label() {
+      return tr("lib.workspaces.gemini25Label");
+    },
+    get short() {
+      return tr("lib.workspaces.gemini25Short");
+    },
   },
   {
     provider: "vertex",
     vertexLocation: "global",
     defaultModel: "gemini-3.1-pro-preview",
-    label: "Gemini 3.1 Pro Preview on Vertex, global (leaves the EU, no key)",
-    short: "Gemini 3.1 Pro Preview (global)",
+    get label() {
+      return tr("lib.workspaces.gemini31Label");
+    },
+    get short() {
+      return tr("lib.workspaces.gemini31Short");
+    },
   },
   // NOTOS (5 September 2026): keyed providers. The key comes from Admin › Models or Settings › Models.
   {
     provider: "anthropic",
     vertexLocation: "-",
     defaultModel: "claude-sonnet-5",
-    label: "Claude Sonnet 5 (Anthropic key)",
-    short: "Claude Sonnet 5",
+    get label() {
+      return tr("lib.workspaces.sonnetLabel");
+    },
+    get short() {
+      return tr("lib.workspaces.sonnetShort");
+    },
   },
   {
     provider: "anthropic",
     vertexLocation: "-",
     defaultModel: "claude-opus-5",
-    label: "Claude Opus 5 (Anthropic key)",
-    short: "Claude Opus 5",
+    get label() {
+      return tr("lib.workspaces.opusLabel");
+    },
+    get short() {
+      return tr("lib.workspaces.opusShort");
+    },
   },
   {
     provider: "openai",
     vertexLocation: "-",
     defaultModel: "gpt-5",
-    label: "GPT-5 (OpenAI key)",
-    short: "GPT-5",
+    get label() {
+      return tr("lib.workspaces.gpt5Label");
+    },
+    get short() {
+      return tr("lib.workspaces.gpt5Short");
+    },
   },
   {
     provider: "google-ai",
     vertexLocation: "-",
     defaultModel: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro via Google AI Studio (Google AI key)",
-    short: "Gemini 2.5 Pro (AI Studio)",
+    get label() {
+      return tr("lib.workspaces.aiStudioLabel");
+    },
+    get short() {
+      return tr("lib.workspaces.aiStudioShort");
+    },
   },
 ];
 
@@ -83,7 +108,7 @@ export function adminWorkspacesQueryOptions() {
     queryFn: async () =>
       (await (
         await client("/api/admin/workspaces", {
-          fallback: "Could not load workspaces",
+          fallback: tr("lib.workspaces.loadFailed"),
         })
       ).json()) as { workspaces: AdminWorkspace[] },
   });
@@ -106,7 +131,7 @@ export function setWorkspaceModelMutationOptions(queryClient: QueryClient) {
             vertexLocation: input.vertexLocation,
             defaultModel: input.defaultModel,
           },
-          fallback: "Could not change the model",
+          fallback: tr("lib.workspaces.modelChangeFailed"),
         },
       );
     },
@@ -124,7 +149,7 @@ export function setWorkspaceDriveMutationOptions(queryClient: QueryClient) {
         {
           method: "PUT",
           body: { folders: input.folders },
-          fallback: "Could not change the Drive folder",
+          fallback: tr("lib.workspaces.driveChangeFailed"),
         },
       );
     },
@@ -142,11 +167,20 @@ export type WorkspaceMember = {
   createdAt: string;
 };
 
+/** Translated at read time, so a label follows the language in force. */
 export const MEMBER_ROLE_LABELS: Record<WorkspaceMember["role"], string> = {
-  zuid: "ZUID (manages, approves)",
-  lead: "Lead (approves)",
-  specialist: "Specialist",
-  viewer: "Viewer",
+  get zuid() {
+    return tr("lib.workspaces.roleZuid");
+  },
+  get lead() {
+    return tr("lib.workspaces.roleLead");
+  },
+  get specialist() {
+    return tr("lib.workspaces.roleSpecialist");
+  },
+  get viewer() {
+    return tr("lib.workspaces.roleViewer");
+  },
 };
 
 export const memberKeys = {
@@ -162,7 +196,7 @@ export function workspaceMembersQueryOptions(workspaceId: string) {
         (await (
           await client(
             `/api/admin/workspaces/${encodeURIComponent(workspaceId)}/members`,
-            { fallback: "Could not load the members" },
+            { fallback: tr("lib.workspaces.membersLoadFailed") },
           )
         ).json()) as { members: WorkspaceMember[] }
       ).members,
@@ -181,7 +215,7 @@ export function addWorkspaceMemberMutationOptions(queryClient: QueryClient) {
         {
           method: "POST",
           body: { email: input.email, role: input.role },
-          fallback: "Could not add that person",
+          fallback: tr("lib.workspaces.memberAddFailed"),
         },
       );
     },
@@ -195,7 +229,7 @@ export function removeWorkspaceMemberMutationOptions(queryClient: QueryClient) {
     mutationFn: async (input: { id: string; email: string }) => {
       await client(
         `/api/admin/workspaces/${encodeURIComponent(input.id)}/members/${encodeURIComponent(input.email)}`,
-        { method: "DELETE", fallback: "Could not remove that person" },
+        { method: "DELETE", fallback: tr("lib.workspaces.memberRemoveFailed") },
       );
     },
     onSuccess: (_result, input) =>

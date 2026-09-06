@@ -12,6 +12,8 @@
  * ignores them while focus is in anything editable.
  */
 
+import { tr } from "@/i18n";
+
 export type HotkeyCombo = {
   /** KeyboardEvent.key, lowercase. */
   key: string;
@@ -32,8 +34,12 @@ export type Hotkey = {
 export const HOTKEYS = [
   {
     id: "new-chat",
-    label: "New chat",
-    description: "Start a new chat from anywhere in the app.",
+    get label() {
+      return tr("lib.hotkeys.newChatLabel");
+    },
+    get description() {
+      return tr("lib.hotkeys.newChatDescription");
+    },
     combo: { key: "n", shift: true },
   },
 ] as const satisfies readonly Hotkey[];

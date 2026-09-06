@@ -5,7 +5,10 @@ import adminB from "./admin-b";
 import channels from "./channels";
 import common from "./common";
 import components from "./components";
+import connectors from "./connectors";
+import gallery from "./gallery";
 import lib from "./lib";
+import server from "./server";
 import settings from "./settings";
 import workspace from "./workspace";
 
@@ -17,7 +20,10 @@ const dictionary: Record<string, string> = {
   ...workspace,
   ...channels,
   ...components,
+  ...connectors,
+  ...gallery,
   ...lib,
+  ...server,
 };
 
 export default dictionary;

@@ -1,5 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { type AgentProfile, type AgentVisibility, agentKeys } from "./queries";
 
 export type AgentInput = {
@@ -14,7 +15,7 @@ export type AgentInput = {
 };
 
 /** The sentence for every write here, since they all fail the same way to a reader. */
-const FALLBACK = "Coworker operation failed";
+const failed = () => tr("lib.agents.operationFailed");
 
 /** Server-derived fields are invalidated instead of patched by hand. */
 function invalidateAgents(queryClient: QueryClient) {
@@ -27,7 +28,7 @@ export function createAgentMutationOptions(queryClient: QueryClient) {
       client("/api/agents", "agent", {
         method: "POST",
         body: input,
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidateAgents(queryClient),
   });
@@ -42,7 +43,7 @@ export function updateAgentMutationOptions(queryClient: QueryClient) {
       client(`/api/agents/${variables.agentId}`, "agent", {
         method: "PATCH",
         body: variables.input,
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidateAgents(queryClient),
   });
@@ -53,7 +54,7 @@ export function duplicateAgentMutationOptions(queryClient: QueryClient) {
     mutationFn: (agentId: string): Promise<AgentProfile> =>
       client(`/api/agents/${agentId}/duplicate`, "agent", {
         method: "POST",
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidateAgents(queryClient),
   });
@@ -64,7 +65,7 @@ export function setAgentHiddenMutationOptions(queryClient: QueryClient) {
     mutationFn: async (variables: { agentId: string; hidden: boolean }) => {
       await client(
         `/api/agents/${variables.agentId}/${variables.hidden ? "hide" : "unhide"}`,
-        { method: "POST", fallback: FALLBACK },
+        { method: "POST", fallback: failed() },
       );
     },
     onSuccess: () => invalidateAgents(queryClient),
@@ -76,7 +77,7 @@ export function deleteAgentMutationOptions(queryClient: QueryClient) {
     mutationFn: async (agentId: string) => {
       await client(`/api/agents/${agentId}`, {
         method: "DELETE",
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateAgents(queryClient),
@@ -95,7 +96,7 @@ export function issueCallbackTokenMutationOptions(queryClient: QueryClient) {
     mutationFn: (agentId: string): Promise<string> =>
       client(`/api/agents/${agentId}/callback-token`, "token", {
         method: "POST",
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidateAgents(queryClient),
   });
@@ -107,7 +108,7 @@ export function revokeCallbackTokenMutationOptions(queryClient: QueryClient) {
     mutationFn: async (agentId: string) => {
       await client(`/api/agents/${agentId}/callback-token`, {
         method: "DELETE",
-        fallback: FALLBACK,
+        fallback: failed(),
       });
     },
     onSuccess: () => invalidateAgents(queryClient),
@@ -137,13 +138,13 @@ export function setHandoffGrantMutationOptions(queryClient: QueryClient) {
         await client("/api/plugins/grants", {
           method: "POST",
           body: { kind: "bot", ref: variables.ref, agentId: variables.agentId },
-          fallback: FALLBACK,
+          fallback: failed(),
         });
         return;
       }
       await client(
         `/api/plugins/grants?kind=bot&ref=${encodeURIComponent(variables.ref)}&agentId=${encodeURIComponent(variables.agentId)}`,
-        { method: "DELETE", fallback: FALLBACK },
+        { method: "DELETE", fallback: failed() },
       );
     },
     onSuccess: () => invalidateAgents(queryClient),

@@ -15,6 +15,9 @@
  * before this was recorded should show nothing, not "0 chunks", which would be a claim about a Bot
  * that nobody ever measured.
  */
+
+import { tr } from "@/i18n";
+
 export function silenceOf(payload: Record<string, unknown>): string | null {
   const silentForMs = payload.silentForMs;
   const chunks = payload.chunks;
@@ -23,7 +26,9 @@ export function silenceOf(payload: Record<string, unknown>): string | null {
   }
 
   const seconds = Math.max(1, Math.round(silentForMs / 1000));
-  const quiet = `Silent for ${seconds}s`;
-  if (chunks === 0) return `${quiet}, having said nothing at all`;
-  return `${quiet}, after ${chunks} ${chunks === 1 ? "chunk" : "chunks"}`;
+  if (chunks === 0) return tr("lib.audit.silentNothing", { seconds });
+  return tr(
+    chunks === 1 ? "lib.audit.silentChunksOne" : "lib.audit.silentChunksOther",
+    { seconds, chunks },
+  );
 }

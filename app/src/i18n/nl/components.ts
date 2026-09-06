@@ -1,4 +1,384 @@
 // NOTOS i18n: components (nl). Keys: "components.<file>.<name>". Add keys in both languages.
-const components: Record<string, string> = {};
+const components: Record<string, string> = {
+  "components.activity.activityCaption":
+    "Geteld uit de audittrail van deze omgeving, afgelopen {days} dagen",
+  "components.activity.askBusiest":
+    "Wat heeft {bot} nu eigenlijk gedaan? Kijk in de audittrail en vat het samen.",
+  "components.activity.askBusiestButton": "Vraag naar de drukste",
+  "components.activity.askLatest":
+    "Leg de meest recente weigering in die lijst uit, en wat er moet veranderen om het wel toe te staan.",
+  "components.activity.askLatestButton": "Leg de laatste uit",
+  "components.activity.botActivity": "Bot-activiteit",
+  "components.activity.choosing": "Rapport kiezen…",
+  "components.activity.galleryTitle": "Activiteitenrapport",
+  "components.activity.noActivity":
+    "Geen Bot heeft iets gedaan in de afgelopen {days} dagen.",
+  "components.activity.noRefusals": "Deze omgeving heeft niets geweigerd.",
+  "components.activity.notShown": "Niet getoond",
+  "components.activity.readFailed": "Die gegevens konden niet worden gelezen.",
+  "components.activity.reading": "Lezen…",
+  "components.activity.readingCaption": "Lezen uit deze omgeving",
+  "components.activity.recentRefusals": "Recente weigeringen",
+  "components.activity.refusalsCaption":
+    "Gelezen uit de audittrail van deze omgeving",
+  "components.activity.report": "Rapport",
+  "components.agent-dialog.accessIntro":
+    "Wat deze Bot mag gebruiken als hij werkt. Toegekend door een beheerder via de Plugins-schermen; alles wat hier niet staat wordt geweigerd bij aanroep.",
+  "components.agent-dialog.accessLoadFailed":
+    "Wat deze Bot mag gebruiken kon niet worden geladen.",
+  "components.agent-dialog.andMoreOne": "en {count} meer",
+  "components.agent-dialog.andMoreOther": "en {count} meer",
+  "components.agent-dialog.builtInConnection":
+    "Draait op de eigen Bot van deze omgeving. Niets te verbinden en niets te verifiëren: zijn tool-aanroepen vallen onder de eigen toegangsgegevens van de omgeving.",
+  "components.agent-dialog.cancel": "Annuleren",
+  "components.agent-dialog.cannotBeUndone":
+    "Dit kan niet ongedaan worden gemaakt.",
+  "components.agent-dialog.delete": "Verwijderen",
+  "components.agent-dialog.deleteConfirmTitle": "{name} verwijderen?",
+  "components.agent-dialog.deleting": "Verwijderen…",
+  "components.agent-dialog.duplicate": "Dupliceren",
+  "components.agent-dialog.duplicateDescription":
+    "Een eigen kopie, zonder sleutel en zonder kanalen.",
+  "components.agent-dialog.duplicating": "Dupliceren…",
+  "components.agent-dialog.editField": "{field} bewerken",
+  "components.agent-dialog.endpoint": "Endpoint",
+  "components.agent-dialog.hiddenDescription":
+    "Verborgen in jouw lijst met Bots. Voor anderen verandert er niets.",
+  "components.agent-dialog.hiddenTitle": "Verborgen",
+  "components.agent-dialog.hide": "Verbergen",
+  "components.agent-dialog.hideDescription":
+    "Haal hem van jouw lijst met Bots. Voor anderen verandert er niets.",
+  "components.agent-dialog.hiding": "Verbergen…",
+  "components.agent-dialog.loadFailed": "Deze Bot kon niet worden geladen.",
+  "components.agent-dialog.nameLabel": "Naam",
+  "components.agent-dialog.nothingGrantedDescription":
+    "Een beheerder kent connectors en skills toe via de Plugins-schermen. Tot die tijd kan deze Bot alleen een gesprek voeren.",
+  "components.agent-dialog.nothingGrantedTitle": "Nog niets toegekend",
+  "components.agent-dialog.private": "Privé",
+  "components.agent-dialog.public": "Openbaar",
+  "components.agent-dialog.roleLabel": "Rol",
+  "components.agent-dialog.save": "Opslaan",
+  "components.agent-dialog.saveFailed": "Opslaan is niet gelukt.",
+  "components.agent-dialog.saving": "Opslaan…",
+  "components.agent-dialog.sectionAccess": "Toegang",
+  "components.agent-dialog.sectionConnection": "Verbinding",
+  "components.agent-dialog.sectionGeneral": "Algemeen",
+  "components.agent-dialog.sectionHandoff": "Overdracht",
+  "components.agent-dialog.sectionManage": "Beheer",
+  "components.agent-dialog.sectionRoutines": "Routines",
+  "components.agent-dialog.skillBadge": "Skill",
+  "components.agent-dialog.start": "Starten",
+  "components.agent-dialog.startChannelDescription":
+    "Open een nieuw kanaal met deze Bot.",
+  "components.agent-dialog.startChannelTitle": "Kanaal starten",
+  "components.agent-dialog.systemOwnedDescription":
+    "Wordt meegeleverd met deze omgeving en is niet van een persoon.",
+  "components.agent-dialog.systemOwnedTitle": "Eigendom van het systeem",
+  "components.agent-dialog.titleLabel": "Titel",
+  "components.agent-dialog.toolsOne": "{count} tool",
+  "components.agent-dialog.toolsOther": "{count} tools",
+  "components.agent-dialog.unhide": "Zichtbaar maken",
+  "components.agent-dialog.unhiding": "Zichtbaar maken…",
+  "components.agent-dialog.valueDoesNotFit": "Die waarde past niet.",
+  "components.agent-dialog.visibilityPrivateDescription":
+    "Alleen jij kunt hem zien en er kanalen mee starten.",
+  "components.agent-dialog.visibilityPublicDescription":
+    "Iedereen in deze omgeving kan hem vinden en gebruiken.",
+  "components.agent-dialog.visibilityTitle": "Zichtbaarheid",
+  "components.agent-profile.loadFailed": "Deze Bot kon niet worden geladen.",
+  "components.agent-profile.manageBot": "Bot beheren",
+  "components.agent-profile.private": "Privé",
+  "components.agent-profile.public": "Openbaar",
+  "components.agent-profile.role": "Rol",
+  "components.agent-profile.startNewChannel": "Nieuw kanaal starten",
+  "components.agent-profile.systemOwned": "Eigendom van het systeem",
+  "components.app-sidebar.admin": "Beheer",
+  "components.app-sidebar.bots": "Bots",
+  "components.app-sidebar.campaigns": "Campagnes",
+  "components.app-sidebar.connectors": "Connectors",
+  "components.app-sidebar.logOut": "Uitloggen",
+  "components.app-sidebar.noChannels":
+    "Nog geen kanalen in deze workspace. Je kanalen verschijnen hier zodra je er een start.",
+  "components.app-sidebar.noMatchDescription":
+    "Niets hier heet “{query}”, en niemand heeft het onlangs gezegd.",
+  "components.app-sidebar.noMatchTitle":
+    "Geen kanalen gevonden voor je zoekopdracht",
+  "components.app-sidebar.searchChannels": "Kanalen zoeken",
+  "components.app-sidebar.searchPlaceholder": "Zoeken...",
+  "components.app-sidebar.settings": "Instellingen",
+  "components.app-sidebar.skills": "Skills",
+  "components.app-sidebar.workspaceGroup": "Workspace",
+  "components.callback-token-panel.copyNow":
+    "Kopieer dit nu. Het wordt niet nog een keer getoond.",
+  "components.callback-token-panel.done": "Klaar",
+  "components.callback-token-panel.generateToken": "Token aanmaken",
+  "components.callback-token-panel.generating": "Aanmaken…",
+  "components.callback-token-panel.hasToken":
+    "Deze Bot heeft toegangsgegevens en kan dus de tools gebruiken die hem zijn toegekend. Rouleren vervangt ze, en de oude werken meteen niet meer.",
+  "components.callback-token-panel.hashOnly":
+    "De omgeving bewaart er alleen een hash van, dus niets hier kan het je een tweede keer laten zien.",
+  "components.callback-token-panel.noToken":
+    "Deze Bot heeft geen toegangsgegevens: hij kan een gesprek voeren, maar geen enkele toegekende tool gebruiken. Maak ze aan en zet ze in de configuratie van die agent.",
+  "components.callback-token-panel.revoke": "Intrekken",
+  "components.callback-token-panel.revoking": "Intrekken…",
+  "components.callback-token-panel.rotateToken": "Token rouleren",
+  "components.callback-token-panel.title": "Tools terug aanroepen",
+  "components.cards.checklistTitle": "Checklist",
+  "components.cards.countOf": "{done} van {total}",
+  "components.cards.metricsTitle": "Kerncijfers",
+  "components.cards.noticeTitle": "Melding",
+  "components.cards.previewChecklistItem1": "Migraties uitgevoerd",
+  "components.cards.previewChecklistItem2": "Changelog geschreven",
+  "components.cards.previewChecklistItem3": "Loadtest",
+  "components.cards.previewChecklistItem3Note": "Wacht op staging",
+  "components.cards.previewChecklistTitle": "Vóór de release",
+  "components.cards.previewMetricsChurnChange": "+0,3 pt",
+  "components.cards.previewMetricsChurnLabel": "Verloop",
+  "components.cards.previewMetricsChurnValue": "1,4%",
+  "components.cards.previewMetricsDealsLabel": "Open deals",
+  "components.cards.previewMetricsRevenueChange":
+    "+12% ten opzichte van vorige maand",
+  "components.cards.previewMetricsRevenueLabel": "Omzet",
+  "components.cards.previewMetricsRevenueValue": "€ 412.000",
+  "components.cards.previewMetricsTitle": "Deze maand",
+  "components.cards.previewNoticeBody":
+    "Het checkout-certificaat heeft nu een eigenaar, en dit is de eerste van de nieuwe meldingen.",
+  "components.cards.previewNoticePoint1": "Eigenaar: Platform",
+  "components.cards.previewNoticePoint2":
+    "Wordt automatisch verlengd na goedkeuring",
+  "components.cards.previewNoticeTitle": "Certificaat verloopt over 30 dagen",
+  "components.cards.previewRecordAmountLabel": "Bedrag",
+  "components.cards.previewRecordAmountValue": "€ 4.280,00",
+  "components.cards.previewRecordOwnerLabel": "Eigenaar",
+  "components.cards.previewRecordOwnerValue": "Priya Raman",
+  "components.cards.previewRecordRaisedLabel": "Aangemaakt",
+  "components.cards.previewRecordRaisedValue": "12 maart",
+  "components.cards.previewRecordStatus": "Goedgekeurd",
+  "components.cards.previewRecordSubtitle": "Northwind Traders",
+  "components.cards.previewRecordTitle": "Factuur 2043",
+  "components.cards.recordTitle": "Gegevenskaart",
+  "components.cards.toneCaution": "let op",
+  "components.cards.toneNegative": "negatief",
+  "components.cards.tonePositive": "positief",
+  "components.channel.cancel": "Annuleren",
+  "components.channel.delete": "Verwijderen",
+  "components.channel.deleteChannel": "Kanaal verwijderen…",
+  "components.channel.deleteConfirmTitle": "{name} verwijderen?",
+  "components.channel.deleteDescription":
+    "Het gesprek verschijnt dan voor niemand meer die eraan deelnam.",
+  "components.channel.deleting": "Verwijderen…",
+  "components.channel.pin": "Kanaal vastzetten",
+  "components.channel.unpin": "Kanaal losmaken",
+  "components.charts.areaTitle": "Vlakdiagram",
+  "components.charts.barTitle": "Staafdiagram",
+  "components.charts.donutTitle": "Donutdiagram",
+  "components.charts.lineTitle": "Lijndiagram",
+  "components.charts.noData": "Er zijn geen gegevens om te tekenen.",
+  "components.charts.previewAreaApr": "apr",
+  "components.charts.previewAreaCaption": "Groeit gestaag sinds de migratie.",
+  "components.charts.previewAreaFeb": "feb",
+  "components.charts.previewAreaJan": "jan",
+  "components.charts.previewAreaMar": "mrt",
+  "components.charts.previewAreaMay": "mei",
+  "components.charts.previewAreaTitle": "Opslag in gebruik",
+  "components.charts.previewBarCaption":
+    "Sales loopt voorop, en Engineering loopt in.",
+  "components.charts.previewBarEngineering": "Engineering",
+  "components.charts.previewBarSales": "Sales",
+  "components.charts.previewBarSupport": "Support",
+  "components.charts.previewBarTitle": "Omzet per team",
+  "components.charts.previewDonutBuild": "Bouwen",
+  "components.charts.previewDonutMeetings": "Vergaderingen",
+  "components.charts.previewDonutSupport": "Support",
+  "components.charts.previewDonutTitle": "Waar de maand heen ging",
+  "components.charts.previewLineCaption": "Zes weken, één release.",
+  "components.charts.previewLineSeries": "Aanmeldingen",
+  "components.charts.previewLineTitle": "Aanmeldingen",
+  "components.charts.previewProgressCaption": "Nog twee services te gaan.",
+  "components.charts.previewProgressServices": "Services verhuisd",
+  "components.charts.previewProgressTests": "Tests overgezet",
+  "components.charts.previewProgressTitle": "Migratie naar de nieuwe runtime",
+  "components.charts.progressTitle": "Voortgang ten opzichte van doel",
+  "components.component-preview.cannotDraw":
+    "Deze versie kan dit niet tekenen.",
+  "components.component-preview.conversationOnly":
+    "Deze wordt alleen in een gesprek getekend.",
+  "components.create-agent-dialog.answered": "Hij antwoordde: {events}",
+  "components.create-agent-dialog.back": "Terug",
+  "components.create-agent-dialog.builtInDescription":
+    "Draait op de eigen Bot van deze omgeving. Niets te hosten of te verbinden: hij is klaar zodra je hem aanmaakt.",
+  "components.create-agent-dialog.builtInTitle": "Ingebouwd",
+  "components.create-agent-dialog.builtInUnavailable":
+    "Hier niet beschikbaar: deze omgeving heeft geen eigen Bot waarop een Bot kan draaien.",
+  "components.create-agent-dialog.cancel": "Annuleren",
+  "components.create-agent-dialog.chooseKind": "Kies waar deze Bot draait.",
+  "components.create-agent-dialog.continue": "Doorgaan",
+  "components.create-agent-dialog.createBot": "Bot aanmaken",
+  "components.create-agent-dialog.creating": "Aanmaken…",
+  "components.create-agent-dialog.dialogTitle": "Nieuwe Bot",
+  "components.create-agent-dialog.endpointHint":
+    "Alles wat AG-UI spreekt werkt. Deze server roept je agent aan, dus een agent op je eigen computer moet vanaf hier bereikbaar zijn.",
+  "components.create-agent-dialog.endpointLabel": "Endpoint van de agent",
+  "components.create-agent-dialog.endpointRequired":
+    "Een zelf gehoste Bot heeft een endpoint nodig.",
+  "components.create-agent-dialog.identityDescription":
+    "De rol die je hier schrijft geldt in elk kanaal waarin deze Bot werkt.",
+  "components.create-agent-dialog.identityTitle": "Wie is deze Bot?",
+  "components.create-agent-dialog.keyHintAfter":
+    "bij elke run, en bewaard in de kluis met toegangsgegevens.",
+  "components.create-agent-dialog.keyHintBefore": "Meegestuurd in de header",
+  "components.create-agent-dialog.keyLabel":
+    "Sleutel voor die agent (optioneel)",
+  "components.create-agent-dialog.kindTitle": "Waar draait hij?",
+  "components.create-agent-dialog.managedDescription":
+    "Draait op een agent die jij host, aangesproken via AG-UI. Deze server roept je endpoint aan bij elke run.",
+  "components.create-agent-dialog.managedTitle": "Zelf gehost",
+  "components.create-agent-dialog.nameLabel": "Naam",
+  "components.create-agent-dialog.namePlaceholder": "Declaratiebeheerder",
+  "components.create-agent-dialog.privateDescription":
+    "Alleen jij kunt hem zien en er kanalen mee starten.",
+  "components.create-agent-dialog.privateTitle": "Privé",
+  "components.create-agent-dialog.publicDescription":
+    "Iedereen in deze omgeving kan hem vinden en gebruiken.",
+  "components.create-agent-dialog.publicTitle": "Openbaar",
+  "components.create-agent-dialog.roleLabel": "Rol",
+  "components.create-agent-dialog.rolePlaceholder":
+    "Controleer bonnetjes, deel uitgaven in categorieën in en stel declaratieoverzichten op.",
+  "components.create-agent-dialog.stepOf": "Stap {step} van {total}",
+  "components.create-agent-dialog.test": "Testen",
+  "components.create-agent-dialog.testing": "Testen…",
+  "components.create-agent-dialog.titleLabel": "Titel",
+  "components.create-agent-dialog.titlePlaceholder": "Financiële administratie",
+  "components.create-agent-dialog.visibilityTitle": "Wie kan hem zien?",
+  "components.decisions.answered": "Beantwoord",
+  "components.decisions.approvalTitle": "Goedkeuring",
+  "components.decisions.approve": "Goedkeuren",
+  "components.decisions.approved": "Goedgekeurd",
+  "components.decisions.choiceTitle": "Keuze",
+  "components.decisions.decline": "Afwijzen",
+  "components.decisions.declined": "Afgewezen",
+  "components.decisions.preparingQuestion": "Vraag voorbereiden…",
+  "components.decisions.preparingRequest": "Verzoek voorbereiden…",
+  "components.decisions.previewApprovalAmountLabel": "Bedrag",
+  "components.decisions.previewApprovalAmountValue": "€ 128,40",
+  "components.decisions.previewApprovalApprove": "Terugbetalen",
+  "components.decisions.previewApprovalCustomerLabel": "Klant",
+  "components.decisions.previewApprovalCustomerValue": "Northwind Traders",
+  "components.decisions.previewApprovalOrderLabel": "Bestelling",
+  "components.decisions.previewApprovalSummary":
+    "De klant is twee keer belast voor dezelfde bestelling en de tweede afschrijving is nog niet verwerkt.",
+  "components.decisions.previewApprovalTitle": "Deze bestelling terugbetalen?",
+  "components.decisions.previewChoiceProductionDescription": "Echte klanten",
+  "components.decisions.previewChoiceProductionLabel": "Productie",
+  "components.decisions.previewChoiceStagingDescription":
+    "Veilig, en terug te draaien",
+  "components.decisions.previewChoiceStagingLabel": "Staging",
+  "components.decisions.previewChoiceSummary":
+    "De build is groen en er staat verder niets in de wachtrij.",
+  "components.decisions.previewChoiceTitle": "Naar welke omgeving moet dit?",
+  "components.decisions.reasonPlaceholder": "Een reden, als je die wilt geven",
+  "components.decisions.sending": "Versturen…",
+  "components.decisions.waitingAssistant": "Wachten op de assistent…",
+  "components.decisions.waitingOnYou": "Wacht op jou",
+  "components.dialog.close": "Sluiten",
+  "components.edit-skill.descriptionAfter":
+    "wordt gebruikt. Bots die hem al hebben, houden hem.",
+  "components.edit-skill.descriptionBefore":
+    "Wijzigingen gelden de volgende keer dat",
+  "components.edit-skill.missing":
+    "Die skill bestaat niet meer, of je mag hem niet bewerken.",
+  "components.edit-skill.submit": "Wijzigingen opslaan",
+  "components.edit-skill.title": "Skill bewerken",
+  "components.handoff-panel.adminDecides":
+    "Een beheerder bepaalt welke Bots gevraagd mogen worden.",
+  "components.handoff-panel.countOf": "{granted} van {total}",
+  "components.handoff-panel.disabledDescription":
+    "Deze toekenningen blijven bewaard, maar geen ervan werkt tot werk overdragen tussen Bots weer is ingeschakeld.",
+  "components.handoff-panel.disabledTitle": "Uitgeschakeld voor deze omgeving",
+  "components.handoff-panel.emptyDescription":
+    "Zodra deze omgeving meer Bots heeft, bepaal je hier welke deze mag vragen.",
+  "components.handoff-panel.emptyTitle": "Nog geen andere Bot hier",
+  "components.handoff-panel.intro":
+    "Wie deze Bot mag vragen, niet wie hem mag vragen. Wat de gevraagde Bot zegt komt terug in het gesprek dat vroeg, doorgegeven en met naam erbij.",
+  "components.handoff-panel.letAsk": "Laat deze Bot {name} vragen",
+  "components.handoff-panel.notGrantableDescription":
+    "Werk overdragen is een tool die binnen de eigen loop van deze omgeving draait, en deze Bot draait als eigen agent. Er valt hem dus niets toe te kennen. Bots die het wel kunnen, kunnen hem nog steeds vragen.",
+  "components.handoff-panel.notGrantableTitle":
+    "Deze Bot kan geen werk overdragen",
+  "components.handoff-panel.title": "Bots die hij mag vragen",
+  "components.message-scroller.scrollToEnd": "Naar het einde",
+  "components.message-scroller.scrollToStart": "Naar het begin",
+  "components.new-skill.descriptionAfter":
+    "Hij komt op de Bots die van jou zijn, en niemand anders ziet hem.",
+  "components.new-skill.descriptionBefore":
+    "Een instructie met een naam die je oproept met",
+  "components.new-skill.submit": "Skill opslaan",
+  "components.new-skill.title": "Nieuwe skill",
+  "components.preview.kindCard": "kaart",
+  "components.preview.kindChart": "diagram",
+  "components.preview.kindDecision": "beslissing",
+  "components.preview.loading": "Laden wat hij kan tekenen…",
+  "components.preview.none":
+    "Deze Bot heeft geen componenten toegekend gekregen, dus hij antwoordt in tekst.",
+  "components.preview.recordsOnly":
+    "Tekent de eigen gegevens van deze omgeving en heeft dus niets te tonen tot een Bot erom vraagt.",
+  "components.questionnaire.next": "Volgende",
+  "components.questionnaire.previous": "Vorige",
+  "components.questionnaire.skip": "Overslaan",
+  "components.questionnaire.submit": "Versturen",
+  "components.quote.galleryTitle": "Citaat",
+  "components.quote.nothing": "Er is niets om te citeren.",
+  "components.quote.previewAttribution": "het declaratiebeleid",
+  "components.quote.previewContext": "Laatst gewijzigd in maart.",
+  "components.quote.previewQuote":
+    "Voor maaltijden onder € 75 is geen bon nodig. Daarboven wel, en boven € 500 heb je vooraf toestemming van je manager nodig.",
+  "components.quote.title": "Citaat",
+  "components.refused.notShown": "Niet getoond: {title}",
+  "components.sandbox-preview.title": "Componentvoorbeeld",
+  "components.sheet.close": "Sluiten",
+  "components.sidebar-toggle.hide": "Zijbalk verbergen",
+  "components.sidebar-toggle.show": "Zijbalk tonen",
+  "components.sidebar.sheetDescription": "Toont de mobiele zijbalk.",
+  "components.sidebar.sheetTitle": "Zijbalk",
+  "components.sidebar.toggle": "Zijbalk tonen of verbergen",
+  "components.skill-agents.hintAfter": "aan in zijn invoerveld.",
+  "components.skill-agents.hintBefore": "Een Bot met deze skill biedt",
+  "components.skill-agents.noBot":
+    "Je hebt nog geen eigen Bot om dit op te zetten.",
+  "components.skill-agents.title": "Bots",
+  "components.skill-fields.cancel": "Annuleren",
+  "components.skill-fields.commandHint": "Wat je typt na een slash.",
+  "components.skill-fields.commandLabel": "Commando",
+  "components.skill-fields.commandLocked":
+    "Een commando kun je niet wijzigen. Wil je een skill hernoemen, schrijf dan een nieuwe en verwijder deze.",
+  "components.skill-fields.commandPlaceholder": "standup",
+  "components.skill-fields.instructionsHint":
+    "Wordt aan de run toegevoegd als het commando wordt gebruikt. Schrijf het als instructies aan de Bot, niet als een beschrijving ervan.",
+  "components.skill-fields.instructionsLabel": "Instructies",
+  "components.skill-fields.instructionsPlaceholder":
+    "Vat samen wat ik gisteren deed op basis van het kanaal, en zet daarna op een rij wat er nog ligt.",
+  "components.skill-fields.saving": "Opslaan…",
+  "components.skill-fields.summaryHintAfter": "menu. Optioneel.",
+  "components.skill-fields.summaryHintBefore":
+    "Staat naast het commando in deze lijst en in het",
+  "components.skill-fields.summaryLabel": "Eén regel",
+  "components.skill-fields.summaryPlaceholder":
+    "Maakt van het werk van gisteren een standup-update",
+  "components.skill-fields.titleLabel": "Titel",
+  "components.skill-fields.titlePlaceholder": "Mijn standup-skill",
+  "components.skill-tools.changesSomething": "verandert iets",
+  "components.skill-tools.elsewhereHint":
+    "Deze skill noemt deze tools, maar geen server die hier is verbonden biedt ze aan: de connector is nog niet toegevoegd of is verwijderd. Ze kosten niets en laden niets tot die bestaat. Klik op een tool om hem niet meer te noemen.",
+  "components.skill-tools.grantHint":
+    "Het kiezen van deze skill laadt deze tools voor één beurt. Het kent ze niet toe: een Bot roept nog steeds alleen aan wat hem is toegekend, dus een tool hier noemen geeft niemand toegang.",
+  "components.skill-tools.label": "Tools die hij nodig heeft",
+  "components.skill-tools.loadFailed":
+    "De tools van deze omgeving konden niet worden geladen.",
+  "components.skill-tools.none":
+    "Nog geen verbonden server biedt een tool aan. Je kunt de skill wel schrijven: de meeste bestaan uit instructies, niet uit tools.",
+  "components.skill-tools.notConnected": "Hier niet verbonden",
+  "components.skill-tools.notOffered":
+    "{ref}: geen verbonden server biedt dit aan",
+};
 
 export default components;

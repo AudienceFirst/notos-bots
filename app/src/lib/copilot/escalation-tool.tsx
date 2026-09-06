@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ToolLine } from "@/components/channels/tool-line";
 import { PUT_TO } from "@/lib/copilot/markers";
 import { saidItWentAhead } from "@/lib/plugins/tool-result";
+import { useT } from "@/i18n";
 
 /**
  * How a Bot stopping to ask a person reads in the transcript.
@@ -30,6 +31,7 @@ function reached(result: unknown): boolean {
 }
 
 export function EscalationTool() {
+  const t = useT();
   useRenderTool({
     name: "ask_person",
     parameters,
@@ -37,7 +39,7 @@ export function EscalationTool() {
       const running = status !== "complete" && result === undefined;
       return (
         <ToolLine
-          label="Asked you"
+          label={t("lib.copilot.askedYou")}
           detail={given?.question}
           running={running}
           refused={!running && !reached(result)}

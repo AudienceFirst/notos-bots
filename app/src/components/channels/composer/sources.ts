@@ -1,3 +1,4 @@
+import { tr } from "@/i18n";
 import type { CommandOption } from "./draft";
 
 /**
@@ -14,8 +15,13 @@ export const PLACEHOLDER_COMMANDS: CommandOption[] = [
   {
     id: "summarize",
     name: "summarize",
-    description: "Summarize this conversation",
+    // Getters, so the menu and the expanded text follow the interface language at render time.
+    get description() {
+      return tr("channels.sources.summarizeDescription");
+    },
     kind: "prompt",
-    prompt: "Summarize what we covered in this channel so far.",
+    get prompt() {
+      return tr("channels.sources.summarizePrompt");
+    },
   },
 ];

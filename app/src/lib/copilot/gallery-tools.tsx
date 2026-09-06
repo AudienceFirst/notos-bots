@@ -1,6 +1,7 @@
 import { useFrontendTool, useHumanInTheLoop } from "@/notos/agui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useT } from "@/i18n";
 import { RefusedCard } from "@/components/gallery/refused";
 import {
   agentComponentsQueryOptions,
@@ -74,6 +75,7 @@ function GrantedTool({
   spec: GalleryComponent;
   held: Map<string, string>;
 }) {
+  const t = useT();
   const description = held.get(spec.name);
   const isHeld = description !== undefined;
 
@@ -100,14 +102,16 @@ function GrantedTool({
       if (!isHeld) {
         return (
           <RefusedCard
-            reason={`${spec.title} is not available to this Bot at the moment. An administrator grants components per Bot, and can unpublish one for every Bot at once.`}
+            reason={t("lib.copilot.componentUnavailable", {
+              title: spec.title,
+            })}
             title={spec.title}
           />
         );
       }
       return <Component {...(props.args ?? {})} />;
     },
-    [Component, isHeld, refusals, spec.title],
+    [Component, isHeld, refusals, spec.title, t],
   );
 
   useFrontendTool({
@@ -127,7 +131,7 @@ function GrantedTool({
         spec.reads?.(args ?? {}) ?? [],
       );
       if (!decision.allowed) {
-        const reason = decision.reason ?? "That component is not allowed here.";
+        const reason = decision.reason ?? t("lib.copilot.componentNotAllowed");
         const id = context?.toolCall?.id;
         if (id) {
           setRefusals((current) => new Map(current).set(id, reason));
@@ -194,7 +198,8 @@ function RefusedDecision({
   title: string;
   respond?: (result: unknown) => Promise<void>;
 }) {
-  const reason = `${title} is not available to this Bot at the moment, so the person was not asked. An administrator grants components per Bot, and can unpublish one for every Bot at once.`;
+  const t = useT();
+  const reason = t("lib.copilot.decisionUnavailable", { title });
 
   useEffect(() => {
     if (!respond) return;

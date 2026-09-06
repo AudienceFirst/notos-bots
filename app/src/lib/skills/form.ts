@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tr } from "@/i18n";
 
 /**
  * The four things a person decides about a skill.
@@ -15,25 +16,24 @@ export const skillFormSchema = z.object({
   slug: z
     .string()
     .trim()
-    .min(1, "A command is required.")
-    .regex(
-      /^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/,
-      "Lower-case letters, numbers and hyphens, 2 to 40 characters.",
-    ),
+    .min(1, { error: () => tr("lib.skills.commandRequired") })
+    .regex(/^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/, {
+      error: () => tr("lib.skills.commandPattern"),
+    }),
   title: z
     .string()
     .trim()
-    .min(1, "A title is required.")
-    .max(120, "Title must be 120 characters or fewer."),
+    .min(1, { error: () => tr("lib.skills.titleRequired") })
+    .max(120, { error: () => tr("lib.skills.titleTooLong") }),
   /** Optional on the server too, which is why there is no minimum here. */
   summary: z
     .string()
     .trim()
-    .max(200, "The one-liner must be 200 characters or fewer."),
+    .max(200, { error: () => tr("lib.skills.summaryTooLong") }),
   instructions: z
     .string()
     .trim()
-    .min(1, "Instructions are required — this is what the Bot follows."),
+    .min(1, { error: () => tr("lib.skills.instructionsRequired") }),
   /**
    * The tools this skill says it needs, as `<serverId>/<toolName>` refs.
    *

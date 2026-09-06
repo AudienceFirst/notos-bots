@@ -2,6 +2,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import AgentOrb from "@/components/agents/orb/agent-orb";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { signInUrl } from "@/lib/auth/client";
 import { appConfig } from "@/lib/generated/application-config";
 import { currentUserQueryOptions } from "../lib/auth/queries";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/sign")({
  * bij NOTOS en kom terug.
  */
 function SignScreen() {
+  const t = useT();
   return (
     <div className="flex flex-col h-dvh w-full items-center justify-center -mt-12">
       <div className="flex-1 flex w-full max-w-82 flex-col items-center justify-center p-4">
@@ -34,18 +36,16 @@ function SignScreen() {
           {appConfig.brand.productName}
         </h1>
         <p className="mt-3 text-center text-sm text-muted-foreground">
-          You sign in at NOTOS. Once you are signed in there, this works by
-          itself.
+          {t("settings.sign.explanation")}
         </p>
         <Button
           className="mt-8 h-10 w-full tracking-tight"
           render={<a href={signInUrl()} />}
         >
-          Sign in at NOTOS
+          {t("settings.sign.button")}
         </Button>
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Lokaal: log in op notos.zuid.com in dezelfde browser en herlaad deze
-          pagina.
+          {t("settings.sign.local")}
         </p>
       </div>
     </div>

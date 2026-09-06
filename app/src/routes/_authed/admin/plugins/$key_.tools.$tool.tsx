@@ -15,6 +15,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
+import { useT } from "@/i18n";
 import { useBotNames } from "@/lib/agents/bot-names";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { setPluginGrantMutationOptions } from "@/lib/plugins/mutations";
@@ -57,6 +58,7 @@ function RouteComponent() {
     sharedCallback ||
     agents?.find((one) => one.id === bot.id)?.hasCallbackToken === true;
   const nameFor = useBotNames();
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
 
   const setGrant = useMutation({
@@ -68,7 +70,7 @@ function RouteComponent() {
   const tool = server?.tools.find((row) => row.name === toolName);
 
   const back = {
-    label: server?.title ?? "Plugin",
+    label: server?.title ?? t("admin-b.pluginTool.backFallback"),
     linkProps: {
       params: { key },
       to: "/admin/plugins/$key" as const,
@@ -77,14 +79,16 @@ function RouteComponent() {
 
   /* Nothing rather than a placeholder, so no sentence asserts anything while the fetch is open. */
   if (plugins.isPending) {
-    return <PageShell title="Tool">{null}</PageShell>;
+    return (
+      <PageShell title={t("admin-b.pluginTool.pendingTitle")}>{null}</PageShell>
+    );
   }
 
   if (!tool) {
     return (
       <PageShell
         backButton={back}
-        description="This connector does not advertise a tool by that name."
+        description={t("admin-b.pluginTool.notFoundDescription")}
         title={toolName}
       >
         {/*
@@ -93,8 +97,8 @@ function RouteComponent() {
          */}
         <PageEmpty>
           {server
-            ? "It may have been withdrawn since the tool list was last refreshed."
-            : "This deployment has not enabled that connector."}
+            ? t("admin-b.pluginTool.withdrawn")
+            : t("admin-b.pluginTool.connectorDisabled")}
         </PageEmpty>
       </PageShell>
     );
@@ -117,7 +121,7 @@ function RouteComponent() {
   return (
     <PageShell
       backButton={back}
-      description={tool.description || "This tool came with no description."}
+      description={tool.description || t("admin-b.pluginTool.noDescription")}
       title={toolName}
     >
       {error ? (
@@ -129,10 +133,10 @@ function RouteComponent() {
       <PageSection
         description={
           tool.effect === "write"
-            ? "This tool changes something at the vendor. A boundary written about writes applies to it, and it is refused when one matches."
-            : "This tool only reads. A boundary written about writes does not apply to it."
+            ? t("admin-b.pluginTool.writeDescription")
+            : t("admin-b.pluginTool.readDescription")
         }
-        title="What it does"
+        title={t("admin-b.pluginTool.whatItDoes")}
       >
         <PageRows>
           {/*
@@ -142,10 +146,9 @@ function RouteComponent() {
            */}
           <Item size="sm">
             <ItemContent>
-              <ItemTitle>Effect</ItemTitle>
+              <ItemTitle>{t("admin-b.pluginTool.effect")}</ItemTitle>
               <ItemDescription>
-                Decided by the connector, not by the tool's name. Anything
-                unrecognised counts as a write.
+                {t("admin-b.pluginTool.effectDescription")}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
@@ -156,7 +159,9 @@ function RouteComponent() {
                     : "text-muted-foreground text-xs"
                 }
               >
-                {tool.effect === "write" ? "changes things" : "reads"}
+                {tool.effect === "write"
+                  ? t("admin-b.pluginTool.changesThings")
+                  : t("admin-b.pluginTool.reads")}
               </span>
             </ItemActions>
           </Item>
@@ -164,14 +169,11 @@ function RouteComponent() {
       </PageSection>
 
       <PageSection
-        description="A Bot may call this tool only while its switch is on. Turning one off takes effect on the next call, with nothing cached in between. Every call is still checked against the boundaries and written to the audit trail."
-        title="Bots"
+        description={t("admin-b.pluginTool.botsDescription")}
+        title={t("admin-b.pluginTool.bots")}
       >
         {bots.length === 0 ? (
-          <PageEmpty>
-            This deployment has no Bots yet, so there is nobody to grant this
-            to.
-          </PageEmpty>
+          <PageEmpty>{t("admin-b.pluginTool.noBots")}</PageEmpty>
         ) : (
           <>
             {stuck > 0 ? (
@@ -180,14 +182,16 @@ function RouteComponent() {
                 role="status"
               >
                 <span className="font-medium">
-                  {stuck === 1
-                    ? "1 Bot holds this tool but cannot call it yet."
-                    : `${stuck} Bots hold this tool but cannot call it yet.`}
+                  {t(
+                    stuck === 1
+                      ? "admin-b.pluginTool.stuckOne"
+                      : "admin-b.pluginTool.stuckOther",
+                    { count: stuck },
+                  )}
                 </span>{" "}
-                They have no credential for calling tools back, so every call is
-                refused before it reaches the boundary. Issue one on each Bot's
-                own page, or set <code>AGENT_TOOL_TOKEN</code> for the
-                deployment.
+                {t("admin-b.pluginTool.stuckExplanation")}{" "}
+                <code>AGENT_TOOL_TOKEN</code>{" "}
+                {t("admin-b.pluginTool.stuckExplanationTail")}
               </p>
             ) : null}
             {/*
@@ -199,7 +203,12 @@ function RouteComponent() {
               bots={bots}
               className="mt-4"
               held={(botId) => tool.grantedTo.includes(botId)}
-              labelFor={(bot) => `Let ${bot.name} call ${toolName}`}
+              labelFor={(bot) =>
+                t("admin-b.pluginTool.letCall", {
+                  name: bot.name,
+                  tool: toolName,
+                })
+              }
               onChange={(botId, next) => {
                 setError(null);
                 setGrant.mutate({
@@ -217,7 +226,7 @@ function RouteComponent() {
               trailing={(bot, held) =>
                 held && !canCallBack(bot) ? (
                   <span className="text-amber-600 text-xs dark:text-amber-500">
-                    cannot call back
+                    {t("admin-b.pluginTool.cannotCallBack")}
                   </span>
                 ) : null
               }

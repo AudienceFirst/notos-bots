@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import {
@@ -15,11 +16,10 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { formatHotkey, HOTKEYS } from "@/lib/hotkeys/hotkeys";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LOCALE_LABELS, LOCALES, useT } from "@/i18n";
 import { setLocaleMutationOptions } from "@/lib/auth/mutations";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
+import { formatHotkey, HOTKEYS } from "@/lib/hotkeys/hotkeys";
 
 export const Route = createFileRoute("/_authed/settings/")({
   component: RouteComponent,
@@ -43,10 +43,10 @@ function RouteComponent() {
    */
   return (
     <PageShell
-      description="How Bots looks and behaves for you. These apply to your account alone, on every deployment you sign in to."
-      title="Preferences"
+      description={t("settings.index.description")}
+      title={t("settings.index.title")}
     >
-      <PageSection title="General">
+      <PageSection title={t("settings.index.general")}>
         <PageRows>
           <Item size="sm">
             <ItemContent>
@@ -81,14 +81,14 @@ function RouteComponent() {
           <Separator />
           <Item size="sm">
             <ItemContent>
-              <ItemTitle>Dark theme</ItemTitle>
+              <ItemTitle>{t("settings.index.darkTheme")}</ItemTitle>
               <ItemDescription>
-                Use the dark appearance across Bots.
+                {t("settings.index.darkThemeDescription")}
               </ItemDescription>
             </ItemContent>
             <ItemActions>
               <Switch
-                aria-label="Dark theme"
+                aria-label={t("settings.index.darkTheme")}
                 checked={dark}
                 onCheckedChange={setDark}
               />
@@ -101,7 +101,7 @@ function RouteComponent() {
        * actually do rather than what somebody remembered they did. Read-only on purpose: these
        * are not rebindable, and a row with nothing to click says so by having nothing to click.
        */}
-      <PageSection title="Keyboard shortcuts">
+      <PageSection title={t("settings.index.shortcuts")}>
         <PageRows>
           {HOTKEYS.map((hotkey, index) => (
             <React.Fragment key={hotkey.id}>

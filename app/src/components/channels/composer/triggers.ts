@@ -9,6 +9,12 @@ import { AGENT_TRIGGER, COMMAND_TRIGGER, type CommandOption } from "./draft";
  * independent of trigger semantics.
  */
 
+/** The translator a caller hands in, so a menu built outside React still follows the locale. */
+export type Translate = (
+  key: string,
+  vars?: Record<string, string | number>,
+) => string;
+
 export type AgentOption = {
   id: string;
   name: string;
@@ -51,12 +57,15 @@ function matches(query: string, ...fields: (string | undefined)[]): boolean {
  *
  * `reopenOnChipClick` keeps an inserted mention editable without deleting and retyping.
  */
-export function agentTrigger(agents: readonly AgentOption[]): TriggerConfig {
+export function agentTrigger(
+  agents: readonly AgentOption[],
+  t: Translate,
+): TriggerConfig {
   return mentionTrigger({
     char: AGENT_TRIGGER,
-    accessibilityLabel: "Bot",
+    accessibilityLabel: t("channels.triggers.botLabel"),
     reopenOnChipClick: true,
-    emptyMessage: "No Bots in this channel",
+    emptyMessage: t("channels.triggers.noBots"),
     onSearch: (query): TriggerSuggestion[] =>
       agents
         .filter((agent) => matches(query, agent.name, agent.description))
@@ -76,12 +85,13 @@ export function agentTrigger(agents: readonly AgentOption[]): TriggerConfig {
  */
 export function slashCommandTrigger(
   commands: readonly CommandOption[],
+  t: Translate,
 ): TriggerConfig {
   return commandTrigger({
     char: COMMAND_TRIGGER,
     position: "start",
-    accessibilityLabel: "command",
-    emptyMessage: "No matching commands",
+    accessibilityLabel: t("channels.triggers.commandLabel"),
+    emptyMessage: t("channels.triggers.noCommands"),
     onSearch: (query): TriggerSuggestion[] =>
       commands
         .filter((command) => matches(query, command.name, command.description))
@@ -97,9 +107,11 @@ export function slashCommandTrigger(
 export function buildTriggers({
   agents,
   commands,
+  t,
 }: {
   agents: readonly AgentOption[];
   commands: readonly CommandOption[];
+  t: Translate;
 }): TriggerConfig[] {
-  return [agentTrigger(agents), slashCommandTrigger(commands)];
+  return [agentTrigger(agents, t), slashCommandTrigger(commands, t)];
 }

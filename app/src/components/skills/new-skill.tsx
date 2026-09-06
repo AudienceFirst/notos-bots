@@ -2,6 +2,7 @@ import { keepWorkspace } from "@/notos/workspace";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { SkillFields } from "@/components/skills/skill-fields";
+import { useT } from "@/i18n";
 import { saveSkillMutationOptions } from "@/lib/plugins/mutations";
 import { emptySkillForm } from "@/lib/skills/form";
 
@@ -12,6 +13,7 @@ import { emptySkillForm } from "@/lib/skills/form";
  * write the next one — the usual reason to open this is to make a variant of one that exists.
  */
 export function NewSkill() {
+  const t = useT();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -20,10 +22,12 @@ export function NewSkill() {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-6 p-8">
       <header>
-        <h1 className="text-2xl font-semibold">New skill</h1>
+        <h1 className="text-2xl font-semibold">
+          {t("components.new-skill.title")}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          A named instruction you invoke with <code>/</code>. It goes on the
-          Bots you own, and nobody else sees it.
+          {t("components.new-skill.descriptionBefore")} <code>/</code>.{" "}
+          {t("components.new-skill.descriptionAfter")}
         </p>
       </header>
 
@@ -40,7 +44,7 @@ export function NewSkill() {
             params: keepWorkspace,
           });
         }}
-        submitLabel="Save skill"
+        submitLabel={t("components.new-skill.submit")}
       />
     </div>
   );

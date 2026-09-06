@@ -1,5 +1,6 @@
 import { infiniteQueryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * Somebody who has signed in to this deployment.
@@ -58,7 +59,7 @@ export function peopleListQueryOptions(search = "") {
       const suffix = query.size > 0 ? `?${query}` : "";
 
       return client(`/api/admin/people${suffix}`, {
-        fallback: "Could not load people",
+        fallback: tr("lib.people.loadFailed"),
       }).then((response) => response.json() as Promise<PeoplePage>);
     },
     getNextPageParam: (page: PeoplePage) => page.nextCursor ?? undefined,

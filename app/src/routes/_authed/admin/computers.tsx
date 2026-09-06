@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { InlineCode } from "@/components/admin/inline-code";
 import {
   PageEmpty,
   PageRows,
@@ -25,6 +26,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { formatDateTime, useT } from "@/i18n";
 import { useBotNames } from "@/lib/agents/bot-names";
 import { setComputerStateMutationOptions } from "@/lib/computers/mutations";
 import { computerFleetQueryOptions } from "@/lib/computers/queries";
@@ -35,16 +37,17 @@ export const Route = createFileRoute("/_authed/admin/computers")({
   component: ComputersPage,
 });
 
-/** The same sentence in every state, so the page never loses what it is for. */
-const DESCRIPTION =
-  "Each Bot's browser and the profile it keeps. A profile is what makes a Bot still signed in tomorrow, and resetting one signs it out of everything.";
-
 function ComputersPage() {
+  const t = useT();
   /** Bot id currently running a stop/reset request. */
   const [busy, setBusy] = useState<string | null>(null);
   /** Reset deletes the browser profile, so it requires confirmation. */
   const [confirming, setConfirming] = useState<string | null>(null);
   const nameFor = useBotNames();
+
+  /** The same sentence in every state, so the page never loses what it is for. */
+  const title = t("admin-a.computers.title");
+  const description = t("admin-a.computers.description");
 
   /*
    * NOTOS: whether Bots have computers at all. Without them there is no fleet route, and asking for
@@ -66,7 +69,7 @@ function ComputersPage() {
    * "this did not work", and the page has one place to say so.
    */
   const problem = fleet.error
-    ? "The computers could not be listed."
+    ? t("admin-a.computers.listFailed")
     : setState.error
       ? setState.error.message
       : capabilities.error
@@ -81,14 +84,14 @@ function ComputersPage() {
 
   if (capabilities.data?.computers === false) {
     return (
-      <PageShell description={DESCRIPTION} title="Computers">
-        <PageEmpty>Computers are switched off in this deployment.</PageEmpty>
+      <PageShell description={description} title={title}>
+        <PageEmpty>{t("admin-a.computers.off")}</PageEmpty>
       </PageShell>
     );
   }
 
   return (
-    <PageShell description={DESCRIPTION} title="Computers">
+    <PageShell description={description} title={title}>
       {problem ? (
         <p
           className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
@@ -101,25 +104,20 @@ function ComputersPage() {
       {isolation === "shared" ? (
         <p className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
           <span className="font-medium">
-            Every Bot is sharing one computer.
+            {t("admin-a.computers.sharedTitle")}
           </span>{" "}
-          They share its logins, its files and its session, so a Bot can reach
-          what another signed into. Set <code>COMPUTER_SUPERVISOR_URL</code> to
-          give each Bot its own.
+          <InlineCode text={t("admin-a.computers.sharedText")} />
         </p>
       ) : isolation === "per-bot" ? (
         <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
-          Each Bot has a computer of its own: its own container, its own files
-          and its own browser profile.
+          {t("admin-a.computers.perBot")}
         </p>
       ) : null}
 
-      <PageSection title="Computers in this deployment">
+      <PageSection title={t("admin-a.computers.sectionTitle")}>
         {/* The banner above has already said when the list could not be read; nothing here repeats it. */}
         {computers === null ? null : computers.length === 0 ? (
-          <PageEmpty>
-            No computers yet. One appears the first time a Bot opens a page.
-          </PageEmpty>
+          <PageEmpty>{t("admin-a.computers.empty")}</PageEmpty>
         ) : (
           <PageRows>
             {computers.map((computer, index) => (
@@ -131,14 +129,20 @@ function ComputersPage() {
                     </ItemTitle>
                     <ItemDescription>
                       {computer.running
-                        ? `Browser running since ${new Date(computer.startedAt ?? "").toLocaleTimeString()}`
-                        : "No browser running. It starts when the Bot next needs it."}
+                        ? t("admin-a.computers.runningSince", {
+                            time: formatDateTime(computer.startedAt ?? "", {
+                              timeStyle: "short",
+                            }),
+                          })
+                        : t("admin-a.computers.notRunning")}
                       {" · "}
                       {computer.egress === undefined
-                        ? "Egress not reported"
+                        ? t("admin-a.computers.egressUnknown")
                         : computer.egress === null
-                          ? "Leaves directly"
-                          : `Leaves through ${computer.egress}`}
+                          ? t("admin-a.computers.egressDirect")
+                          : t("admin-a.computers.egressVia", {
+                              egress: computer.egress,
+                            })}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>
@@ -148,7 +152,9 @@ function ComputersPage() {
                       size="sm"
                       variant="outline"
                     >
-                      {busy === computer.botId ? "Working…" : "Stop browser"}
+                      {busy === computer.botId
+                        ? t("admin-a.computers.working")
+                        : t("admin-a.computers.stopBrowser")}
                     </Button>
                     <Button
                       disabled={busy === computer.botId}
@@ -156,7 +162,7 @@ function ComputersPage() {
                       size="sm"
                       variant="outline"
                     >
-                      Reset
+                      {t("admin-a.computers.reset")}
                     </Button>
                   </ItemActions>
                 </Item>
@@ -182,11 +188,12 @@ function ComputersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Reset {confirming ? nameFor(confirming) : ""}'s computer?
+              {t("admin-a.computers.resetTitle", {
+                name: confirming ? nameFor(confirming) : "",
+              })}
             </DialogTitle>
             <DialogDescription>
-              Its profile is deleted, so the Bot is signed out of every service
-              it had logged into and starts clean. This cannot be undone.
+              {t("admin-a.computers.resetDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -195,7 +202,7 @@ function ComputersPage() {
               size="sm"
               variant="ghost"
             >
-              Cancel
+              {t("admin-a.computers.cancel")}
             </Button>
             <Button
               disabled={busy === confirming}
@@ -205,7 +212,9 @@ function ComputersPage() {
               size="sm"
               variant="destructive"
             >
-              {busy === confirming ? "Resetting…" : "Reset it"}
+              {busy === confirming
+                ? t("admin-a.computers.resetting")
+                : t("admin-a.computers.resetIt")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -214,14 +223,14 @@ function ComputersPage() {
       {/* Only beside rows that carry the two buttons it explains. */}
       {computers && computers.length > 0 ? (
         <p className="mt-4 text-muted-foreground text-sm">
-          <strong>Stop</strong> closes the browser and keeps its logins: the
-          next thing the Bot does starts it again where it left off.{" "}
-          <strong>Reset</strong> deletes the profile, so the Bot is signed out
-          of everything and starts clean. Both are recorded in{" "}
+          <strong>{t("admin-a.computers.helpStop")}</strong>{" "}
+          {t("admin-a.computers.helpStopText")}{" "}
+          <strong>{t("admin-a.computers.helpReset")}</strong>{" "}
+          {t("admin-a.computers.helpResetText")}{" "}
           <Link className="underline" to="/admin/audit">
-            Audit
+            {t("admin-a.computers.auditLink")}
           </Link>
-          .
+          {t("admin-a.computers.helpAfter")}
         </p>
       ) : null}
     </PageShell>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toAgentOptions } from "@/components/channels/composer";
 import { ConversationView } from "@/components/channels/conversation-view";
 import { transcriptMessages } from "@/components/channels/transcript-messages";
+import { useT } from "@/i18n";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { useActiveBot } from "@/lib/copilot/active-bot";
 import { ConversationProvider } from "@/lib/copilot/conversation";
@@ -31,6 +32,7 @@ export function BotThreadChat({
   threadId: string;
 }) {
   const core = useBotsCore();
+  const t = useT();
   const { data: profiles } = useQuery(agentListQueryOptions());
   // Who this thread is with, for the empty state; the route already checked the id is known.
   const profile = profiles?.find((candidate) => candidate.id === agentId);
@@ -135,8 +137,10 @@ export function BotThreadChat({
           unreadable > 0 ? (
             <p className="pb-2 text-sm text-muted-foreground" role="status">
               {unreadable === 1
-                ? "One earlier message could not be read and is not shown."
-                : `${unreadable} earlier messages could not be read and are not shown.`}
+                ? t("channels.bot-thread-chat.unreadableOne")
+                : t("channels.bot-thread-chat.unreadableOther", {
+                    count: unreadable,
+                  })}
             </p>
           ) : null
         }

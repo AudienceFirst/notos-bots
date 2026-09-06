@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "@/i18n";
 import {
   type ControlState,
   readControl,
@@ -117,6 +118,7 @@ function NothingToSee({
   /** The page that turn opened, named when there is no picture of it. */
   page?: { url?: string; title?: string } | undefined;
 }) {
+  const t = useT();
   return (
     <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center text-muted-foreground text-sm">
       {settled ? (
@@ -136,35 +138,32 @@ function NothingToSee({
           */}
           {page?.url ? (
             <>
-              <span className="font-medium">{page.title || "A page"}</span>
-              <span className="break-all">{hostOf(page.url)}</span>
-              <span>
-                Opened during this turn. The screen has moved on since.
+              <span className="font-medium">
+                {page.title || t("channels.computer-view.aPage")}
               </span>
+              <span className="break-all">{hostOf(page.url)}</span>
+              <span>{t("channels.computer-view.openedDuringTurn")}</span>
             </>
           ) : (
             /*
              * A turn that ended without getting anywhere: refused by a boundary, stopped, or failed.
              * Saying "opened during this turn" here would describe something that did not happen.
              */
-            <span>This turn did not open a page.</span>
+            <span>{t("channels.computer-view.noPageThisTurn")}</span>
           )}
         </>
       ) : problem ? (
         <>
           <span className="font-medium">
-            You cannot see the screen right now
+            {t("channels.computer-view.cannotSeeScreen")}
           </span>
           <span>{problem}</span>
-          <span>
-            The assistant may still be working. An administrator can check
-            whether its computer is running.
-          </span>
+          <span>{t("channels.computer-view.assistantMayBeWorking")}</span>
         </>
       ) : blankBrowser ? (
-        <span>The assistant has not opened a page yet.</span>
+        <span>{t("channels.computer-view.noPageYet")}</span>
       ) : (
-        <span>Waiting for the assistant's screen…</span>
+        <span>{t("channels.computer-view.waitingForScreen")}</span>
       )}
     </span>
   );
@@ -220,6 +219,7 @@ export function ComputerView({
   finished,
   toolCallId,
 }: Props) {
+  const t = useT();
   const [shot, setShot] = useState<Screenshot | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -341,7 +341,7 @@ export function ComputerView({
         if (generation.current !== mine) return;
 
         if (!frame) {
-          setProblem(error ?? "The screen is not available right now.");
+          setProblem(error ?? t("channels.computer-view.screenUnavailable"));
         } else {
           // Exact byte comparison is the settling signal.
           unchanged = frame.base64 === lastFrame ? unchanged + 1 : 0;
@@ -364,7 +364,7 @@ export function ComputerView({
       generation.current++;
       clearTimeout(timer);
     };
-  }, [computerId, active, intervalMs, secretPending, settled]);
+  }, [computerId, active, intervalMs, secretPending, settled, t]);
 
   /** Poll control state independently from screenshot polling so help/secret prompts surface. */
   useEffect(() => {
@@ -444,7 +444,7 @@ export function ComputerView({
   const polledScreen = showScreen ? (
     <img
       src={`data:image/png;base64,${drawn.base64}`}
-      alt="What the assistant is looking at"
+      alt={t("channels.computer-view.screenAlt")}
       // Keep unexpected screenshot dimensions inside the reserved frame.
       className="absolute inset-0 h-full w-full object-contain opacity-100 transition-opacity duration-300 starting:opacity-0"
     />
@@ -466,7 +466,7 @@ export function ComputerView({
            */
           className="relative block w-full cursor-pointer bg-muted"
           style={frameStyle}
-          aria-label="Open the assistant's screen full size"
+          aria-label={t("channels.computer-view.openFullSize")}
         >
           {polledScreen}
 
@@ -481,7 +481,7 @@ export function ComputerView({
               ) : null}
               {wheelHere ? (
                 <span className="rounded-full bg-white px-2.5 py-1 font-medium text-black text-xs shadow-sm">
-                  You have control
+                  {t("channels.computer-view.youHaveControl")}
                 </span>
               ) : null}
             </span>
@@ -510,7 +510,9 @@ export function ComputerView({
         {!driving && !settled && control?.requested ? (
           <div className="flex items-start justify-between gap-3 border-t bg-amber-500/10 px-3 py-2 text-sm">
             <span>
-              <strong className="font-medium">The assistant needs you.</strong>{" "}
+              <strong className="font-medium">
+                {t("channels.computer-view.assistantNeedsYou")}
+              </strong>{" "}
               {control.reason}
             </span>
             <button
@@ -522,7 +524,7 @@ export function ComputerView({
               }}
               className="shrink-0 rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground text-xs"
             >
-              Take control
+              {t("channels.computer-view.takeControl")}
             </button>
           </div>
         ) : null}
@@ -549,7 +551,9 @@ export function ComputerView({
             }}
           >
             <label className="block" htmlFor="openbot-secret">
-              <span className="font-medium">The assistant needs </span>
+              <span className="font-medium">
+                {t("channels.computer-view.assistantNeedsSecret")}{" "}
+              </span>
               <span>{control.secretWanted}</span>
             </label>
             <div className="mt-1.5 flex gap-2">
@@ -561,7 +565,7 @@ export function ComputerView({
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
-                placeholder="Typed here, never shown to the assistant"
+                placeholder={t("channels.computer-view.secretPlaceholder")}
                 className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-sm"
               />
               <button
@@ -569,12 +573,13 @@ export function ComputerView({
                 disabled={!secret || sendingSecret}
                 className="shrink-0 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground disabled:opacity-50"
               >
-                {sendingSecret ? "Sending…" : "Send to the page"}
+                {sendingSecret
+                  ? t("channels.computer-view.sending")
+                  : t("channels.computer-view.sendToPage")}
               </button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              This goes straight to the page. It is not shown in the
-              conversation and the assistant never receives it.
+              {t("channels.computer-view.secretExplainer")}
             </p>
             {secretProblem ? (
               <p className="mt-1 text-xs text-destructive">{secretProblem}</p>
@@ -598,7 +603,7 @@ export function ComputerView({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label="The assistant's screen"
+              aria-label={t("channels.computer-view.screenDialog")}
               className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 sm:p-8"
             >
               {/*
@@ -608,7 +613,7 @@ export function ComputerView({
               <button
                 type="button"
                 onClick={() => !wheelHere && setExpanded(false)}
-                aria-label="Close the assistant's screen"
+                aria-label={t("channels.computer-view.closeScreen")}
                 aria-hidden={wheelHere}
                 tabIndex={wheelHere ? -1 : 0}
                 className={`absolute inset-0 bg-black/80 ${wheelHere ? "cursor-default" : "cursor-zoom-out"}`}
@@ -634,7 +639,7 @@ export function ComputerView({
                      */
                     <div className="relative w-full" style={{ aspectRatio }}>
                       <img
-                        alt="What this turn had open"
+                        alt={t("channels.computer-view.turnFrameAlt")}
                         className="absolute inset-0 h-full w-full object-contain"
                         src={`data:image/png;base64,${drawn.base64}`}
                       />
@@ -689,13 +694,13 @@ export function ComputerView({
                       ) : null}
                       {driving ? (
                         <span className="truncate text-muted-foreground">
-                          You have control — click and type on the page.
+                          {t("channels.computer-view.youHaveControlHint")}
                           {control?.reason ? ` ${control.reason}` : null}
                         </span>
                       ) : control?.requested ? (
                         <span className="truncate text-muted-foreground">
                           <strong className="font-medium text-foreground">
-                            The assistant needs you.
+                            {t("channels.computer-view.assistantNeedsYou")}
                           </strong>{" "}
                           {control.reason}
                         </span>
@@ -707,7 +712,7 @@ export function ComputerView({
                         onClick={() => void handBack()}
                         className="shrink-0 rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm"
                       >
-                        Hand back
+                        {t("channels.computer-view.handBack")}
                       </button>
                     ) : (
                       <button
@@ -718,7 +723,7 @@ export function ComputerView({
                         }}
                         className="shrink-0 rounded-md border px-3 py-1.5 font-medium text-sm"
                       >
-                        Take control
+                        {t("channels.computer-view.takeControl")}
                       </button>
                     )}
                   </div>

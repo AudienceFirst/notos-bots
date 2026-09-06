@@ -7,6 +7,7 @@ import { PageSection, PageShell } from "@/components/layout/page-shell";
 import { ModelKeysPanel } from "@/components/models/model-keys-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n";
 import {
   type ModelProvider,
   personalModelQueryOptions,
@@ -20,24 +21,24 @@ export const Route = createFileRoute("/_authed/settings/models")({
 });
 
 function ModelsSettingsPage() {
+  const t = useT();
   return (
     <PageShell
-      description="Your personal space runs on the model you choose here, with your own keys. Nobody else sees your space, and your keys serve your space only."
-      title="Models"
+      description={t("settings.models.description")}
+      title={t("settings.models.title")}
     >
       <PageSection>
         <h2 className="mb-2 font-medium text-sm">
-          Your personal space runs on
+          {t("settings.models.runsOn")}
         </h2>
         <PersonalModelForm />
       </PageSection>
       <PageSection>
-        <h2 className="mb-2 font-medium text-sm">Your keys</h2>
+        <h2 className="mb-2 font-medium text-sm">
+          {t("settings.models.yourKeys")}
+        </h2>
         <p className="mb-4 text-muted-foreground text-sm text-pretty">
-          A subscription is not a key: Claude Max and Gemini CLI sign you in on
-          your own laptop and cannot be used from a server. Bots run on API
-          access, billed per use by the provider. Without a key of your own,
-          your space uses the deployment's keys where an administrator set them.
+          {t("settings.models.keysExplanation")}
         </p>
         <ModelKeysPanel scope="personal" />
       </PageSection>
@@ -54,6 +55,7 @@ const PROVIDERS: ModelProvider[] = [
 ];
 
 function PersonalModelForm() {
+  const t = useT();
   const queryClient = useQueryClient();
   const current = useQuery(personalModelQueryOptions());
   const save = useMutation(setPersonalModelMutationOptions(queryClient));
@@ -65,7 +67,7 @@ function PersonalModelForm() {
   if (current.error) {
     return (
       <p className="text-destructive text-sm" role="alert">
-        Your model choice could not be loaded.
+        {t("settings.models.loadFailed")}
       </p>
     );
   }
@@ -81,7 +83,7 @@ function PersonalModelForm() {
   return (
     <div className="flex flex-col gap-2">
       <select
-        aria-label="Model for your personal space"
+        aria-label={t("settings.models.selectLabel")}
         className="h-9 rounded-md border border-border bg-background px-2 text-sm"
         disabled={save.isPending}
         onChange={(event) => {
@@ -121,8 +123,11 @@ function PersonalModelForm() {
         ))}
         <option value="custom">
           {chosen
-            ? "Another model (type its id)…"
-            : `Custom: ${PROVIDER_LABELS[value.provider]} · ${value.defaultModel}`}
+            ? t("settings.models.anotherModel")
+            : t("settings.models.custom", {
+                provider: PROVIDER_LABELS[value.provider],
+                model: value.defaultModel,
+              })}
         </option>
       </select>
       {custom || !chosen ? (
@@ -142,7 +147,7 @@ function PersonalModelForm() {
           }}
         >
           <select
-            aria-label="Provider"
+            aria-label={t("settings.models.provider")}
             className="h-8 rounded-md border border-border bg-background px-2 text-sm"
             onChange={(event) =>
               setProvider(event.target.value as ModelProvider)
@@ -156,10 +161,10 @@ function PersonalModelForm() {
             ))}
           </select>
           <Input
-            aria-label="Model id"
+            aria-label={t("settings.models.modelId")}
             className="h-8 font-mono text-sm"
             onChange={(event) => setModel(event.target.value)}
-            placeholder="e.g. anthropic/claude-sonnet-5 on OpenRouter"
+            placeholder={t("settings.models.modelIdPlaceholder")}
             value={model}
           />
           <Button
@@ -167,7 +172,7 @@ function PersonalModelForm() {
             size="sm"
             type="submit"
           >
-            Save
+            {t("settings.models.save")}
           </Button>
         </form>
       ) : null}

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useT } from "@/i18n";
 import { useBotNames } from "@/lib/agents/bot-names";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import {
@@ -63,13 +64,20 @@ export const Route = createFileRoute("/_authed/admin/skills")({
 
 const EMPTY_DRAFT = { slug: "", title: "", summary: "", instructions: "" };
 
+type Translate = ReturnType<typeof useT>;
+
 /** How widely a skill is granted, as a sentence rather than a wall of chips. */
-function grantedLine(held: number, total: number): string {
-  if (total === 0) return "There are no Bots yet";
-  if (held === 0) return "Granted to no Bots";
+function grantedLine(t: Translate, held: number, total: number): string {
+  if (total === 0) return t("admin-b.skills.grantedNone");
+  if (held === 0) return t("admin-b.skills.grantedToNone");
   if (held === total)
-    return `Granted to all ${total} ${total === 1 ? "Bot" : "Bots"}`;
-  return `Granted to ${held} of ${total} Bots`;
+    return t(
+      total === 1
+        ? "admin-b.skills.grantedToAllOne"
+        : "admin-b.skills.grantedToAllOther",
+      { total },
+    );
+  return t("admin-b.skills.grantedToSome", { held, total });
 }
 
 function RouteComponent() {
@@ -77,6 +85,7 @@ function RouteComponent() {
   const plugins = useQuery(pluginsPageQueryOptions());
   const { data: agents } = useQuery(agentListQueryOptions());
   const nameFor = useBotNames();
+  const t = useT();
 
   const [error, setError] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
@@ -151,11 +160,11 @@ function RouteComponent() {
       action={
         <Button onClick={() => setWriting(true)} size="lg" type="button">
           <IconPlus />
-          Write a skill
+          {t("admin-b.skills.write")}
         </Button>
       }
-      description="Named instructions anybody here can invoke with a slash. A skill adds no capability: it can only ask a Bot to use what that Bot already holds, and every one of those calls is still decided and recorded."
-      title="Skills"
+      description={t("admin-b.skills.description")}
+      title={t("admin-b.skills.title")}
     >
       {error ? (
         <p className="text-destructive text-sm" role="alert">
@@ -164,11 +173,11 @@ function RouteComponent() {
       ) : null}
 
       <PageSection
-        description="Written for the whole deployment. People write their own on their Skills page."
-        title="Installed"
+        description={t("admin-b.skills.installedDescription")}
+        title={t("admin-b.skills.installed")}
       >
         {plugins.isPending ? null : skills.length === 0 ? (
-          <PageEmpty>No skills yet.</PageEmpty>
+          <PageEmpty>{t("admin-b.skills.empty")}</PageEmpty>
         ) : (
           <PageRows>
             {skills.map((skill, index) => {
@@ -199,7 +208,8 @@ function RouteComponent() {
                           onClick={() => setManaging(skill.slug)}
                           type="button"
                         >
-                          {grantedLine(held, bots.length)} · Manage
+                          {grantedLine(t, held, bots.length)} ·{" "}
+                          {t("admin-b.skills.manage")}
                         </button>
                       </ItemFooter>
                     </ItemContent>
@@ -210,7 +220,7 @@ function RouteComponent() {
                         type="button"
                         variant="ghost"
                       >
-                        Remove
+                        {t("admin-b.skills.remove")}
                       </Button>
                     </ItemActions>
                   </Item>
@@ -225,17 +235,17 @@ function RouteComponent() {
       <Dialog onOpenChange={setWriting} open={writing}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Write a skill for the deployment</DialogTitle>
+            <DialogTitle>{t("admin-b.skills.writeTitle")}</DialogTitle>
             <DialogDescription>
-              The slug is what a person types after a slash, and the
-              instructions are added to the run when they do. Everybody here can
-              use it, and you decide which Bots have it.
+              {t("admin-b.skills.writeDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="mt-4">
             <FieldGroup>
               <Field>
-                <FieldLabel htmlFor="skill-slug">Slug</FieldLabel>
+                <FieldLabel htmlFor="skill-slug">
+                  {t("admin-b.skills.slug")}
+                </FieldLabel>
                 <Input
                   id="skill-slug"
                   onChange={(event) =>
@@ -244,12 +254,14 @@ function RouteComponent() {
                       slug: event.target.value,
                     }))
                   }
-                  placeholder="standup-notes"
+                  placeholder={t("admin-b.skills.slugPlaceholder")}
                   value={draft.slug}
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="skill-title">Title</FieldLabel>
+                <FieldLabel htmlFor="skill-title">
+                  {t("admin-b.skills.titleLabel")}
+                </FieldLabel>
                 <Input
                   id="skill-title"
                   onChange={(event) =>
@@ -258,12 +270,14 @@ function RouteComponent() {
                       title: event.target.value,
                     }))
                   }
-                  placeholder="Title"
+                  placeholder={t("admin-b.skills.titlePlaceholder")}
                   value={draft.title}
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="skill-summary">Summary</FieldLabel>
+                <FieldLabel htmlFor="skill-summary">
+                  {t("admin-b.skills.summary")}
+                </FieldLabel>
                 <Input
                   id="skill-summary"
                   onChange={(event) =>
@@ -272,13 +286,13 @@ function RouteComponent() {
                       summary: event.target.value,
                     }))
                   }
-                  placeholder="One line"
+                  placeholder={t("admin-b.skills.summaryPlaceholder")}
                   value={draft.summary}
                 />
               </Field>
               <Field>
                 <FieldLabel htmlFor="skill-instructions">
-                  Instructions
+                  {t("admin-b.skills.instructions")}
                 </FieldLabel>
                 <Textarea
                   className="h-28 font-mono text-sm"
@@ -289,7 +303,7 @@ function RouteComponent() {
                       instructions: event.target.value,
                     }))
                   }
-                  placeholder="What the Bot should do when this skill is used."
+                  placeholder={t("admin-b.skills.instructionsPlaceholder")}
                   value={draft.instructions}
                 />
               </Field>
@@ -297,7 +311,7 @@ function RouteComponent() {
           </DialogBody>
           <DialogFooter className="mt-4">
             <Button onClick={() => setWriting(false)} size="sm" variant="ghost">
-              Cancel
+              {t("admin-b.skills.cancel")}
             </Button>
             <Button
               disabled={!(draft.slug && draft.title && draft.instructions)}
@@ -309,7 +323,7 @@ function RouteComponent() {
               }}
               size="sm"
             >
-              Install skill
+              {t("admin-b.skills.install")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -324,23 +338,29 @@ function RouteComponent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Who has /{managed?.slug}</DialogTitle>
+            <DialogTitle>
+              {t("admin-b.skills.whoHas", { slug: managed?.slug ?? "" })}
+            </DialogTitle>
             <DialogDescription>
-              A Bot with its switch on is handed these instructions when
-              somebody types the slash. Each change takes effect immediately.
+              {t("admin-b.skills.whoHasDescription")}
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="mt-4">
             {managed ? (
               bots.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  There are no Bots yet.
+                  {t("admin-b.skills.noBots")}
                 </p>
               ) : (
                 <BotGrantPicker
                   bots={bots}
                   held={(botId) => managed.grantedTo.includes(botId)}
-                  labelFor={(bot) => `Give ${bot.name} /${managed.slug}`}
+                  labelFor={(bot) =>
+                    t("admin-b.skills.giveLabel", {
+                      name: bot.name,
+                      slug: managed.slug,
+                    })
+                  }
                   onChange={(botId, next) => {
                     setError(null);
                     setGrant.mutate({
@@ -361,7 +381,7 @@ function RouteComponent() {
           </DialogBody>
           <DialogFooter className="mt-4">
             <Button onClick={() => setManaging(null)} size="sm">
-              Done
+              {t("admin-b.skills.done")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -377,16 +397,15 @@ function RouteComponent() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Remove /{removing} for the whole deployment?
+              {t("admin-b.skills.removeTitle", { slug: removing ?? "" })}
             </DialogTitle>
             <DialogDescription>
-              Every Bot loses it, and anybody who types /{removing} gets
-              nothing. This cannot be undone.
+              {t("admin-b.skills.removeDescription", { slug: removing ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button onClick={() => setRemoving(null)} size="sm" variant="ghost">
-              Cancel
+              {t("admin-b.skills.cancel")}
             </Button>
             <Button
               disabled={removeSkill.isPending}
@@ -397,7 +416,7 @@ function RouteComponent() {
               size="sm"
               variant="destructive"
             >
-              Remove
+              {t("admin-b.skills.remove")}
             </Button>
           </DialogFooter>
         </DialogContent>

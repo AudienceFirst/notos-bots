@@ -6,6 +6,7 @@ import { AbstractAvatar } from "@/components/agents/abstract-avatar";
 import { AgentDialog } from "@/components/agents/agent-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/i18n";
 import { agentQueryOptions } from "@/lib/agents/queries";
 
 function Tag({ children }: { children: ReactNode }) {
@@ -49,6 +50,7 @@ function ProfileSkeleton() {
  * two places to maintain and a sidebar that scrolled past the conversation it sat beside.
  */
 export function AgentProfile({ agentId }: { agentId: string }) {
+  const t = useT();
   /** The full dialog, opened over the chat rather than navigating away from it. */
   const [managing, setManaging] = useState(false);
   const navigate = useNavigate();
@@ -60,7 +62,7 @@ export function AgentProfile({ agentId }: { agentId: string }) {
   if (agent.error || !agent.data) {
     return (
       <p className="p-8 text-sm text-destructive" role="alert">
-        Could not load this Bot.
+        {t("components.agent-profile.loadFailed")}
       </p>
     );
   }
@@ -85,14 +87,20 @@ export function AgentProfile({ agentId }: { agentId: string }) {
         </div>
 
         <div className="flex flex-wrap justify-center gap-1.5">
-          <Tag>{profile.visibility === "private" ? "Private" : "Public"}</Tag>
-          {profile.systemOwned ? <Tag>System owned</Tag> : null}
+          <Tag>
+            {profile.visibility === "private"
+              ? t("components.agent-profile.private")
+              : t("components.agent-profile.public")}
+          </Tag>
+          {profile.systemOwned ? (
+            <Tag>{t("components.agent-profile.systemOwned")}</Tag>
+          ) : null}
         </div>
       </header>
 
       <section className="grid gap-2">
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Role
+          {t("components.agent-profile.role")}
         </h2>
         <p className="text-sm whitespace-pre-wrap text-pretty">
           {profile.roleDescription}
@@ -110,14 +118,14 @@ export function AgentProfile({ agentId }: { agentId: string }) {
             })
           }
         >
-          Start new channel
+          {t("components.agent-profile.startNewChannel")}
         </Button>
         <Button
           className="w-full text-sm!"
           onClick={() => setManaging(true)}
           variant="outline"
         >
-          Manage Bot
+          {t("components.agent-profile.manageBot")}
         </Button>
       </div>
 

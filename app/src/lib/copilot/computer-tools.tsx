@@ -1,5 +1,6 @@
 import { useFrontendTool } from "@/notos/agui/react";
 import { z } from "zod";
+import { tr, useT } from "@/i18n";
 import { ToolLine } from "@/components/channels/tool-line";
 import { CommandOutput } from "@/components/computer/command-output";
 import { ComputerView } from "@/components/computer/computer-view";
@@ -72,11 +73,11 @@ export async function callComputer(
   } catch (error) {
     // An abort is a stopped run, not a computer failure.
     if (error instanceof DOMException && error.name === "AbortError") {
-      return { ok: false, reason: "Stopped.", stopped: true };
+      return { ok: false, reason: tr("lib.copilot.stopped"), stopped: true };
     }
     return {
       ok: false,
-      reason: "The assistant's computer could not be reached.",
+      reason: tr("lib.computers.unreachable"),
     };
   }
 
@@ -88,7 +89,7 @@ export async function callComputer(
   if (!response.ok) {
     return {
       ok: false,
-      reason: (body?.error as string) ?? "That did not work.",
+      reason: (body?.error as string) ?? tr("lib.copilot.didNotWork"),
       // Preserve refusal/stale-ref/control distinctions for the model's next step.
       ...(response.status === 403
         ? { refused: true, rule: body?.rule ?? null }
@@ -159,7 +160,9 @@ export function outputOf(result: ToolOutcome): string {
         // A trailing slash for a folder, the way a terminal marks one, so a listing of a workspace
         // full of folders does not read as a list of extensionless files.
         if (kind === "folder") return `${label}/`;
-        return typeof bytes === "number" ? `${label}  ${bytes} bytes` : label;
+        return typeof bytes === "number"
+          ? tr("lib.copilot.entryBytes", { label, bytes })
+          : label;
       })
       .join("\n");
   }
@@ -239,6 +242,7 @@ function didNotWork(outcome: ComputerOutcome): boolean {
 
 export function ComputerTools() {
   const bot = useActiveBotHolder();
+  const t = useT();
 
   useFrontendTool({
     name: "computer_navigate",
@@ -366,10 +370,15 @@ export function ComputerTools() {
       return (
         <ActionLine
           running={status !== "complete"}
-          label="Read the page"
+          label={t("lib.copilot.readPage")}
           detail={
             elements.length
-              ? `${elements.length} thing${elements.length === 1 ? "" : "s"} it can act on`
+              ? t(
+                  elements.length === 1
+                    ? "lib.copilot.actionableOne"
+                    : "lib.copilot.actionableOther",
+                  { count: elements.length },
+                )
               : undefined
           }
         />
@@ -415,7 +424,7 @@ export function ComputerTools() {
     render: ({ args, result, status }) => (
       <ActionLine
         running={status !== "complete"}
-        label="Filled in"
+        label={t("lib.copilot.filledIn")}
         detail={
           // Never show typed values; identify only the target field.
           labelOf(result) ??
@@ -458,7 +467,7 @@ export function ComputerTools() {
       return (
         <ActionLine
           running={status !== "complete"}
-          label="Clicked"
+          label={t("lib.copilot.clicked")}
           detail={
             // Show refusal reason instead of an internal element ref.
             outcome.refused === true
@@ -506,7 +515,7 @@ export function ComputerTools() {
     render: ({ args, result, status }) => (
       <ActionLine
         running={status !== "complete"}
-        label="Pressed"
+        label={t("lib.copilot.pressed")}
         detail={typeof args?.key === "string" ? args.key : undefined}
         refused={outcomeOf(result).refused === true}
         failed={didNotWork(outcomeOf(result))}
@@ -683,7 +692,7 @@ export function ComputerTools() {
       });
       recordActivity(computerId, {
         kind: "list_files",
-        subject: input?.path ?? "the workspace",
+        subject: input?.path ?? t("lib.copilot.theWorkspace"),
         output: outputOf(result),
         ...(result.refused === true ? { refused: true } : {}),
       });
@@ -695,13 +704,18 @@ export function ComputerTools() {
       return (
         <ActionLine
           running={status !== "complete"}
-          label="Listed files"
+          label={t("lib.copilot.listedFiles")}
           detail={
             outcome.refused === true || didNotWork(outcome)
               ? String(outcome.reason ?? "")
               : entries.length
-                ? `${entries.length} item${entries.length === 1 ? "" : "s"} in the workspace`
-                : "nothing saved yet"
+                ? t(
+                    entries.length === 1
+                      ? "lib.copilot.itemsOne"
+                      : "lib.copilot.itemsOther",
+                    { count: entries.length },
+                  )
+                : t("lib.copilot.nothingSaved")
           }
           refused={outcome.refused === true}
           failed={didNotWork(outcome)}
@@ -740,7 +754,7 @@ export function ComputerTools() {
       return (
         <ActionLine
           running={status !== "complete"}
-          label="Read file"
+          label={t("lib.copilot.readFile")}
           detail={
             outcome.refused === true
               ? String(outcome.reason ?? "")
@@ -816,7 +830,7 @@ export function ComputerTools() {
       return (
         <ToolLine
           running={status !== "complete"}
-          label="Ran a command"
+          label={t("lib.copilot.ranCommand")}
           detail={
             outcome.refused === true
               ? String(outcome.reason ?? "")
@@ -880,7 +894,12 @@ export function ComputerTools() {
           result.refused === true
             ? outputOf(result)
             : typeof result.bytes === "number"
-              ? `${result.bytes} bytes${input.append === true ? ", appended" : ""}`
+              ? t(
+                  input.append === true
+                    ? "lib.copilot.bytesAppended"
+                    : "lib.copilot.bytes",
+                  { bytes: result.bytes },
+                )
               : "",
         ...(result.refused === true ? { refused: true } : {}),
       });
@@ -891,7 +910,11 @@ export function ComputerTools() {
       return (
         <ActionLine
           running={status !== "complete"}
-          label={args?.append === true ? "Added to file" : "Saved file"}
+          label={
+            args?.append === true
+              ? t("lib.copilot.addedToFile")
+              : t("lib.copilot.savedFile")
+          }
           // Show the path, never file contents.
           detail={
             outcome.refused === true
@@ -933,7 +956,7 @@ export function ComputerTools() {
     render: ({ result, status }) => (
       <ActionLine
         running={status !== "complete"}
-        label="Scrolled"
+        label={t("lib.copilot.scrolled")}
         refused={outcomeOf(result).refused === true}
         failed={didNotWork(outcomeOf(result))}
       />

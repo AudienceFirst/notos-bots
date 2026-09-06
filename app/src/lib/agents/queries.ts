@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client, tryClient } from "@/lib/client";
+import { tr } from "@/i18n";
 
 export type AgentVisibility = "public" | "private";
 
@@ -69,7 +70,7 @@ export function agentCapabilitiesQueryOptions() {
     queryKey: agentKeys.capabilities(),
     queryFn: (): Promise<AgentCapabilities> =>
       client("/api/agents/capabilities", "capabilities", {
-        fallback: "Could not load what this deployment supports",
+        fallback: tr("lib.agents.capabilitiesLoadFailed"),
       }),
     // Deployment configuration, not data: it cannot change without the server restarting.
     staleTime: Number.POSITIVE_INFINITY,
@@ -104,7 +105,7 @@ export function agentListQueryOptions(hidden = false) {
     queryKey: agentKeys.list(hidden),
     queryFn: (): Promise<AgentProfile[]> =>
       client(`/api/agents${hidden ? "?hidden=true" : ""}`, "agents", {
-        fallback: "Could not load Bots",
+        fallback: tr("lib.agents.listLoadFailed"),
       }),
   });
 }
@@ -114,7 +115,7 @@ export function agentQueryOptions(agentId: string) {
     queryKey: agentKeys.detail(agentId),
     queryFn: (): Promise<AgentProfile> =>
       client(`/api/agents/${agentId}`, "agent", {
-        fallback: "Could not load this Bot",
+        fallback: tr("lib.agents.loadFailed"),
       }),
   });
 }
@@ -124,7 +125,7 @@ export function agentHandoffQueryOptions(agentId: string) {
     queryKey: agentKeys.handoff(agentId),
     queryFn: (): Promise<HandoffGrants> =>
       client(`/api/agents/${agentId}/handoff`, "handoff", {
-        fallback: "Could not load which Bots this one may ask",
+        fallback: tr("lib.agents.handoffLoadFailed"),
       }),
   });
 }
@@ -164,9 +165,9 @@ export async function testAgentConnection(
       ok: false,
       reason:
         (body as { error?: string } | null)?.error ??
-        "The connection could not be tested.",
+        tr("lib.agents.connectionTestFailed"),
     };
   } catch {
-    return { ok: false, reason: "The connection could not be tested." };
+    return { ok: false, reason: tr("lib.agents.connectionTestFailed") };
   }
 }

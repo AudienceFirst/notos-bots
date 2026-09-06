@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { formatDateTime, useT } from "@/i18n";
 import {
   type CredentialFormValues,
   credentialFormSchema,
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/_authed/admin/credentials")({
 });
 
 function CredentialsPage() {
+  const t = useT();
   const [adding, setAdding] = useState(false);
   /** Revoked rows are kept for the record and folded away by default; see the list below. */
   const [showRevoked, setShowRevoked] = useState(false);
@@ -101,11 +103,11 @@ function CredentialsPage() {
       action={
         <Button onClick={() => setAdding(true)} size="sm" variant="ghost">
           <IconPlus />
-          Add credential
+          {t("admin-a.credentials.addCredential")}
         </Button>
       }
-      description="Credentials are write-only. Bots never displays their secret values."
-      title="Credentials"
+      description={t("admin-a.credentials.description")}
+      title={t("admin-a.credentials.title")}
     >
       {/*
        * THE FORM IS NOT ON THE PAGE. A credential is added once and then lived with, so a permanent
@@ -122,9 +124,11 @@ function CredentialsPage() {
             }}
           >
             <DialogHeader>
-              <DialogTitle>Add credential</DialogTitle>
+              <DialogTitle>
+                {t("admin-a.credentials.addCredential")}
+              </DialogTitle>
               <DialogDescription>
-                Held for this deployment and never shown again once saved.
+                {t("admin-a.credentials.dialogDescription")}
               </DialogDescription>
             </DialogHeader>
             <DialogBody className="mt-4">
@@ -135,7 +139,9 @@ function CredentialsPage() {
                       field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Type</FieldLabel>
+                        <FieldLabel htmlFor={field.name}>
+                          {t("admin-a.credentials.kindLabel")}
+                        </FieldLabel>
                         <Select
                           onValueChange={(value) =>
                             field.handleChange(value as "model" | "connector")
@@ -150,9 +156,11 @@ function CredentialsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectItem value="model">Model</SelectItem>
+                              <SelectItem value="model">
+                                {t("admin-a.credentials.kindModel")}
+                              </SelectItem>
                               <SelectItem value="connector">
-                                Connector
+                                {t("admin-a.credentials.kindConnector")}
                               </SelectItem>
                             </SelectGroup>
                           </SelectContent>
@@ -170,7 +178,9 @@ function CredentialsPage() {
                       field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Provider</FieldLabel>
+                        <FieldLabel htmlFor={field.name}>
+                          {t("admin-a.credentials.providerLabel")}
+                        </FieldLabel>
                         <Input
                           aria-invalid={isInvalid}
                           id={field.name}
@@ -179,6 +189,7 @@ function CredentialsPage() {
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
+                          /* A provider's name, the same in every language. */
                           placeholder="OpenAI"
                           value={field.state.value}
                         />
@@ -195,7 +206,9 @@ function CredentialsPage() {
                       field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Key ID</FieldLabel>
+                        <FieldLabel htmlFor={field.name}>
+                          {t("admin-a.credentials.keyIdLabel")}
+                        </FieldLabel>
                         <Input
                           aria-invalid={isInvalid}
                           id={field.name}
@@ -204,7 +217,9 @@ function CredentialsPage() {
                           onChange={(event) =>
                             field.handleChange(event.target.value)
                           }
-                          placeholder="production"
+                          placeholder={t(
+                            "admin-a.credentials.keyIdPlaceholder",
+                          )}
                           value={field.state.value}
                         />
                         {isInvalid ? (
@@ -220,7 +235,9 @@ function CredentialsPage() {
                       field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>Secret</FieldLabel>
+                        <FieldLabel htmlFor={field.name}>
+                          {t("admin-a.credentials.secretLabel")}
+                        </FieldLabel>
                         <Input
                           aria-invalid={isInvalid}
                           autoComplete="off"
@@ -260,15 +277,14 @@ function CredentialsPage() {
                 {([kind, provider, keyId]) =>
                   liveCredentialFor(credentials.data, kind, provider, keyId) ? (
                     <p className="text-amber-600 text-sm dark:text-amber-500">
-                      This key already holds a live credential. Saving replaces
-                      it, and the one it replaces is revoked.
+                      {t("admin-a.credentials.replaceWarning")}
                     </p>
                   ) : null
                 }
               </form.Subscribe>
               {createCredential.error ? (
                 <p className="text-destructive text-sm" role="alert">
-                  Could not save the credential. Try again.
+                  {t("admin-a.credentials.saveFailed")}
                 </p>
               ) : null}
             </DialogBody>
@@ -279,7 +295,7 @@ function CredentialsPage() {
                 type="button"
                 variant="ghost"
               >
-                Cancel
+                {t("admin-a.credentials.cancel")}
               </Button>
               <form.Subscribe
                 selector={(state) => [state.canSubmit, state.isSubmitting]}
@@ -293,8 +309,8 @@ function CredentialsPage() {
                     type="submit"
                   >
                     {isSubmitting || createCredential.isPending
-                      ? "Saving…"
-                      : "Save credential"}
+                      ? t("admin-a.credentials.saving")
+                      : t("admin-a.credentials.save")}
                   </Button>
                 )}
               </form.Subscribe>
@@ -308,17 +324,17 @@ function CredentialsPage() {
        * at them, but a list of 236 with 199 revoked buried the 37 that still work, each revoked row
        * wearing a Revoke button it could not use.
        */}
-      <PageSection title="Configured credentials">
+      <PageSection title={t("admin-a.credentials.sectionTitle")}>
         {credentials.isPending ? null : credentials.error ? (
           <p className="mt-4 text-destructive text-sm" role="alert">
-            Could not load credentials.
+            {t("admin-a.credentials.loadFailed")}
           </p>
         ) : credentials.data?.length === 0 ? (
-          <PageEmpty>No credentials are configured.</PageEmpty>
+          <PageEmpty>{t("admin-a.credentials.none")}</PageEmpty>
         ) : (
           <>
             {active.length === 0 ? (
-              <PageEmpty>No active credentials.</PageEmpty>
+              <PageEmpty>{t("admin-a.credentials.noneActive")}</PageEmpty>
             ) : (
               <PageRows>
                 {active.map((credential, index) => (
@@ -337,7 +353,7 @@ function CredentialsPage() {
                           size="sm"
                           variant="outline"
                         >
-                          Revoke
+                          {t("admin-a.credentials.revoke")}
                         </Button>
                       </ItemActions>
                     </Item>
@@ -360,8 +376,12 @@ function CredentialsPage() {
                       showRevoked && "rotate-90",
                     )}
                   />
-                  {revoked.length} revoked{" "}
-                  {revoked.length === 1 ? "credential" : "credentials"}
+                  {t(
+                    revoked.length === 1
+                      ? "admin-a.credentials.revokedCountOne"
+                      : "admin-a.credentials.revokedCountOther",
+                    { count: revoked.length },
+                  )}
                 </button>
                 {showRevoked ? (
                   <PageRows className="mt-2">
@@ -371,10 +391,14 @@ function CredentialsPage() {
                           <ItemContent>
                             <ItemTitle>{credential.provider}</ItemTitle>
                             <ItemDescription>
-                              {credential.kind} · {credential.keyId} · revoked
+                              {credential.kind} · {credential.keyId} ·{" "}
                               {credential.revokedAt
-                                ? ` ${new Date(credential.revokedAt).toLocaleDateString("en-GB")}`
-                                : ""}
+                                ? t("admin-a.credentials.revokedOn", {
+                                    date: formatDateTime(credential.revokedAt, {
+                                      dateStyle: "medium",
+                                    }),
+                                  })
+                                : t("admin-a.credentials.revoked")}
                             </ItemDescription>
                           </ItemContent>
                         </Item>

@@ -13,6 +13,7 @@
 import { IconFile, IconFolder, IconTerminal2 } from "@tabler/icons-react";
 import { useSyncExternalStore } from "react";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { formatDateTime, useT } from "@/i18n";
 import {
   activityFor,
   type ComputerActivity,
@@ -27,16 +28,16 @@ const ICONS = {
   list_files: IconFolder,
 } as const;
 
-/** What the line says was done. The subject beside it says what it was done to. */
-const LABELS = {
-  command: "Ran",
-  read_file: "Read",
-  write_file: "Saved",
-  list_files: "Listed",
+/** What the line says was done, as dictionary keys. The subject beside it says what it was done to. */
+const LABEL_KEYS = {
+  command: "channels.activity-log.labelCommand",
+  read_file: "channels.activity-log.labelRead",
+  write_file: "channels.activity-log.labelSaved",
+  list_files: "channels.activity-log.labelListed",
 } as const;
 
 function timeOf(at: number): string {
-  return new Date(at).toLocaleTimeString(undefined, {
+  return formatDateTime(at, {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -44,6 +45,7 @@ function timeOf(at: number): string {
 }
 
 function Entry({ entry }: { entry: ComputerActivity }) {
+  const t = useT();
   const Icon = ICONS[entry.kind];
   const failed =
     entry.refused === true ||
@@ -59,7 +61,7 @@ function Entry({ entry }: { entry: ComputerActivity }) {
           }`}
         />
         <span className="shrink-0 text-muted-foreground text-xs">
-          {LABELS[entry.kind]}
+          {t(LABEL_KEYS[entry.kind])}
         </span>
         {/*
           The command wraps rather than truncating. In the transcript one line per call is what keeps
@@ -76,7 +78,7 @@ function Entry({ entry }: { entry: ComputerActivity }) {
 
       {entry.refused === true ? (
         <p className="mt-1 pl-5 text-destructive text-xs">
-          {entry.output || "A boundary refused it."}
+          {entry.output || t("channels.activity-log.boundaryRefused")}
         </p>
       ) : (
         <div className="mt-1 max-h-64 overflow-auto pl-5">
@@ -95,6 +97,7 @@ function Entry({ entry }: { entry: ComputerActivity }) {
 }
 
 export function ActivityLog({ computerId }: { computerId: string }) {
+  const t = useT();
   const entries = useSyncExternalStore(
     subscribeToActivity,
     () => activityFor(computerId),
@@ -106,8 +109,7 @@ export function ActivityLog({ computerId }: { computerId: string }) {
       <Empty className="h-[180px] border border-dashed">
         <EmptyHeader>
           <EmptyTitle className="text-muted-foreground">
-            Nothing yet. Commands the Bot runs, and files it reads, appear here
-            as they happen.
+            {t("channels.activity-log.empty")}
           </EmptyTitle>
         </EmptyHeader>
       </Empty>

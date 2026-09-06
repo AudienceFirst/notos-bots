@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useT } from "@/i18n";
 
 const appLinkOptions = { to: "/" } satisfies LinkOptions;
 
@@ -30,10 +31,11 @@ const ITEMS: {
   exact?: boolean;
   icon: React.ComponentType<{ className?: string }>;
   linkOptions: LinkOptions;
-  title: string;
+  /** Dictionary key of the entry's title, translated at render time. */
+  titleKey: string;
 }[] = [
   {
-    title: "General",
+    titleKey: "settings.settingsSidebar.general",
     icon: IconSettings,
     /* `/settings` prefixes every other route here, and would otherwise light up on all of them. */
     exact: true,
@@ -44,19 +46,19 @@ const ITEMS: {
      * The same subject as Admin's Plugins, from the other side: there an administrator decides what
      * this deployment may reach at all, here you decide what it may reach as you.
      */
-    title: "Connected accounts",
+    titleKey: "settings.settingsSidebar.connectedAccounts",
     icon: IconPlug,
     linkOptions: { to: "/settings/connected-accounts" },
   },
   {
     /* NOTOS: the model of your personal space, and your own keys for it (5 September 2026). */
-    title: "Models",
+    titleKey: "settings.settingsSidebar.models",
     icon: IconSparkles,
     linkOptions: { to: "/settings/models" },
   },
   {
     /* The same mark Admin gives UI Components. It is the same subject seen from the other side. */
-    title: "Components gallery",
+    titleKey: "settings.settingsSidebar.componentsGallery",
     icon: IconLayoutGrid,
     linkOptions: { to: "/settings/components-gallery" },
   },
@@ -65,6 +67,7 @@ const ITEMS: {
 export function SettingsSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const t = useT();
   return (
     <Sidebar {...props}>
       {/* Matched to the app sidebar's header, as Admin's is. See admin-sidebar.tsx. */}
@@ -75,7 +78,7 @@ export function SettingsSidebar({
               render={(props) => (
                 <Link {...appLinkOptions} {...props}>
                   <IconArrowLeft className="mr-2 h-4 w-4" />
-                  Back to app
+                  {t("settings.settingsSidebar.backToApp")}
                 </Link>
               )}
             />
@@ -90,7 +93,7 @@ export function SettingsSidebar({
         <SidebarGroup>
           <SidebarMenu className="gap-px">
             {ITEMS.map((option) => (
-              <SidebarMenuItem key={option.title}>
+              <SidebarMenuItem key={option.titleKey}>
                 <SidebarMenuButton
                   render={(props) => (
                     <Link
@@ -100,7 +103,7 @@ export function SettingsSidebar({
                       {...props}
                     >
                       <option.icon className="mr-2 h-4 w-4" />
-                      {option.title}
+                      {t(option.titleKey)}
                     </Link>
                   )}
                 />

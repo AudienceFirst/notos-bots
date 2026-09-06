@@ -1,8 +1,9 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 import { type Person, peopleKeys } from "./queries";
 
-const FALLBACK = "Could not update that person";
+const failed = () => tr("lib.people.updateFailed");
 
 function invalidatePeople(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: peopleKeys.all });
@@ -17,7 +18,7 @@ export function setPersonRoleMutationOptions(queryClient: QueryClient) {
       client(`/api/admin/people/${variables.userId}/role`, "person", {
         method: "POST",
         body: { role: variables.role },
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidatePeople(queryClient),
   });
@@ -38,7 +39,7 @@ export function setPersonAccessMutationOptions(queryClient: QueryClient) {
       client(`/api/admin/people/${variables.userId}/access`, "person", {
         method: "POST",
         body: { revoked: variables.revoked },
-        fallback: FALLBACK,
+        fallback: failed(),
       }),
     onSuccess: () => invalidatePeople(queryClient),
   });

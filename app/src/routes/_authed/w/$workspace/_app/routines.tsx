@@ -13,6 +13,7 @@ import { createRoutineMutationOptions } from "@/lib/routines/mutations";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageShell } from "@/components/layout/page-shell";
 import { RoutinesList } from "@/components/routines/routines-list";
+import { formatDateTime, useT } from "@/i18n";
 
 /**
  * A person's own standing instructions: what runs on a schedule, and a switch to stop one.
@@ -31,10 +32,11 @@ export const Route = createFileRoute("/_authed/w/$workspace/_app/routines")({
 });
 
 function RoutinesPage() {
+  const t = useT();
   return (
     <PageShell
-      description="What a Bot does on a schedule, without being asked each time. Make one here or by talking to a Bot; stop one below."
-      title="Routines"
+      description={t("workspace.routines.description")}
+      title={t("workspace.routines.title")}
     >
       {/* NOTOS (stap 9): a routine from the page, with a schedule you pick rather than write. */}
       <NewRoutineForm />
@@ -44,14 +46,15 @@ function RoutinesPage() {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+/** Cron weekday numbers with the dictionary key of the day's name; translated where rendered. */
 const DAYS = [
-  ["1", "Monday"],
-  ["2", "Tuesday"],
-  ["3", "Wednesday"],
-  ["4", "Thursday"],
-  ["5", "Friday"],
-  ["6", "Saturday"],
-  ["0", "Sunday"],
+  ["1", "workspace.routines.monday"],
+  ["2", "workspace.routines.tuesday"],
+  ["3", "workspace.routines.wednesday"],
+  ["4", "workspace.routines.thursday"],
+  ["5", "workspace.routines.friday"],
+  ["6", "workspace.routines.saturday"],
+  ["0", "workspace.routines.sunday"],
 ] as const;
 
 type Preset = "quarter" | "hourly" | "daily" | "weekly" | "advanced";
@@ -73,6 +76,7 @@ function cronFor(preset: Preset, hour: number, day: string, advanced: string) {
 }
 
 function NewRoutineForm() {
+  const t = useT();
   const queryClient = useQueryClient();
   const agents = useQuery(agentListQueryOptions());
   const channels = useInfiniteQuery(channelListQueryOptions());
@@ -103,7 +107,7 @@ function NewRoutineForm() {
   const placed = (channel: { name: string; campaignId?: string | null }) =>
     `${channel.name} · ${
       (channel.campaignId && campaignNames.get(channel.campaignId)) ||
-      "Workspace"
+      t("workspace.routines.workspaceFallback")
     }`;
   /*
    * Three "SEA Specialist · Workspace" are still three identical options, so a label that is
@@ -122,20 +126,20 @@ function NewRoutineForm() {
   }) => {
     const label = placed(channel);
     if ((labelCounts.get(label) ?? 0) < 2) return label;
-    const started = new Date(channel.createdAt).toLocaleString("en-GB", {
+    const started = formatDateTime(channel.createdAt, {
       day: "numeric",
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
     });
-    return `${label} · started ${started}`;
+    return t("workspace.routines.startedAt", { label, started });
   };
 
   if (!open) {
     return (
       <div className="mb-6">
         <Button onClick={() => setOpen(true)} size="sm" variant="outline">
-          New routine
+          {t("workspace.routines.new")}
         </Button>
       </div>
     );
@@ -166,14 +170,16 @@ function NewRoutineForm() {
       }}
     >
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-muted-foreground">Bot</span>
+        <span className="text-muted-foreground">
+          {t("workspace.routines.botLabel")}
+        </span>
         <select
           className={field}
           onChange={(event) => setAgentId(event.target.value)}
           required
           value={agentId}
         >
-          <option value="">Choose a Bot</option>
+          <option value="">{t("workspace.routines.chooseBot")}</option>
           {bots.map((bot) => (
             <option key={bot.id} value={bot.id}>
               {bot.name}
@@ -183,14 +189,14 @@ function NewRoutineForm() {
       </label>
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted-foreground">
-          Channel (where the Bot posts; leave empty for your channel with it)
+          {t("workspace.routines.channelLabel")}
         </span>
         <select
           className={field}
           onChange={(event) => setChannelId(event.target.value)}
           value={channelId}
         >
-          <option value="">Your channel with this Bot</option>
+          <option value="">{t("workspace.routines.ownChannel")}</option>
           {forBot.map((channel) => (
             <option key={channel.id} value={channel.id}>
               {channelLabel(channel)}
@@ -199,11 +205,13 @@ function NewRoutineForm() {
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-muted-foreground">Instruction</span>
+        <span className="text-muted-foreground">
+          {t("workspace.routines.instructionLabel")}
+        </span>
         <textarea
           className={field}
           onChange={(event) => setInstruction(event.target.value)}
-          placeholder="Post a summary of last week's Google Ads results: cost, conversions, CPA and ROAS versus the week before."
+          placeholder={t("workspace.routines.instructionPlaceholder")}
           required
           rows={3}
           value={instruction}
@@ -211,30 +219,42 @@ function NewRoutineForm() {
       </label>
       <div className="flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground">When</span>
+          <span className="text-muted-foreground">
+            {t("workspace.routines.whenLabel")}
+          </span>
           <select
             className={field}
             onChange={(event) => setPreset(event.target.value as Preset)}
             value={preset}
           >
-            <option value="quarter">Every 15 minutes</option>
-            <option value="hourly">Every hour</option>
-            <option value="daily">Every day at</option>
-            <option value="weekly">Every week on</option>
-            <option value="advanced">Advanced (cron)</option>
+            <option value="quarter">
+              {t("workspace.routines.presetQuarter")}
+            </option>
+            <option value="hourly">
+              {t("workspace.routines.presetHourly")}
+            </option>
+            <option value="daily">{t("workspace.routines.presetDaily")}</option>
+            <option value="weekly">
+              {t("workspace.routines.presetWeekly")}
+            </option>
+            <option value="advanced">
+              {t("workspace.routines.presetAdvanced")}
+            </option>
           </select>
         </label>
         {preset === "weekly" ? (
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Day</span>
+            <span className="text-muted-foreground">
+              {t("workspace.routines.dayLabel")}
+            </span>
             <select
               className={field}
               onChange={(event) => setDay(event.target.value)}
               value={day}
             >
-              {DAYS.map(([value, label]) => (
+              {DAYS.map(([value, key]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(key)}
                 </option>
               ))}
             </select>
@@ -242,7 +262,9 @@ function NewRoutineForm() {
         ) : null}
         {preset === "daily" || preset === "weekly" ? (
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Hour</span>
+            <span className="text-muted-foreground">
+              {t("workspace.routines.hourLabel")}
+            </span>
             <select
               className={field}
               onChange={(event) => setHour(Number(event.target.value))}
@@ -259,7 +281,7 @@ function NewRoutineForm() {
         {preset === "advanced" ? (
           <label className="flex flex-col gap-1">
             <span className="text-muted-foreground">
-              Cron (minute hour day month weekday)
+              {t("workspace.routines.cronLabel")}
             </span>
             <input
               className={`${field} font-mono`}
@@ -269,7 +291,9 @@ function NewRoutineForm() {
           </label>
         ) : null}
         <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground">Time zone</span>
+          <span className="text-muted-foreground">
+            {t("workspace.routines.timezoneLabel")}
+          </span>
           <input
             className={field}
             onChange={(event) => setTimezone(event.target.value)}
@@ -281,12 +305,12 @@ function NewRoutineForm() {
         <p className="text-destructive text-sm" role="alert">
           {create.error instanceof Error
             ? create.error.message
-            : "The routine could not be created."}
+            : t("workspace.routines.createFailed")}
         </p>
       ) : null}
       <div className="flex gap-2">
         <Button disabled={create.isPending || !agentId} size="sm" type="submit">
-          Create routine
+          {t("workspace.routines.create")}
         </Button>
         <Button
           onClick={() => setOpen(false)}
@@ -294,7 +318,7 @@ function NewRoutineForm() {
           type="button"
           variant="ghost"
         >
-          Cancel
+          {t("workspace.routines.cancel")}
         </Button>
       </div>
     </form>

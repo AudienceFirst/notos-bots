@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { formatDateTime, tr, useT } from "@/i18n";
 import { callComponentFunction } from "@/lib/components/queries";
 import { useActiveBotId } from "@/lib/copilot/active-bot";
 import { useConversation } from "@/lib/copilot/conversation";
@@ -57,6 +58,7 @@ export function ActivityReportCard({
   title,
   days,
 }: Partial<ActivityArgs>) {
+  const t = useT();
   const botId = useActiveBotId();
   const conversation = useConversation();
   const [state, setState] = useState<State>({ status: "reading" });
@@ -80,8 +82,11 @@ export function ActivityReportCard({
           ? { status: "read", data: result.data }
           : {
               status: "refused",
+              // `tr` rather than the hook's `t`: read inside the effect, which lists no translator.
               reason:
-                result.reason ?? result.error ?? "That data could not be read.",
+                result.reason ??
+                result.error ??
+                tr("components.activity.readFailed"),
             },
       );
     });
@@ -93,8 +98,10 @@ export function ActivityReportCard({
 
   if (!report) {
     return (
-      <GalleryFrame title="Report">
-        <p className="text-sm text-muted-foreground">Choosing a report…</p>
+      <GalleryFrame title={t("components.activity.report")}>
+        <p className="text-sm text-muted-foreground">
+          {t("components.activity.choosing")}
+        </p>
       </GalleryFrame>
     );
   }
@@ -102,18 +109,22 @@ export function ActivityReportCard({
   if (state.status === "reading") {
     return (
       <GalleryFrame
-        caption="Reading from this deployment"
-        title={title ?? "Report"}
+        caption={t("components.activity.readingCaption")}
+        title={title ?? t("components.activity.report")}
       >
-        <p className="text-sm text-muted-foreground">Reading…</p>
+        <p className="text-sm text-muted-foreground">
+          {t("components.activity.reading")}
+        </p>
       </GalleryFrame>
     );
   }
 
   if (state.status === "refused") {
     return (
-      <GalleryFrame title={title ?? "Report"}>
-        <p className="text-sm text-destructive">Not shown</p>
+      <GalleryFrame title={title ?? t("components.activity.report")}>
+        <p className="text-sm text-destructive">
+          {t("components.activity.notShown")}
+        </p>
         <p className="mt-1 text-sm text-foreground/80">{state.reason}</p>
       </GalleryFrame>
     );
@@ -143,12 +154,13 @@ function ActivityChart({
   title?: string;
   ask?: (text: string) => void;
 }) {
+  const t = useT();
   const rows = data?.rows ?? [];
   if (rows.length === 0) {
     return (
-      <GalleryFrame title={title ?? "Bot activity"}>
+      <GalleryFrame title={title ?? t("components.activity.botActivity")}>
         <p className="text-sm text-muted-foreground">
-          No Bot has done anything in the last {data?.days ?? 7} days.
+          {t("components.activity.noActivity", { days: data?.days ?? 7 })}
         </p>
       </GalleryFrame>
     );
@@ -163,19 +175,17 @@ function ActivityChart({
         ask && busiest ? (
           <Button
             onClick={() =>
-              ask(
-                `What has ${busiest.bot} actually been doing? Look at the audit trail and summarise it.`,
-              )
+              ask(t("components.activity.askBusiest", { bot: busiest.bot }))
             }
             size="sm"
             variant="outline"
           >
-            Ask about the busiest
+            {t("components.activity.askBusiestButton")}
           </Button>
         ) : undefined
       }
-      caption={`Counted from this deployment's audit trail, last ${data.days} days`}
-      title={title ?? "Bot activity"}
+      caption={t("components.activity.activityCaption", { days: data.days })}
+      title={title ?? t("components.activity.botActivity")}
     >
       <ul className="flex flex-col gap-2">
         {rows.map((row, index) => (
@@ -212,12 +222,13 @@ function RefusalList({
   title?: string;
   ask?: (text: string) => void;
 }) {
+  const t = useT();
   const rows = data?.rows ?? [];
   if (rows.length === 0) {
     return (
-      <GalleryFrame title={title ?? "Recent refusals"}>
+      <GalleryFrame title={title ?? t("components.activity.recentRefusals")}>
         <p className="text-sm text-muted-foreground">
-          This deployment has refused nothing.
+          {t("components.activity.noRefusals")}
         </p>
       </GalleryFrame>
     );
@@ -228,20 +239,16 @@ function RefusalList({
       action={
         ask ? (
           <Button
-            onClick={() =>
-              ask(
-                "Explain the most recent refusal in that list, and what would have to change for it to be allowed.",
-              )
-            }
+            onClick={() => ask(t("components.activity.askLatest"))}
             size="sm"
             variant="outline"
           >
-            Explain the latest
+            {t("components.activity.askLatestButton")}
           </Button>
         ) : undefined
       }
-      caption="Read from this deployment's audit trail"
-      title={title ?? "Recent refusals"}
+      caption={t("components.activity.refusalsCaption")}
+      title={title ?? t("components.activity.recentRefusals")}
     >
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
@@ -252,7 +259,7 @@ function RefusalList({
                 <span className="text-xs text-muted-foreground">{row.bot}</span>
               ) : null}
               <span className="ml-auto text-xs text-muted-foreground">
-                {new Date(row.at).toLocaleString()}
+                {formatDateTime(row.at)}
               </span>
             </div>
             {row.reason ? (
@@ -274,7 +281,10 @@ export const GALLERY: GalleryComponent[] = [
      * only means to show what the component looks like. Admin draws it as unpreviewable instead.
      */
     name: "showActivityReport",
-    title: "Activity report",
+    // A getter, so the title follows the interface language wherever `.title` is read.
+    get title() {
+      return tr("components.activity.galleryTitle");
+    },
     kind: "card",
     description:
       "Show what this deployment has actually been doing, read from its own records rather than from anything you know. Use for 'what have the Bots been up to' and 'what has been refused'. You choose the report and the period; the figures are read for you and you will not see them.",

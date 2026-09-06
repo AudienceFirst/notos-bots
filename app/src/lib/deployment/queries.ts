@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * What this deployment can do, as the server is willing to say it.
@@ -51,7 +52,7 @@ export function deploymentCapabilitiesQueryOptions() {
        */
       const body = (await (
         await client("/api/capabilities", {
-          fallback: "This deployment's capabilities could not be loaded.",
+          fallback: tr("lib.deployment.capabilitiesLoadFailed"),
         })
       ).json()) as { generativeUi?: boolean; computers?: boolean };
 

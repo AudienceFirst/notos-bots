@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/client";
+import { tr } from "@/i18n";
 
 /**
  * An identity provider a company registered, rather than one this deployment was configured with.
@@ -45,7 +46,7 @@ export function identityProviderListQueryOptions() {
     queryKey: identityProviderKeys.list(),
     queryFn: (): Promise<IdentityProvider[]> =>
       client("/api/admin/identity-providers", "providers", {
-        fallback: "Could not load identity providers",
+        fallback: tr("lib.identityProviders.loadFailed"),
       }),
   });
 }

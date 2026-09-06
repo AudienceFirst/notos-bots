@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tr, useT } from "@/i18n";
 import type { GalleryComponent } from "@/lib/copilot/gallery-registry";
 import { GalleryFrame } from "./frame";
 import { seriesColour } from "./palette";
@@ -32,9 +33,10 @@ function formatNumber(value: number): string {
 
 /** Nothing to draw is a sentence. An empty axis reads as a component that failed. */
 function Empty() {
+  const t = useT();
   return (
     <p className="py-10 text-center text-sm text-muted-foreground">
-      There is no data to chart.
+      {t("components.charts.noData")}
     </p>
   );
 }
@@ -395,92 +397,137 @@ export function ProgressChartCard({
   );
 }
 
-/** Gallery component registration kept beside the chart implementations. */
+/**
+ * Gallery component registration kept beside the chart implementations.
+ *
+ * `title` and `preview` are getters: both are what a person sees, so they follow the interface
+ * language at the moment they are read. `description` and `confirmation` are read by the model and
+ * stay as written.
+ */
 export const GALLERY: GalleryComponent[] = [
   {
     name: "showBarChart",
-    title: "Bar chart",
+    get title() {
+      return tr("components.charts.barTitle");
+    },
     kind: "chart",
     description:
       "Show values as a bar chart. Use when comparing a handful of named things, teams, months, categories. Not for a trend over time, which is showLineChart.",
     parameters: BarChartProps,
     Component: BarChartCard as GalleryComponent["Component"],
-    preview: {
-      title: "Revenue by team",
-      caption: "Sales leads, and Engineering is closing the gap.",
-      points: [
-        { label: "Sales", value: 120 },
-        { label: "Engineering", value: 80 },
-        { label: "Support", value: 45 },
-      ],
+    get preview() {
+      return {
+        title: tr("components.charts.previewBarTitle"),
+        caption: tr("components.charts.previewBarCaption"),
+        points: [
+          { label: tr("components.charts.previewBarSales"), value: 120 },
+          { label: tr("components.charts.previewBarEngineering"), value: 80 },
+          { label: tr("components.charts.previewBarSupport"), value: 45 },
+        ],
+      };
     },
     confirmation: "The bar chart is now on screen for the person.",
   },
   {
     name: "showPieChart",
-    title: "Donut chart",
+    get title() {
+      return tr("components.charts.donutTitle");
+    },
     kind: "chart",
     description:
       "Show how a whole is divided, as a donut with a legend. Use only when the parts sum to something meaningful, and prefer a bar chart above about six slices.",
     parameters: PieChartProps,
     Component: PieChartCard as GalleryComponent["Component"],
-    preview: {
-      title: "Where the month went",
-      points: [
-        { label: "Build", value: 48 },
-        { label: "Support", value: 26 },
-        { label: "Meetings", value: 26 },
-      ],
+    get preview() {
+      return {
+        title: tr("components.charts.previewDonutTitle"),
+        points: [
+          { label: tr("components.charts.previewDonutBuild"), value: 48 },
+          { label: tr("components.charts.previewDonutSupport"), value: 26 },
+          { label: tr("components.charts.previewDonutMeetings"), value: 26 },
+        ],
+      };
     },
     confirmation: "The donut chart is now on screen for the person.",
   },
   {
     name: "showLineChart",
-    title: "Line chart",
+    get title() {
+      return tr("components.charts.lineTitle");
+    },
     kind: "chart",
     description:
       "Show one or more series over an ordered axis, usually time. Every series must have one value per label.",
     parameters: LineChartProps,
     Component: LineChartCard as GalleryComponent["Component"],
-    preview: {
-      title: "Signups",
-      caption: "Six weeks, one release.",
-      labels: ["W1", "W2", "W3", "W4", "W5", "W6"],
-      series: [{ name: "Signups", values: [120, 180, 160, 240, 300, 420] }],
+    get preview() {
+      return {
+        title: tr("components.charts.previewLineTitle"),
+        caption: tr("components.charts.previewLineCaption"),
+        labels: ["W1", "W2", "W3", "W4", "W5", "W6"],
+        series: [
+          {
+            name: tr("components.charts.previewLineSeries"),
+            values: [120, 180, 160, 240, 300, 420],
+          },
+        ],
+      };
     },
     confirmation: "The line chart is now on screen for the person.",
   },
   {
     name: "showAreaChart",
-    title: "Area chart",
+    get title() {
+      return tr("components.charts.areaTitle");
+    },
     kind: "chart",
     description:
       "The same as showLineChart with the area under each line filled. Use for volume or accumulation rather than for a rate.",
     parameters: AreaChartProps,
     Component: AreaChartCard as GalleryComponent["Component"],
-    preview: {
-      title: "Storage used",
-      caption: "Growing steadily since the migration.",
-      labels: ["Jan", "Feb", "Mar", "Apr", "May"],
-      series: [{ name: "TB", values: [12, 19, 26, 31, 44] }],
+    get preview() {
+      return {
+        title: tr("components.charts.previewAreaTitle"),
+        caption: tr("components.charts.previewAreaCaption"),
+        labels: [
+          tr("components.charts.previewAreaJan"),
+          tr("components.charts.previewAreaFeb"),
+          tr("components.charts.previewAreaMar"),
+          tr("components.charts.previewAreaApr"),
+          tr("components.charts.previewAreaMay"),
+        ],
+        series: [{ name: "TB", values: [12, 19, 26, 31, 44] }],
+      };
     },
     confirmation: "The area chart is now on screen for the person.",
   },
   {
     name: "showProgress",
-    title: "Progress against target",
+    get title() {
+      return tr("components.charts.progressTitle");
+    },
     kind: "chart",
     description:
       "Show values against their targets as progress bars. Use for 'are we there yet' questions, budget spent against budget, done against planned.",
     parameters: ProgressChartProps,
     Component: ProgressChartCard as GalleryComponent["Component"],
-    preview: {
-      title: "Migration to the new runtime",
-      caption: "Two services left.",
-      points: [
-        { label: "Services moved", value: 18, target: 20 },
-        { label: "Tests ported", value: 240, target: 240 },
-      ],
+    get preview() {
+      return {
+        title: tr("components.charts.previewProgressTitle"),
+        caption: tr("components.charts.previewProgressCaption"),
+        points: [
+          {
+            label: tr("components.charts.previewProgressServices"),
+            value: 18,
+            target: 20,
+          },
+          {
+            label: tr("components.charts.previewProgressTests"),
+            value: 240,
+            target: 240,
+          },
+        ],
+      };
     },
     confirmation: "The progress chart is now on screen for the person.",
   },

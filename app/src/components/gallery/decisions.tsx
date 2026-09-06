@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { tr, useT } from "@/i18n";
 import type { GalleryComponent } from "@/lib/copilot/gallery-registry";
 import { Badge, GalleryFrame } from "./frame";
 
@@ -43,6 +44,7 @@ export const ApprovalCardProps = z.object({
 type ApprovalArgs = z.infer<typeof ApprovalCardProps>;
 
 export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
+  const t = useT();
   const { args, status, respond } = props;
   const [note, setNote] = useState("");
   const [sending, setSending] = useState<"approved" | "declined" | null>(null);
@@ -56,8 +58,12 @@ export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
 
   if (status === "inProgress") {
     return (
-      <GalleryFrame title={args.title ?? "Waiting for the assistant…"}>
-        <p className="text-sm text-muted-foreground">Preparing the request…</p>
+      <GalleryFrame
+        title={args.title ?? t("components.decisions.waitingAssistant")}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t("components.decisions.preparingRequest")}
+        </p>
       </GalleryFrame>
     );
   }
@@ -70,10 +76,12 @@ export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
       action={
         decided ? (
           <Badge tone={decided === "approved" ? "positive" : "negative"}>
-            {decided === "approved" ? "Approved" : "Declined"}
+            {decided === "approved"
+              ? t("components.decisions.approved")
+              : t("components.decisions.declined")}
           </Badge>
         ) : (
-          <Badge tone="caution">Waiting on you</Badge>
+          <Badge tone="caution">{t("components.decisions.waitingOnYou")}</Badge>
         )
       }
       title={args.title}
@@ -94,11 +102,11 @@ export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
       {decided ? null : (
         <div className="mt-4 space-y-2">
           <input
-            aria-label="A reason, if you want to give one"
+            aria-label={t("components.decisions.reasonPlaceholder")}
             className="w-full rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
             disabled={Boolean(sending)}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="A reason, if you want to give one"
+            placeholder={t("components.decisions.reasonPlaceholder")}
             value={note}
           />
           <div className="flex gap-2">
@@ -108,8 +116,8 @@ export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
               size="sm"
             >
               {sending === "approved"
-                ? "Sending…"
-                : (args.approveLabel ?? "Approve")}
+                ? t("components.decisions.sending")
+                : (args.approveLabel ?? t("components.decisions.approve"))}
             </Button>
             <Button
               disabled={Boolean(sending)}
@@ -118,8 +126,8 @@ export function ApprovalCard(props: Waiting<ApprovalArgs> & { name?: string }) {
               variant="outline"
             >
               {sending === "declined"
-                ? "Sending…"
-                : (args.rejectLabel ?? "Decline")}
+                ? t("components.decisions.sending")
+                : (args.rejectLabel ?? t("components.decisions.decline"))}
             </Button>
           </div>
         </div>
@@ -150,13 +158,18 @@ export const ChoiceCardProps = z.object({
 type ChoiceArgs = z.infer<typeof ChoiceCardProps>;
 
 export function ChoiceCard(props: Waiting<ChoiceArgs>) {
+  const t = useT();
   const { args, status, respond } = props;
   const [sending, setSending] = useState<string | null>(null);
 
   if (status === "inProgress") {
     return (
-      <GalleryFrame title={args.title ?? "Waiting for the assistant…"}>
-        <p className="text-sm text-muted-foreground">Preparing the question…</p>
+      <GalleryFrame
+        title={args.title ?? t("components.decisions.waitingAssistant")}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t("components.decisions.preparingQuestion")}
+        </p>
       </GalleryFrame>
     );
   }
@@ -167,9 +180,9 @@ export function ChoiceCard(props: Waiting<ChoiceArgs>) {
     <GalleryFrame
       action={
         chosen ? (
-          <Badge tone="positive">Answered</Badge>
+          <Badge tone="positive">{t("components.decisions.answered")}</Badge>
         ) : (
-          <Badge tone="caution">Waiting on you</Badge>
+          <Badge tone="caution">{t("components.decisions.waitingOnYou")}</Badge>
         )
       }
       caption={args.summary}
@@ -245,60 +258,84 @@ function readChoice(result: string | undefined): string | undefined {
  * `useHumanInTheLoop` rather than as ordinary tools, and the person's answer IS the tool result, so
  * there is no confirmation line to give the model.
  */
+/*
+ * `title` and `preview` are getters: both are what a person sees, so they follow the interface
+ * language at the moment they are read. `description` is read by the model and stays as written.
+ */
 export const GALLERY: GalleryComponent[] = [
   {
     name: "askApproval",
-    title: "Approval",
+    get title() {
+      return tr("components.decisions.approvalTitle");
+    },
     kind: "decision",
     description:
       "Ask the person to approve or decline something, and WAIT for their answer. Use before doing anything you cannot undo, spending money, sending a message, changing a record. You are given their decision and any reason they typed.",
     parameters: ApprovalCardProps,
     Component: ApprovalCard as GalleryComponent["Component"],
-    preview: {
-      // The whole interaction, because that is what this component is handed: it suspends a run,
-      // so its arguments arrive wrapped in the state of the decision it is waiting on.
-      status: "executing",
-      args: {
-        title: "Refund this order?",
-        summary:
-          "The customer was charged twice for the same order and the second charge has not settled.",
-        details: [
-          { label: "Amount", value: "$128.40" },
-          { label: "Customer", value: "Northwind Traders" },
-          { label: "Order", value: "2043" },
-        ],
-        approveLabel: "Refund",
-      },
-      respond: async () => {},
+    get preview() {
+      return {
+        // The whole interaction, because that is what this component is handed: it suspends a run,
+        // so its arguments arrive wrapped in the state of the decision it is waiting on.
+        status: "executing",
+        args: {
+          title: tr("components.decisions.previewApprovalTitle"),
+          summary: tr("components.decisions.previewApprovalSummary"),
+          details: [
+            {
+              label: tr("components.decisions.previewApprovalAmountLabel"),
+              value: tr("components.decisions.previewApprovalAmountValue"),
+            },
+            {
+              label: tr("components.decisions.previewApprovalCustomerLabel"),
+              value: tr("components.decisions.previewApprovalCustomerValue"),
+            },
+            {
+              label: tr("components.decisions.previewApprovalOrderLabel"),
+              value: "2043",
+            },
+          ],
+          approveLabel: tr("components.decisions.previewApprovalApprove"),
+        },
+        respond: async () => {},
+      };
     },
   },
   {
     name: "askChoice",
-    title: "Choice",
+    get title() {
+      return tr("components.decisions.choiceTitle");
+    },
     kind: "decision",
     description:
       "Ask the person to pick one of several options, and WAIT for their answer. Use when you cannot sensibly guess which one they meant. You are given the id of the option they chose.",
     parameters: ChoiceCardProps,
     Component: ChoiceCard as GalleryComponent["Component"],
-    preview: {
-      status: "executing",
-      args: {
-        title: "Which environment should this go to?",
-        summary: "The build is green and nothing else is queued.",
-        options: [
-          {
-            id: "staging",
-            label: "Staging",
-            description: "Safe, and reversible",
-          },
-          {
-            id: "production",
-            label: "Production",
-            description: "Live customers",
-          },
-        ],
-      },
-      respond: async () => {},
+    get preview() {
+      return {
+        status: "executing",
+        args: {
+          title: tr("components.decisions.previewChoiceTitle"),
+          summary: tr("components.decisions.previewChoiceSummary"),
+          options: [
+            {
+              id: "staging",
+              label: tr("components.decisions.previewChoiceStagingLabel"),
+              description: tr(
+                "components.decisions.previewChoiceStagingDescription",
+              ),
+            },
+            {
+              id: "production",
+              label: tr("components.decisions.previewChoiceProductionLabel"),
+              description: tr(
+                "components.decisions.previewChoiceProductionDescription",
+              ),
+            },
+          ],
+        },
+        respond: async () => {},
+      };
     },
   },
 ];
