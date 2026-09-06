@@ -444,6 +444,33 @@ sleutel die in het Nederlands ontbreekt valt terug op Engels en daarna op de sle
 tekst = sleutel in beide woordenboeken. Nederlands volgt de ZUID-schrijfwijze (je/jij, geen u,
 geen em dash). Bots antwoorden in de taal waarin je schrijft; dat staat los van de interface.
 
+Drie soorten tekst komen niet uit de app zelf maar staan er wel op:
+
+- **De connectorcatalogus** (`server/src/plugins/catalogue.ts`) houdt één Engelse omschrijving per
+  connector aan, want die is een gereviewd broncontract en wordt ook buiten de app gelezen. De
+  vertaling staat in `i18n/*/connectors.ts` als `connectors.<key>.summary`; een connector die een
+  beheerder zelf toevoegt heeft geen sleutel en houdt de tekst van de server. Gebruik
+  `useConnectorSummary()` uit `lib/plugins/catalogue-text.ts`, nooit `entry.summary` rechtstreeks.
+- **De zinnen die de server bij een fout terugstuurt** (109 stuks) worden opgezocht op de Engelse
+  zin zelf, zoals een po-bestand doet: sleutel `server:<de Engelse zin>` in `i18n/*/server.ts`,
+  toegepast in `lib/client.ts` via `serverMessage()`. Namen van velden en waarden die een aanroeper
+  letterlijk moet meesturen (`public`, `private`, `admin`, `user`, `granted`, `denied`, `true`,
+  `false`, `nl`, `en`, `null`) blijven staan: een vertaalde waarde noemt een waarde die niet
+  bestaat. Zinnen die de server uit een naam of getal samenstelt hebben geen sleutel en komen in
+  het Engels binnen.
+- **De meegeleverde componenten in de galerij**: `componentTitle()` en `componentBlurb()` uit
+  `lib/copilot/gallery-registry.ts`. De titel volgt de taal; de regel eronder is er een voor de
+  lezer in plaats van de instructie voor het model, maar alleen zolang een omgeving de
+  omschrijving niet zelf heeft herschreven. Wat een beheerder schrijft, blijft staan zoals het is.
+
+`app/tests/server-messages.test.ts` bewaakt dit: hij leest de servercode en faalt zodra er een zin
+of een connector bij komt, verandert of blijft hangen zonder vertaling. Herschrijf je een zin op de
+server, dan valt die test om, en dat is de bedoeling.
+
+Let op bij `detectLocale()`: buiten een browser bestaat `navigator` wel maar kent hij geen talen,
+dus elke kandidaat wordt eerst op type gecontroleerd. Zonder dat valt elke test om die iets uit
+`lib/` importeert.
+
 ## Audit na stap 4 (5 september 2026)
 
 Nagelopen tegen de draaiende app; volledige tabel in `~/Code/notos/docs/bouwplan-bots/00-LEESMIJ.md`.
