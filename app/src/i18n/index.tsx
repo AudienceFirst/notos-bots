@@ -4,7 +4,7 @@
 // browser. Woordenboeken staan per schermgroep in ./en en ./nl; een sleutel die in de gekozen taal
 // ontbreekt valt terug op Engels en daarna op de sleutel zelf, zodat een scherm nooit leeg blijft.
 import { useQuery } from "@tanstack/react-query";
-import * as React from "react";
+import type * as React from "react";
 import { createContext, useContext, useEffect, useMemo } from "react";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
 import { setRelativeTimeLocale } from "@/lib/relative-time";
