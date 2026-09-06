@@ -38,9 +38,13 @@ export function QuoteCard({ quote, attribution, context }: Partial<QuoteArgs>) {
     <GalleryFrame caption={context} title={t("components.quote.title")}>
       <blockquote className="border-l-2 border-border pl-4">
         <p className="text-sm leading-relaxed">{quote}</p>
+        {/*
+         * The attribution stands on its own line. It used to be written as ", the expense policy",
+         * which put a stray comma at the start of a line with nothing before it to attach to.
+         */}
         {attribution ? (
           <footer className="mt-2 text-xs text-muted-foreground">
-            , {attribution}
+            {attribution}
           </footer>
         ) : null}
       </blockquote>

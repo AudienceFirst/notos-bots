@@ -4,16 +4,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ConnectorMark } from "@/components/connectors/marks";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/i18n";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
-import { addCuratedServerMutationOptions } from "@/lib/plugins/mutations";
 import { useConnectorSummary } from "@/lib/plugins/catalogue-text";
+import { addCuratedServerMutationOptions } from "@/lib/plugins/mutations";
 import {
   type CatalogueItem,
   connectionsQueryOptions,
   pluginsPageQueryOptions,
 } from "@/lib/plugins/queries";
 import { cn } from "@/lib/utils";
-import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/w/$workspace/_app/connectors")({
   component: ConnectorsPage,
@@ -189,11 +189,18 @@ function ConnectorCard({
         <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
           <ConnectorMark className="size-5" keyName={entry.key} />
         </div>
+        {/*
+         * The vendor line is dropped when it only repeats the name. Eleven of the sixteen cards
+         * read "HubSpot / HubSpot", which says nothing and costs a line on every card; the five
+         * that differ (Google behind Gmail and Drive, ZUID behind FRIDA) are the ones worth saying.
+         */}
         <div className="min-w-0">
           <p className="truncate font-medium text-sm">{entry.title}</p>
-          <p className="truncate text-muted-foreground text-xs">
-            {entry.vendor}
-          </p>
+          {entry.vendor === entry.title ? null : (
+            <p className="truncate text-muted-foreground text-xs">
+              {entry.vendor}
+            </p>
+          )}
         </div>
       </div>
       {/* The whole summary. Clamped, ten of fifteen cards ended in "…" on a screen with room to spare. */}
