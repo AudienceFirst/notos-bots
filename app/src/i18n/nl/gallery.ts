@@ -1,6 +1,8 @@
 // NOTOS i18n: één regel per meegeleverd component, voor de mens die de galerij bekijkt
 // (Mitch, 6 september 2026).
 const gallery: Record<string, string> = {
+  "gallery.askHandoff.blurb":
+    "Vraagt jou om \u00e9\u00e9n stap te doen die de Bot zelf niet kan, en wacht tot jij zegt dat het gelukt is.",
   "gallery.askApproval.blurb":
     "Vraagt je om iets goed te keuren of af te wijzen, en wacht op je antwoord.",
   "gallery.askChoice.blurb":

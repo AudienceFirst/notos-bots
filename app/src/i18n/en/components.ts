@@ -372,6 +372,24 @@ const components: Record<string, string> = {
   "components.skill-tools.notConnected": "Not connected here",
   "components.skill-tools.notOffered":
     "{ref} — no connected server offers this",
+  "components.handoff.continuing": "Carrying on…",
+  "components.handoff.done": "Done, carry on",
+  "components.handoff.galleryTitle": "Over to you",
+  "components.handoff.preparing": "Working out what to ask you.",
+  "components.handoff.previewReason":
+    "Meta asked for a login code, and it was sent to your phone rather than to me.",
+  "components.handoff.previewStepOne":
+    "Open Meta Business Manager and sign in as yourself.",
+  "components.handoff.previewStepTwo":
+    "Type the six digits from the text message.",
+  "components.handoff.previewTitle": "Enter the code from your phone",
+  "components.handoff.skip": "Skip this step",
+  "components.handoff.skipExplained":
+    "Skipping does not stop the Bot. It carries on without this step, and may not get as far.",
+  "components.handoff.title": "A step for you",
+  "components.handoff.wasDone": "You did this, the Bot carried on",
+  "components.handoff.wasSkipped": "Skipped, the Bot carried on without it",
+  "components.handoff.where": "Where:",
 };
 
 export default components;

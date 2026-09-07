@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import type { Database } from "../../db/client";
 import { approvals } from "../../db/schema/approvals";
+import { redactArgs } from "./redact";
 
 /** How long a "yes" stays good for. Long enough for the Bot to retry, short enough to be about now. */
 export const APPROVAL_TTL_MS = 10 * 60 * 1000;
@@ -135,7 +136,12 @@ export function createApprovalStore(database: Database): ApprovalStore {
           botId: input.botId,
           toolRef: input.toolRef,
           argsHash,
-          args: input.args,
+          /*
+           * De hash gaat over de échte argumenten (hierboven), de opgeslagen kopie niet. Zo blijft
+           * een verleende goedkeuring bij precies dezelfde aanroep horen, terwijl het geheim zelf
+           * de tabel nooit in gaat.
+           */
+          args: redactArgs(input.args),
           requestedByActor: input.requestedByActor,
         })
         .returning();

@@ -5,6 +5,8 @@
 // voor de lezer staat deze regel, tenzij een omgeving zelf een omschrijving heeft geschreven
 // (Mitch, 6 september 2026).
 const gallery: Record<string, string> = {
+  "gallery.askHandoff.blurb":
+    "Asks you to clear one step the Bot cannot do itself, and waits until you say it is done.",
   "gallery.askApproval.blurb":
     "Asks you to approve or decline something, and waits for your answer.",
   "gallery.askChoice.blurb":

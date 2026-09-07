@@ -379,6 +379,24 @@ const components: Record<string, string> = {
   "components.skill-tools.notConnected": "Hier niet verbonden",
   "components.skill-tools.notOffered":
     "{ref}: geen verbonden server biedt dit aan",
+  "components.handoff.continuing": "Bezig met doorgaan…",
+  "components.handoff.done": "Gedaan, ga door",
+  "components.handoff.galleryTitle": "Aan jou",
+  "components.handoff.preparing": "Bezig met uitzoeken wat ik je moet vragen.",
+  "components.handoff.previewReason":
+    "Meta vroeg om een inlogcode, en die ging naar jouw telefoon en niet naar mij.",
+  "components.handoff.previewStepOne":
+    "Open Meta Business Manager en log in als jezelf.",
+  "components.handoff.previewStepTwo":
+    "Typ de zes cijfers uit het sms-bericht.",
+  "components.handoff.previewTitle": "Vul de code van je telefoon in",
+  "components.handoff.skip": "Sla deze stap over",
+  "components.handoff.skipExplained":
+    "Overslaan stopt de Bot niet. Hij gaat verder zonder deze stap, en komt dan misschien minder ver.",
+  "components.handoff.title": "Een stap voor jou",
+  "components.handoff.wasDone": "Jij hebt dit gedaan, de Bot ging verder",
+  "components.handoff.wasSkipped": "Overgeslagen, de Bot ging verder zonder",
+  "components.handoff.where": "Waar:",
 };
 
 export default components;
