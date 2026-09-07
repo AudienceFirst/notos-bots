@@ -3,6 +3,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageSection, PageShell } from "@/components/layout/page-shell";
 import { ModelKeysPanel } from "@/components/models/model-keys-panel";
+import { ModelUsagePanel } from "@/components/models/model-usage-panel";
 import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/_authed/admin/models")({
@@ -28,6 +29,15 @@ function ModelsPage() {
           </Link>
           {t("admin-a.models.chooseModelAfter")}
         </p>
+      </PageSection>
+      <PageSection>
+        <h2 className="mb-2 font-medium text-sm">
+          {t("admin-a.modelUsage.title")}
+        </h2>
+        <p className="mb-4 text-muted-foreground text-sm text-pretty">
+          {t("admin-a.modelUsage.description")}
+        </p>
+        <ModelUsagePanel />
       </PageSection>
     </PageShell>
   );

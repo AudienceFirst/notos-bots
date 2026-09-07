@@ -21,6 +21,7 @@ import {
   type ModelFactory,
   type ModelProvider,
 } from "./notos/model";
+import { meterModel, type UsageSink } from "./notos/model/usage";
 import type { PostgresAgentRunner } from "./notos/runner";
 import type { SelectableSkill, Selection } from "./plugins/selection";
 import {
@@ -244,6 +245,22 @@ export function builtInAgentConfiguration(
       workspaceId: agent.model?.workspaceId ?? null,
       personalOwnerId: agent.model?.personalOwnerId ?? null,
     });
+    /*
+     * De teller zit om het model heen, niet in de aanroepers: zo wordt elke run meegeteld, ook een
+     * route die later bijkomt. Zonder sink gebeurt er niets.
+     */
+    if (usageSink) {
+      languageModel = meterModel(
+        languageModel,
+        {
+          workspaceId: agent.model?.workspaceId ?? null,
+          botId: agent.id ?? "",
+          provider: choice.provider,
+          modelName: choice.name,
+        },
+        usageSink,
+      );
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const hint =
@@ -759,6 +776,18 @@ let runContextFor:
 let runModelFor:
   | ((threadId: string | undefined) => Promise<RunModelChoice | null>)
   | undefined;
+
+/**
+ * NOTOS: waar gemeten modelverbruik heen gaat (7 september 2026).
+ *
+ * Een setter, net als de modelkeuze hieronder, omdat deze module niets van de database mag weten.
+ * Zolang niemand hem zet wordt er niet gemeten en verandert er niets aan een run.
+ */
+let usageSink: UsageSink | undefined;
+
+export function setUsageSink(sink: UsageSink) {
+  usageSink = sink;
+}
 
 /** NOTOS: who answers "which model did this conversation choose", per thread. */
 export function setRunModelProvider(

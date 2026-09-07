@@ -302,6 +302,17 @@ const adminUa: Record<string, string> = {
   "admin-a.playground.title": "Playground",
   "admin-a.playground.titleLabel": "Title",
   "admin-a.playground.titlePlaceholder": "Refund card",
+  "admin-a.modelUsage.cached": "From cache",
+  "admin-a.modelUsage.calls": "Calls",
+  "admin-a.modelUsage.description":
+    "Tokens, not euros: what a model costs depends on the rate at the moment of the call, and that rate is not kept here. Multiply these by the rate you pay.",
+  "admin-a.modelUsage.empty": "No model has run in the past {days} days.",
+  "admin-a.modelUsage.input": "Input",
+  "admin-a.modelUsage.lastUsed": "Last used",
+  "admin-a.modelUsage.loadFailed": "Could not read what the models used.",
+  "admin-a.modelUsage.model": "Model",
+  "admin-a.modelUsage.output": "Output",
+  "admin-a.modelUsage.title": "What the models used",
 };
 
 export default adminUa;

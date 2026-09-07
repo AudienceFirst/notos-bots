@@ -188,6 +188,8 @@ const lib: Record<string, string> = {
   "lib.workspaces.roleZuid": "ZUID (beheert, keurt goed)",
   "lib.workspaces.sonnetLabel": "Claude Sonnet 5 (Anthropic-sleutel)",
   "lib.workspaces.sonnetShort": "Claude Sonnet 5",
+  "lib.modelKeys.usageLoadFailed":
+    "Kon niet lezen wat de modellen verstookten.",
 };
 
 export default lib;

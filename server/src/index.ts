@@ -58,6 +58,7 @@ import {
   type ToolSelection,
   setRunContextProvider,
   setRunModelProvider,
+  setUsageSink,
 } from "./copilot";
 import {
   createCredentialAdminService,
@@ -76,6 +77,7 @@ import {
 } from "./notos/auth";
 import {
   createModelKeyStore,
+  createUsageStore,
   createModels,
   isModelProvider,
 } from "./notos/model";
@@ -240,6 +242,13 @@ await modelKeys.warm().catch((error) => {
   );
 });
 modelKeys.startRefresh(60_000);
+/*
+ * Meten wat elke modelaanroep kost. De teller zit om het model heen (zie notos/model/usage.ts), en
+ * schrijft hier weg; zolang deze sink niet gezet is, meet er niets mee.
+ */
+const usageStore = createUsageStore(database);
+setUsageSink((record) => usageStore.record(record));
+
 const modelFor = createModels(
   {
     project: config.model.project,
@@ -1289,6 +1298,8 @@ const app = createApp(
   modelKeys,
   // NOTOS: personal preferences (interface language).
   createPreferenceStore(database),
+  // NOTOS: wat de modellen verstookten, voor het kostenoverzicht.
+  usageStore,
 );
 
 /**

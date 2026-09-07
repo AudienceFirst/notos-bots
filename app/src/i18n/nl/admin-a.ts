@@ -308,6 +308,19 @@ const adminUa: Record<string, string> = {
   "admin-a.playground.title": "Speeltuin",
   "admin-a.playground.titleLabel": "Titel",
   "admin-a.playground.titlePlaceholder": "Terugbetalingskaart",
+  "admin-a.modelUsage.cached": "Uit cache",
+  "admin-a.modelUsage.calls": "Aanroepen",
+  "admin-a.modelUsage.description":
+    "Tokens, geen euro's: wat een model kost hangt af van het tarief op het moment van de aanroep, en dat tarief staat hier niet. Vermenigvuldig deze getallen met het tarief dat jij betaalt.",
+  "admin-a.modelUsage.empty":
+    "De afgelopen {days} dagen heeft geen model gedraaid.",
+  "admin-a.modelUsage.input": "Invoer",
+  "admin-a.modelUsage.lastUsed": "Laatst gebruikt",
+  "admin-a.modelUsage.loadFailed":
+    "Kon niet lezen wat de modellen verstookten.",
+  "admin-a.modelUsage.model": "Model",
+  "admin-a.modelUsage.output": "Uitvoer",
+  "admin-a.modelUsage.title": "Wat de modellen verstookten",
 };
 
 export default adminUa;

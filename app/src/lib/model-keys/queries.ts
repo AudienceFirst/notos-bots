@@ -4,8 +4,8 @@ import {
   type QueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import { client } from "@/lib/client";
 import { tr } from "@/i18n";
+import { client } from "@/lib/client";
 
 export type KeyedProvider = "anthropic" | "openai" | "openrouter" | "google-ai";
 export type ModelProvider = "vertex" | KeyedProvider;
@@ -219,5 +219,31 @@ export function setPersonalModelMutationOptions(queryClient: QueryClient) {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: modelKeyKeys.personalModel }),
+  });
+}
+
+/** NOTOS: wat de modellen verstookten. Binnen een workspace die workspace; daarbuiten het geheel
+ * voor een beheerder, en anders de eigen persoonlijke ruimte. */
+export type ModelUsageLine = {
+  provider: string;
+  modelName: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  reasoningTokens: number;
+  lastUsedAt: string | null;
+};
+
+export function modelUsageQueryOptions(days = 30) {
+  return queryOptions({
+    queryKey: ["models", "usage", days] as const,
+    queryFn: async () =>
+      (await (
+        await client(`/api/models/usage?days=${days}`, {
+          fallback: tr("lib.modelKeys.usageLoadFailed"),
+        })
+      ).json()) as { days: number; lines: ModelUsageLine[] },
+    staleTime: 60_000,
   });
 }

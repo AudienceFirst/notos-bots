@@ -3,6 +3,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import type { AppVariables } from "../../auth/guards";
 import type { WorkspaceStore } from "../workspaces/store";
 import type { ModelKeyStore } from "./keys";
+import type { UsageStore } from "./usage-store";
 import {
   KEYED_PROVIDERS,
   type ModelProvider,
@@ -41,6 +42,8 @@ export function createModelRoutes(
   guard: MiddlewareHandler<{ Variables: AppVariables }>,
   keys: ModelKeyStore,
   workspaces: WorkspaceStore,
+  /** Aanwezig zodra deze omgeving verbruik meet; zonder deze store is er niets te tonen. */
+  usage?: UsageStore,
 ) {
   const available = createModelAvailability(keys, workspaces);
   const routes = new Hono<{ Variables: AppVariables }>();
@@ -65,6 +68,32 @@ export function createModelRoutes(
           }
         : null,
     });
+  });
+
+  /**
+   * Wat deze workspace de laatste dagen aan modellen verstookte.
+   *
+   * Binnen het bereik van de aanroeper, niet daarbuiten: wie in de workspace van een klant zit,
+   * ziet die klant. Een beheerder die het totaal wil, kijkt op de beheerpagina.
+   */
+  routes.get("/usage", async (context) => {
+    if (!usage) return context.json({ days: 0, lines: [] });
+    const asked = Number(context.req.query("days") ?? "30");
+    // Begrensd, zodat een gok in de adresbalk geen jaar aan rijen optelt.
+    const days = Number.isFinite(asked) ? Math.min(Math.max(asked, 1), 90) : 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    /*
+     * Binnen een workspace: die workspace. Daarbuiten ziet een beheerder het totaal van deze
+     * omgeving, en iedereen anders alleen zijn eigen persoonlijke ruimte. Zonder dat onderscheid
+     * zou een gewone gebruiker op de kale route zien hoe druk het bij elke klant is.
+     */
+    const scope = context.var.actor.workspace?.id;
+    const lines = await usage.summary({
+      workspaceId:
+        scope ?? (context.var.actor.role === "admin" ? undefined : null),
+      since,
+    });
+    return context.json({ days, lines });
   });
 
   return routes;

@@ -2,6 +2,7 @@ import type { AgentActor } from "./agents/profile-types";
 import type { ApprovalStore } from "./notos/approvals";
 import { createCampaignRoutes } from "./notos/campaigns/routes";
 import type { CampaignStore } from "./notos/campaigns/store";
+import type { UsageStore } from "./notos/model/usage-store";
 import { createRunsRoutes } from "./notos/routines/runs-route";
 import type { MemberStore } from "./notos/workspaces/members";
 import { isLocale, type PreferenceStore } from "./notos/preferences/store";
@@ -266,6 +267,8 @@ export function createApp(
   modelKeyStore?: ModelKeyStore,
   /** NOTOS: personal preferences kept on the server (interface language). */
   preferenceStore?: PreferenceStore,
+  /** NOTOS: gemeten modelverbruik, voor het kostenoverzicht. */
+  usageStore?: UsageStore,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
   // NOTOS: whether a keyed provider can run for an actor; undefined accepts any (tests).
@@ -1213,7 +1216,7 @@ export function createApp(
     // NOTOS: which models can run here, for the picker in a conversation.
     if (modelKeyStore && workspaceStore) {
       mountScoped("/models", (guard) =>
-        createModelRoutes(guard, modelKeyStore, workspaceStore),
+        createModelRoutes(guard, modelKeyStore, workspaceStore, usageStore),
       );
     }
     mountScoped("/campaigns", (guard) =>

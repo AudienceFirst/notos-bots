@@ -184,6 +184,7 @@ const lib: Record<string, string> = {
   "lib.workspaces.roleZuid": "ZUID (manages, approves)",
   "lib.workspaces.sonnetLabel": "Claude Sonnet 5 (Anthropic key)",
   "lib.workspaces.sonnetShort": "Claude Sonnet 5",
+  "lib.modelKeys.usageLoadFailed": "Could not read what the models used.",
 };
 
 export default lib;

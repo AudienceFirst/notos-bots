@@ -23,3 +23,9 @@ export {
   createVertexModels,
   type VertexDefaults,
 } from "./vertex";
+export {
+  createUsageStore,
+  type UsageLine,
+  type UsageStore,
+} from "./usage-store";
+export { meterModel, type UsageContext, type UsageRecord, type UsageSink } from "./usage";
