@@ -7,7 +7,16 @@
 -- TWO THINGS HERE ARE NOT GENERATED from the table definitions, and must survive if this is ever
 -- regenerated: the vector extension, and the trigger that makes the audit trail append-only.
 
-CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
+DO $notos$
+BEGIN
+  -- Alleen aanmaken als deze Postgres pgvector kent. De meegeleverde Postgres in de Mac-app heeft
+  -- het niet, en heeft het ook niet nodig: migratie 0010 gooit de extensie en de enige tabel die
+  -- hem gebruikt allebei weer weg. Een deployment die pgvector wel heeft, loopt de oude weg.
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'vector') THEN
+    CREATE EXTENSION IF NOT EXISTS vector;
+  END IF;
+END
+$notos$;--> statement-breakpoint
 
 CREATE TYPE "public"."acl_effect" AS ENUM('allow', 'deny');--> statement-breakpoint
 CREATE TYPE "public"."agent_type" AS ENUM('built_in', 'remote_ag_ui');--> statement-breakpoint
@@ -82,14 +91,24 @@ CREATE TABLE "channels" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "chunks" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"document_id" uuid NOT NULL,
-	"position" integer NOT NULL,
-	"content" text NOT NULL,
-	"embedding" vector(1536) NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
+DO $notos$
+BEGIN
+  -- Het type van `embedding` hangt af van of pgvector er is; de rest van de tabel niet. Zonder de
+  -- extensie bestaat `vector` als type niet en zou deze migratie afbreken, terwijl 0010 de tabel
+  -- toch verwijdert. Vandaar deze ene tabel in dynamische SQL.
+  EXECUTE format($chunks$
+    CREATE TABLE "chunks" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      "document_id" uuid NOT NULL,
+      "position" integer NOT NULL,
+      "content" text NOT NULL,
+      "embedding" %s NOT NULL,
+      "created_at" timestamp with time zone DEFAULT now() NOT NULL
+    )$chunks$,
+    CASE WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')
+      THEN 'vector(1536)' ELSE 'text' END);
+END
+$notos$;
 --> statement-breakpoint
 CREATE TABLE "connector_cursors" (
 	"connector_instance_id" uuid PRIMARY KEY NOT NULL,

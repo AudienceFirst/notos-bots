@@ -31,3 +31,6 @@ charts/*/charts/
 
 # NOTOS: lokale exports (klantenlijst enz.), nooit committen
 .local/
+
+# NOTOS: de gebouwde Mac-app (ongeveer 200 MB) en het releasepakket
+mac/build/

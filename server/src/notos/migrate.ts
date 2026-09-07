@@ -30,7 +30,17 @@ if (!/^[a-z_][a-z0-9_]*$/.test(schema)) {
   process.exit(1);
 }
 
-const source = resolve(import.meta.dir, "../../drizzle");
+/*
+ * Where the .sql files are.
+ *
+ * `import.meta.dir` is the source tree when this runs from source, and a path inside the binary
+ * (`/$bunfs/root`) once it is compiled with `bun build --compile`. A packaged build therefore ships
+ * the folder beside itself and names it here, rather than the migrations silently not being found:
+ * an empty database that skips its migrations starts, serves, and only fails on the first query.
+ */
+const source =
+  process.env.MIGRATIONS_DIR?.trim() ||
+  resolve(import.meta.dir, "../../drizzle");
 const folder =
   schema === "public"
     ? source
@@ -53,6 +63,14 @@ const folder =
         );
         return target;
       })();
+
+const journal = join(folder, "meta", "_journal.json");
+if (!(await Bun.file(journal).exists())) {
+  console.error(
+    `No migrations at ${folder}: ${journal} is missing. Set MIGRATIONS_DIR to the folder holding the .sql files and meta/_journal.json.`,
+  );
+  process.exit(1);
+}
 
 const client = new SQL(databaseUrl, { max: 1 });
 if (schema !== "public") {
