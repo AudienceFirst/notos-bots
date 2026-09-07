@@ -62,7 +62,11 @@ struct Settings: Codable {
     /// het team in dezelfde NOTOS werkt, zet hem in het menu Weergave op gedeeld.
     var mode: Mode = .local
     var sharedURL: String = "https://notos.zuid.com/bots/"
-    var localPort: Int = 3011
+    /*
+     * Niet 3011: dat is de poort van de ontwikkeldienst op deze Mac. Botsten ze, dan antwoordde die
+     * dienst op de gezondheidscheck en toonde de app doodleuk een andere server dan zijn eigen.
+     */
+    var localPort: Int = 3021
     /// Waar de app kijkt of er een nieuwe versie is. Leeg = niet kijken.
     var updateFeed: String = "https://notos.zuid.com/bots/mac/appcast.json"
     var checkForUpdates: Bool = true
@@ -302,12 +306,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     // MARK: Opbouw
 
     private func buildWindow() {
+        /*
+         * Een gewone titelbalk, geen `fullSizeContentView`.
+         *
+         * Met een doorlopende inhoud liep de app onder de rode, gele en groene knoppen door, en
+         * stond de workspace-kiezer letterlijk achter die knoppen. Er valt hier niets te winnen
+         * met dat laatste stukje hoogte: de app heeft zijn eigen kop, en die hoort onder de
+         * vensterrand te beginnen.
+         */
         window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1280, height: 860),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
         window.title = "NOTOS Bots"
-        window.titlebarAppearsTransparent = true
         window.setFrameAutosaveName("NotosBotsWindow")
         window.minSize = NSSize(width: 900, height: 600)
 
@@ -320,21 +331,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         // Zonder dit meldt de app zich als Safari-webview en klagen sommige inlogschermen.
         webView.customUserAgent =
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15 NOTOSBots/\(shortVersion)"
-        webView.autoresizingMask = [.width, .height]
 
         status = NSTextField(labelWithString: "")
         status.alignment = .center
         status.textColor = .secondaryLabelColor
         status.font = .systemFont(ofSize: 13)
-        status.autoresizingMask = [.width, .minYMargin, .maxYMargin]
+        /*
+         * Begint verborgen, en vangt nooit een muis of een scroll.
+         *
+         * Deze regel lag als een onzichtbare balk over het midden van het venster en ving daar het
+         * scrollen af, ook als er niets in stond. Een mededeling hoort niets te onderscheppen.
+         */
+        status.isHidden = true
+        status.refusesFirstResponder = true
 
-        let content = NSView(frame: window.contentLayoutRect)
-        content.autoresizingMask = [.width, .height]
-        webView.frame = content.bounds
-        status.frame = NSRect(x: 0, y: content.bounds.midY, width: content.bounds.width, height: 24)
+        let content = NSView()
         content.addSubview(webView)
         content.addSubview(status)
         window.contentView = content
+
+        /*
+         * Vastgezet met constraints in plaats van met een frame. De vorige versie berekende de maat
+         * uit een rechthoek die het venster nog niet had, waarna de webview meegroeide vanaf een
+         * verkeerd begin. Nu volgt hij het venster, altijd, ook na een resize of een tweede scherm.
+         */
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        status.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: content.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            status.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            status.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            status.leadingAnchor.constraint(
+                greaterThanOrEqualTo: content.leadingAnchor, constant: 32),
+            status.trailingAnchor.constraint(
+                lessThanOrEqualTo: content.trailingAnchor, constant: -32),
+        ])
+
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

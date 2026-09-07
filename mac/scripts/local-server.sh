@@ -25,6 +25,13 @@ mkdir -p "$SUP/logs"
 
 say() { echo "[local-server] $*"; }
 
+# Postgres weigert te starten zonder geldige taalinstelling: hij meldt "postmaster became
+# multithreaded during startup" en stopt meteen. Een terminal heeft die instelling van zichzelf,
+# een app die door macOS gestart wordt niet, dus stond hij hier vast. C past bij de database, die
+# met --locale=C is aangemaakt.
+export LC_ALL=C
+export LANG=C
+
 # Alles wat we starten gaat samen weer uit. De schil stuurt TERM naar de procesgroep, maar een
 # Postgres die daar doorheen glipt laat een draaiende database achter zonder venster.
 cleanup() {
@@ -102,6 +109,13 @@ export COPILOTKIT_TELEMETRY_DISABLED=true
 export DO_NOT_TRACK=1
 export AI_SDK_LOG_WARNINGS=false
 export DATABASE_POOL_MAX=4
+
+# Als er al iets op deze poort luistert, is dat niet onze server. Doorgaan zou betekenen dat de app
+# de gezondheidscheck van een vreemd programma voor de zijne aanziet en dat programma laat zien.
+if /usr/bin/nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; then
+  say "poort $PORT is al bezet; de app start hier niets bovenop"
+  exit 1
+fi
 
 say "migraties draaien"
 "$RES/bin/notos-bots-migrate"

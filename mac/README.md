@@ -119,6 +119,17 @@ deze map weggooien.
   naar een pad binnenín dat programma, dus `MIGRATIONS_DIR` wijst naar de map die meereist. Zonder
   die variabele startte de server tegen een lege database en viel hij pas om op de eerste query;
   daarom weigert de migrator nu te draaien als hij zijn map niet vindt.
+- **De app draaide zichzelf niet, en dat zag je niet.** De standaardpoort was 3011, dezelfde als de
+  ontwikkeldienst op deze Mac. Die antwoordde op de gezondheidscheck, dus de app dacht dat hij
+  klaar was en toonde doodleuk een andere server dan zijn eigen. Nu 3021, en het startscript
+  weigert te beginnen als die poort al bezet is.
+- **Postgres start niet zonder taalinstelling.** Een app die door macOS gestart wordt erft geen
+  `LANG`, en dan meldt Postgres "postmaster became multithreaded during startup" en stopt. In een
+  terminal gebeurt dat niet, dus dit kwam pas boven bij het draaien vanuit Programma's.
+- **Twee fouten in het venster.** `fullSizeContentView` liet de inhoud onder de rode, gele en
+  groene knoppen doorlopen, en de statusregel lag als een onzichtbare balk over het midden waar hij
+  het scrollen afving. Nu een gewone titelbalk, constraints in plaats van frames, en een
+  statusregel die verborgen begint en nooit een muis onderschept.
 - **pgvector zat in de weg.** Migratie 0000 maakte de extensie aan, 0010 gooit hem weer weg, en de
   meegeleverde PostgreSQL heeft hem niet. 0000 maakt hem nu alleen aan als hij er is. Dat is veilig
   voor bestaande databases: drizzle beslist op de tijdstempel uit het journal, niet op de inhoud,

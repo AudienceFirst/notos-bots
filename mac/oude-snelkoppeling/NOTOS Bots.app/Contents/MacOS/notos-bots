@@ -1,0 +1,12 @@
+#!/bin/bash
+# NOTOS Bots als app: wacht tot de lokale dienst (launchd com.mitch.notos-bots) antwoordt en open
+# een Chrome-venster in app-modus, in Mitch' eigen profiel.
+URL="http://localhost:3011/w/zuid"
+if ! launchctl print "gui/$(id -u)/com.mitch.notos-bots" >/dev/null 2>&1; then
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.mitch.notos-bots.plist" 2>/dev/null || true
+fi
+for i in $(seq 1 45); do
+  curl -fsS -m 2 http://localhost:3011/health >/dev/null 2>&1 && break
+  sleep 2
+done
+exec "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="$URL" >/dev/null 2>&1 &
