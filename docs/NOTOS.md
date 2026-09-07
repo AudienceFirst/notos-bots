@@ -555,3 +555,31 @@ op de testdatabase draaien: `DATABASE_URL=…/openbot_test bun server/src/notos/
 - `origin` wijst naar `https://ZUIDcontent@github.com/AudienceFirst/notos-bots.git`; de gebruikersnaam
   in de URL laat `gh` het juiste account kiezen (er staan meerdere GitHub-accounts op deze machine).
 - Poorten zoals upstream: app op 3010, API op 3001. Postgres via Docker op 5433 (zie boven).
+
+## Vier dingen uit de Grok Bot-vergelijking (7 september 2026)
+
+Mitch wees op `b-nnett/grok-bot-0.18-reconstructed`, een reverse-engineered reconstructie van
+Anysphere's Grok Bot. Daar is geen code uit overgenomen, wel vier patronen.
+
+**Geheimen wegstrepen bij een goedkeuring** (`notos/approvals/redact.ts`). De vraag toont de
+argumenten van de aanroep; zat daar een token in, dan stond dat in de tabel en op het scherm. Er
+wordt nu weggestreept vóór het opslaan, op veldnaam en op uitgiftevorm. De hash gaat nog over de
+échte argumenten, dus een verleende goedkeuring hoort nog bij dezelfde aanroep. Er wordt vervangen,
+niet gewist: een onleesbare vraag klikt iemand blind weg.
+
+**`askHandoff`** (`components/gallery/handoff.tsx`). Een Bot die vastloopt op iets dat alleen een
+mens kan (een code op je telefoon, een login bij een leverancier) houdt de beurt vast en vraagt
+erom. Twee antwoorden: gedaan of overgeslagen. Registreert zichzelf als `kind: "decision"`, net als
+`askApproval` en `askChoice`.
+
+**Verbruik per model** (`notos/model/usage.ts`, migratie 0034). Een laagje om het taalmodel heen
+telt elke aanroep mee; opgeteld per model op Beheer › Modellen. Tokens, geen euro's: het tarief
+staat hier niet. Let op twee dingen bij onderhoud: `wrapLanguageModel` uit de AI SDK werkt alleen op
+v3 en onze Vertex-modellen zijn v2 (beide wegen zitten erin), en een insert van drizzle wordt pas
+gedaan als er echt op gewacht wordt, dus `void insert().catch()` doet niets.
+
+**Routines op een gebeurtenis** (`routines/on-message.ts`, migratie 0035). Een routine kan starten
+als een Bot genoemd wordt of als een woord in een kanaal valt. Zelfde wachtrij en zelfde
+afvuurweg als de klok. Twee regels die moeten blijven gelden: alleen een bericht van een mens vuurt
+(anders houden twee Bots elkaar aan de gang), en de sleutel draagt het moment van het bericht, zodat
+één bericht één run geeft. De sweep kijkt daarom alleen naar `trigger = 'schedule'`.
