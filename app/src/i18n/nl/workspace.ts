@@ -147,6 +147,12 @@ const workspace: Record<string, string> = {
   "workspace.workspaceSwitcher.demo": "(demo)",
   "workspace.workspaceSwitcher.label": "Workspace",
   "workspace.workspaceSwitcher.private": "(privé)",
+  "workspace.routines.eventNote":
+    "Deze draait zodra iemand het in het kanaal zegt, dus hij heeft geen tijdstip en geen tijdzone. Alleen wat een mens schrijft start hem; wat een Bot zegt niet, anders houden twee Bots elkaar aan de gang.",
+  "workspace.routines.keywordLabel": "Het woord",
+  "workspace.routines.keywordPlaceholder": "budget",
+  "workspace.routines.presetKeyword": "Als er een woord valt",
+  "workspace.routines.presetMention": "Als deze Bot genoemd wordt",
 };
 
 export default workspace;

@@ -3,6 +3,7 @@ import type { ApprovalStore } from "./notos/approvals";
 import { createCampaignRoutes } from "./notos/campaigns/routes";
 import type { CampaignStore } from "./notos/campaigns/store";
 import type { UsageStore } from "./notos/model/usage-store";
+import type { ChannelMessage } from "./routines/on-message";
 import { createRunsRoutes } from "./notos/routines/runs-route";
 import type { MemberStore } from "./notos/workspaces/members";
 import { isLocale, type PreferenceStore } from "./notos/preferences/store";
@@ -269,6 +270,8 @@ export function createApp(
   preferenceStore?: PreferenceStore,
   /** NOTOS: gemeten modelverbruik, voor het kostenoverzicht. */
   usageStore?: UsageStore,
+  /** NOTOS: routines die op een gebeurtenis in een kanaal starten. */
+  onChannelMessage?: (message: ChannelMessage) => Promise<unknown>,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
   // NOTOS: whether a keyed provider can run for an actor; undefined accepts any (tests).
@@ -1194,6 +1197,7 @@ export function createApp(
         channelEvents,
         auditStore,
         modelAvailable,
+        onChannelMessage,
       ),
     );
   }

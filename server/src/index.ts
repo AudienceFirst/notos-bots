@@ -36,6 +36,7 @@ import { createApprovalStore } from "./notos/approvals";
 import { createWorkspacePolicyStore } from "./notos/policy";
 import { createSweepCallerVerifier } from "./notos/routines/sweep-route";
 import { dispatchClaimedRoutines, offerDueRoutines } from "./routines/sweep";
+import { fireRoutinesForMessage } from "./routines/on-message";
 import { driveRootsOf } from "./notos/workspaces";
 import { campaignPrompt, createCampaignStore } from "./notos/campaigns/store";
 import { createMemberStore } from "./notos/workspaces/members";
@@ -1300,6 +1301,14 @@ const app = createApp(
   createPreferenceStore(database),
   // NOTOS: wat de modellen verstookten, voor het kostenoverzicht.
   usageStore,
+  // NOTOS: routines die op een gebeurtenis in een kanaal starten.
+  (message) =>
+    fireRoutinesForMessage({
+      queue: sweepQueue,
+      routinesInChannel: (channelId) =>
+        routineStore.eventRoutinesInChannel(channelId),
+      message,
+    }),
 );
 
 /**

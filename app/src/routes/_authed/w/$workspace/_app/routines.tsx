@@ -4,16 +4,16 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { PageShell } from "@/components/layout/page-shell";
+import { RoutinesList } from "@/components/routines/routines-list";
 import { Button } from "@/components/ui/button";
+import { formatDateTime, useT } from "@/i18n";
 import { agentListQueryOptions } from "@/lib/agents/queries";
 import { campaignListQueryOptions } from "@/lib/campaigns/queries";
 import { channelListQueryOptions } from "@/lib/channels/queries";
 import { createRoutineMutationOptions } from "@/lib/routines/mutations";
-import { createFileRoute } from "@tanstack/react-router";
-import { PageShell } from "@/components/layout/page-shell";
-import { RoutinesList } from "@/components/routines/routines-list";
-import { formatDateTime, useT } from "@/i18n";
 
 /**
  * A person's own standing instructions: what runs on a schedule, and a switch to stop one.
@@ -57,10 +57,28 @@ const DAYS = [
   ["0", "workspace.routines.sunday"],
 ] as const;
 
-type Preset = "quarter" | "hourly" | "daily" | "weekly" | "advanced";
+type Preset =
+  | "quarter"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "advanced"
+  | "mention"
+  | "keyword";
 
-/** The cron for a preset. Every fifteen minutes is the shortest the server accepts. */
+/** De twee aanleidingen die niet op de klok lopen. */
+const EVENT_PRESETS: Preset[] = ["mention", "keyword"];
+const isEvent = (preset: Preset) => EVENT_PRESETS.includes(preset);
+
+/**
+ * The cron for a preset. Every fifteen minutes is the shortest the server accepts.
+ *
+ * Een routine op een aanleiding krijgt er ook een. De kolom staat op NOT NULL en de sweep kijkt
+ * alleen naar routines op de klok, dus die waarde wordt nergens gelezen; hem weglaten zou een
+ * schemawijziging vragen zonder dat iemand er iets aan heeft.
+ */
 function cronFor(preset: Preset, hour: number, day: string, advanced: string) {
+  if (isEvent(preset)) return "0 9 * * *";
   switch (preset) {
     case "quarter":
       return "*/15 * * * *";
@@ -92,6 +110,7 @@ function NewRoutineForm() {
   const [hour, setHour] = useState(9);
   const [day, setDay] = useState<string>("1");
   const [advanced, setAdvanced] = useState("0 9 * * 1-5");
+  const [keyword, setKeyword] = useState("");
   const [timezone, setTimezone] = useState("Europe/Amsterdam");
 
   const bots = agents.data ?? [];
@@ -159,6 +178,8 @@ function NewRoutineForm() {
             instruction,
             cron: cronFor(preset, hour, day, advanced),
             timezone,
+            trigger: isEvent(preset) ? preset : "schedule",
+            ...(preset === "keyword" ? { keyword: keyword.trim() } : {}),
           },
           {
             onSuccess: () => {
@@ -240,8 +261,31 @@ function NewRoutineForm() {
             <option value="advanced">
               {t("workspace.routines.presetAdvanced")}
             </option>
+            {/* Niet op de klok maar op een aanleiding; hetzelfde menu, want het antwoordt op
+                dezelfde vraag: wanneer draait dit? */}
+            <option value="mention">
+              {t("workspace.routines.presetMention")}
+            </option>
+            <option value="keyword">
+              {t("workspace.routines.presetKeyword")}
+            </option>
           </select>
         </label>
+        {preset === "keyword" ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground">
+              {t("workspace.routines.keywordLabel")}
+            </span>
+            <input
+              className={field}
+              minLength={2}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder={t("workspace.routines.keywordPlaceholder")}
+              required
+              value={keyword}
+            />
+          </label>
+        ) : null}
         {preset === "weekly" ? (
           <label className="flex flex-col gap-1">
             <span className="text-muted-foreground">
@@ -290,17 +334,25 @@ function NewRoutineForm() {
             />
           </label>
         ) : null}
-        <label className="flex flex-col gap-1">
-          <span className="text-muted-foreground">
-            {t("workspace.routines.timezoneLabel")}
-          </span>
-          <input
-            className={field}
-            onChange={(event) => setTimezone(event.target.value)}
-            value={timezone}
-          />
-        </label>
+        {/* Een tijdzone zegt niets over een routine die op een aanleiding start. */}
+        {isEvent(preset) ? null : (
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground">
+              {t("workspace.routines.timezoneLabel")}
+            </span>
+            <input
+              className={field}
+              onChange={(event) => setTimezone(event.target.value)}
+              value={timezone}
+            />
+          </label>
+        )}
       </div>
+      {isEvent(preset) ? (
+        <p className="text-muted-foreground text-xs text-pretty">
+          {t("workspace.routines.eventNote")}
+        </p>
+      ) : null}
       {create.isError ? (
         <p className="text-destructive text-sm" role="alert">
           {create.error instanceof Error

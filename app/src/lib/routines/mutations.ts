@@ -1,6 +1,6 @@
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
-import { client } from "@/lib/client";
 import { tr } from "@/i18n";
+import { client } from "@/lib/client";
 import { routineKeys } from "./queries";
 
 /**
@@ -50,6 +50,9 @@ export function createRoutineMutationOptions(queryClient: QueryClient) {
       instruction: string;
       cron: string;
       timezone: string;
+      /** `schedule` (op de klok), `mention` of `keyword`. */
+      trigger?: string;
+      keyword?: string;
     }) => {
       await client("/api/routines", {
         method: "POST",

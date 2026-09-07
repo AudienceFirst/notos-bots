@@ -144,6 +144,12 @@ const workspace: Record<string, string> = {
   "workspace.workspaceSwitcher.demo": "(demo)",
   "workspace.workspaceSwitcher.label": "Workspace",
   "workspace.workspaceSwitcher.private": "(private)",
+  "workspace.routines.eventNote":
+    "This runs when somebody says it in the channel, so it has no time and no timezone. Only what a person writes starts it; what a Bot says does not, or two Bots would keep each other going.",
+  "workspace.routines.keywordLabel": "The word",
+  "workspace.routines.keywordPlaceholder": "budget",
+  "workspace.routines.presetKeyword": "When a word is said",
+  "workspace.routines.presetMention": "When this Bot is mentioned",
 };
 
 export default workspace;

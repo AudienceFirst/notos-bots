@@ -246,6 +246,13 @@
       "when": 1788772056115,
       "tag": "0034_model_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788858456115,
+      "tag": "0035_routine_triggers",
+      "breakpoints": true
     }
   ]
 }

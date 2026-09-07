@@ -136,6 +136,10 @@ export type RoutineInput = {
   instruction: string;
   cron: string;
   timezone?: string;
+  /** `schedule` (standaard), `mention` of `keyword`. */
+  trigger?: string;
+  /** Alleen bij `keyword`: het woord waar op gelet wordt. */
+  keyword?: string;
 };
 
 /**
@@ -159,6 +163,8 @@ export type RoutinePatch = Partial<{
   timezone: string;
   channelId: string;
   enabled: boolean;
+  trigger: string;
+  keyword: string;
 }>;
 
 export type RoutineStore = {
@@ -177,6 +183,16 @@ export type RoutineStore = {
 
   /** Enabled routines whose next run has arrived, oldest due first. */
   dueRoutines(limit: number): Promise<{ id: string; nextRunAt: Date }[]>;
+  /**
+   * Wat er in dit kanaal op een gebeurtenis wacht.
+   *
+   * Net als `dueRoutines` niet op eigenaar begrensd: het bericht bepaalt of er iets moet starten,
+   * en de persoon die het typte is niet per se degene die de routine maakte. Geeft daarom alleen
+   * terug wat nodig is om te beslissen, en niets wat iemand geschreven heeft.
+   */
+  eventRoutinesInChannel(
+    channelId: string,
+  ): Promise<{ id: string; agentId: string; trigger: string; keyword: string }[]>;
   /**
    * Compare-and-set the clock forward. False means another sweep got there first.
    *
@@ -263,6 +279,21 @@ function toRoutine(row: RoutineRow): Routine {
 }
 
 /** Trim, then measure in code points like channel activity does — not in UTF-16 units. */
+/** Welke aanleidingen bestaan, en wat een trefwoordroutine minimaal nodig heeft. */
+function validTrigger(trigger: string | undefined, keyword?: string): string {
+  const chosen = (trigger ?? "schedule").trim();
+  if (!["schedule", "mention", "keyword"].includes(chosen)) {
+    throw new RoutineRefusedError(
+      "A routine starts on schedule, on mention or on keyword.",
+    );
+  }
+  if (chosen === "keyword" && (keyword ?? "").trim().length < 2) {
+    // Eén teken past op bijna elk bericht; dat is geen aanleiding maar een storing.
+    throw new RoutineRefusedError("A keyword is at least two characters.");
+  }
+  return chosen;
+}
+
 function validInstruction(instruction: string): string {
   const trimmed = instruction.trim();
   if (trimmed.length === 0) throw new RoutineRefusedError(INSTRUCTION_EMPTY);
@@ -519,6 +550,12 @@ export function createRoutineStore(database: Database): RoutineStore {
         input.agentId,
         input.channelId,
       );
+      const trigger = validTrigger(input.trigger, input.keyword);
+      /*
+       * Ook een routine op een gebeurtenis krijgt een `nextRunAt`. De kolom staat op NOT NULL en
+       * de sweep kijkt toch alleen naar `schedule`, dus dit is een waarde die nergens gelezen
+       * wordt; hem leeg willen maken zou een schemawijziging zijn zonder winst.
+       */
       const nextRunAt = nextRunFor(input.cron, timezone, new Date());
 
       // Counted and inserted under the owner's cap lock, so two creates racing at 19 cannot both
@@ -544,6 +581,8 @@ export function createRoutineStore(database: Database): RoutineStore {
               instruction,
               cron: input.cron,
               timezone,
+              trigger,
+              keyword: trigger === "keyword" ? (input.keyword ?? "").trim() : "",
               nextRunAt,
             })
             .returning();
@@ -662,6 +701,24 @@ export function createRoutineStore(database: Database): RoutineStore {
      * same item. `now()` in SQL, never `Date.now()`.
      * ========================================================================================= */
 
+    async eventRoutinesInChannel(channelId) {
+      return await database
+        .select({
+          id: routines.id,
+          agentId: routines.agentId,
+          trigger: routines.trigger,
+          keyword: routines.keyword,
+        })
+        .from(routines)
+        .where(
+          and(
+            eq(routines.channelId, channelId),
+            eq(routines.enabled, true),
+            ne(routines.trigger, "schedule"),
+          ),
+        );
+    },
+
     async dueRoutines(limit) {
       /*
        * NOT OWNER-SCOPED, ON PURPOSE. Every other method in this file is guarded by the owner, so
@@ -675,6 +732,12 @@ export function createRoutineStore(database: Database): RoutineStore {
         .where(
           and(
             eq(routines.enabled, true),
+            /*
+             * Alleen routines die op de klok lopen. Eén die op een gebeurtenis wacht heeft geen
+             * volgend moment; zonder deze regel zou de sweep hem elke minuut als te laat zien en
+             * stilletjes vooruitschuiven.
+             */
+            eq(routines.trigger, "schedule"),
             // The comparison Postgres makes against its own clock. A replica's `Date.now()` here
             // would decide what is due from a clock the row was never written by.
             lte(routines.nextRunAt, sql`now()`),

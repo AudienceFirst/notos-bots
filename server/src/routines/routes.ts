@@ -53,11 +53,18 @@ export function createRoutineRoutes(
       instruction?: unknown;
       cron?: unknown;
       timezone?: unknown;
+      trigger?: unknown;
+      keyword?: unknown;
     } | null;
     const agentId = typeof body?.agentId === "string" ? body.agentId : "";
     const instruction =
       typeof body?.instruction === "string" ? body.instruction : "";
     const cron = typeof body?.cron === "string" ? body.cron.trim() : "";
+    /*
+     * Ook een routine op een gebeurtenis moet een cron meesturen. De kolom staat op NOT NULL, en
+     * de sweep kijkt toch alleen naar routines op de klok; de app stuurt daarom een geldige
+     * uitdrukking mee die nergens gelezen wordt.
+     */
     if (!agentId || !instruction.trim() || !cron) {
       return context.json(
         { error: "A Bot, an instruction and a schedule are required." },
@@ -76,6 +83,10 @@ export function createRoutineRoutes(
         ...(typeof body?.timezone === "string" && body.timezone
           ? { timezone: body.timezone }
           : {}),
+        ...(typeof body?.trigger === "string" && body.trigger
+          ? { trigger: body.trigger }
+          : {}),
+        ...(typeof body?.keyword === "string" ? { keyword: body.keyword } : {}),
       });
       return context.json({ routine }, 201);
     } catch (error) {

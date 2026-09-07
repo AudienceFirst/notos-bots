@@ -34,6 +34,7 @@ import {
   type ChannelEventHub,
 } from "./events";
 import { upgradeWebSocket } from "./socket";
+import type { ChannelMessage } from "../routines/on-message";
 import type { ThreadIdentity } from "./thread-identity";
 import { isModelProvider } from "../notos/model";
 
@@ -1099,6 +1100,13 @@ export function createChannelRoutes(
   auditStore?: AuditStore,
   /** NOTOS: whether a keyed provider can run for this actor's workspace; absent = accept any. */
   modelAvailable?: (actor: AgentActor, provider: string) => Promise<boolean>,
+  /**
+   * NOTOS: wat er moet starten nu er iets gezegd is (routines op een gebeurtenis).
+   *
+   * Afwezig in tests en in een omgeving zonder wachtrij; de route werkt dan gewoon door, er start
+   * alleen niets.
+   */
+  onChannelMessage?: (message: ChannelMessage) => Promise<unknown>,
 ) {
   const routes = new Hono<{ Variables: AppVariables }>();
 
@@ -1216,11 +1224,23 @@ export function createChannelRoutes(
     if (!parsed.ok) return context.json({ error: parsed.error }, 400);
 
     try {
-      await store.recordActivity(
-        context.var.actor,
-        context.req.param("channelId"),
-        parsed.value,
-      );
+      const channelId = context.req.param("channelId");
+      await store.recordActivity(context.var.actor, channelId, parsed.value);
+      /*
+       * Pas nadat het bericht echt geschreven is, en apart afgevangen: een routine die niet kan
+       * starten mag het opslaan van wat iemand zei niet ongedaan maken. De persoon zou dan denken
+       * dat zijn bericht weg is.
+       */
+      await onChannelMessage?.({
+        channelId,
+        text: parsed.value.text,
+        agentId: parsed.value.agentId,
+        at: parsed.value.at,
+      }).catch((error) => {
+        console.warn(
+          `routines for this message could not start: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
       return context.body(null, 204);
     } catch (error) {
       return mapStoreError(context, error);

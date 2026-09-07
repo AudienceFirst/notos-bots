@@ -112,6 +112,16 @@ export const routines = pgTable(
       onDelete: "set null",
     }),
     instruction: text("instruction").notNull(),
+    /**
+     * Waar deze routine op start: `schedule` op de klok, `mention` als de Bot genoemd wordt,
+     * `keyword` als er een woord in het kanaal valt.
+     *
+     * De sweep kijkt alleen naar `schedule`. Een routine die op een gebeurtenis wacht heeft geen
+     * volgend moment, en zou anders elke minuut als "te laat" langskomen.
+     */
+    trigger: text("trigger").notNull().default("schedule"),
+    /** Het woord waar `keyword` op let. Leeg bij de andere twee. */
+    keyword: text("keyword").notNull().default(""),
     /** Five-field cron. Validated at the tool boundary; never parsed by the client. */
     cron: text("cron").notNull(),
     /** IANA zone the cron is read in. UTC when the person never said otherwise. */
@@ -131,6 +141,12 @@ export const routines = pgTable(
   },
   (table) => [
     index("routines_due_idx").on(table.enabled, table.nextRunAt),
+    /** De vraag die bij elk bericht gesteld wordt: wacht hier iets op deze gebeurtenis? */
+    index("routines_by_trigger_idx").on(
+      table.trigger,
+      table.channelId,
+      table.enabled,
+    ),
     /** Owner-scoped reads and writes: listFor, countEnabled, and the users cascade all hit this. */
     index("routines_by_owner_idx").on(table.ownerUserId, table.enabled),
   ],
